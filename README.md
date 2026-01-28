@@ -46,20 +46,26 @@ dotnet add package Cirreum.Runtime.Wasm
 ## Quick Start
 
 ```csharp
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Cirreum.Runtime;
 
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
+var builder = DomainApplication.CreateBuilder(args);
 
-// Configure Cirreum Runtime Client
-builder.Services.AddCirreumRuntimeClient(options =>
-{
-    options.EnableAuthentication = true;
-    options.EnablePresenceMonitoring = true;
-    options.EnableThemeManagement = true;
-});
+// Configure root components
+builder.RootComponents.Add<HeadOutlet>("head::after");
+builder.RootComponents.Add<App>("#app");
 
-await builder.Build().RunAsync();
+// Configure authentication (choose one)
+builder.AddEntraAuth(tenantId, clientId);
+// or builder.AddEntraExternalAuth(domain, clientId);
+
+// Configure state management
+builder.AddClientState(state => state
+    .RegisterState<IMyState, MyState>()
+    .AddDataStores()
+        .WithAutoInitialization()
+);
+
+await builder.BuildAndRunAsync();
 ```
 
 ## Usage Examples
@@ -68,12 +74,12 @@ await builder.Build().RunAsync();
 
 ```csharp
 // Using a memory state component
-@inherits MemoryStateComponent<MyState>
+@inherits MemoryStateComponent
 
 @code {
-    protected override void OnInitialized()
+    protected override void OnMemoryStateChanged()
     {
-        State.PropertyChanged += (s, e) => StateHasChanged();
+        // Handle state changes - StateHasChanged() is called automatically
     }
 }
 ```
@@ -148,7 +154,7 @@ The demo includes examples of:
 
 ## Versioning
 
-{REPO-NAME} follows [Semantic Versioning](https://semver.org/):
+Cirreum.Runtime.Wasm follows [Semantic Versioning](https://semver.org/):
 
 - **Major** - Breaking API changes
 - **Minor** - New features, backward compatible

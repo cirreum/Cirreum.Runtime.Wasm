@@ -17,7 +17,7 @@ This is **Cirreum.Runtime.Wasm**, a Blazor WebAssembly runtime client library th
 - **Domain-Driven Design**: Built around `DomainApplication` and `DomainApplicationBuilder` patterns
 - **State Management Pattern**: ViewModels with multiple persistence backends (Memory, Session, Local Storage, Container)
 - **Component Inheritance Hierarchy**: Base classes for pages and components with state management
-- **Dependency Injection**: Heavy use of DI with service registration extensions via `AddCirreumRuntimeClient()`
+- **Dependency Injection**: Heavy use of DI with service registration via `HostingExtensions` methods (e.g., `AddRemoteClient()`, `AddClientState()`, `AddEntraAuth()`)
 - **Builder Pattern**: Configuration through fluent APIs for domain applications
 - **Notification Scoping**: Coalescing multiple state changes into single notifications
 
@@ -66,13 +66,13 @@ SCSS files are automatically compiled via AspNetCore.SassCompiler during build. 
 - **sasscompiler.json**: SCSS compilation settings with source map generation
 
 ### Package References
-The library depends on:
+The library directly depends on:
 - Microsoft.AspNetCore.Components.WebAssembly
 - Cirreum.Components.WebAssembly
 - Cirreum.Services.Wasm
 - AspNetCore.SassCompiler
-- Microsoft.Graph (for presence features)
-- FluentValidation (for validation components)
+
+Note: Microsoft.Graph and FluentValidation may be available as transitive dependencies through the Cirreum packages.
 
 ### CI/CD Configuration
 The build system automatically detects:
@@ -113,8 +113,34 @@ The demo showcases multiple authentication options (currently commented out):
 - No-auth fallback for development
 
 ### Key Implementation Details
-- Use `DomainApplication.CreateCurrent<T>()` for accessing the current application instance
+- Use `DomainApplication.CreateBuilder(args)` to create a `DomainApplicationBuilder`, then call `builder.BuildAndRunAsync()` to run the application
 - State ViewModels require explicit property registration before use
-- Components inherit from base classes like `MemoryStateComponent<T>` for state management
+- Components inherit from non-generic base classes like `MemoryStateComponent`, `SessionStateComponent`, `LocalStateComponent` which internally use `ContainerStatePage<TStateService>`
 - SCSS files compile to CSS with the same name in the same directory
 - Theme switching persists to local storage automatically
+
+### DomainApplication Usage Example
+```csharp
+var builder = DomainApplication.CreateBuilder(args);
+
+builder.RootComponents.Add<HeadOutlet>("head::after");
+builder.RootComponents.Add<App>("#app");
+
+// Configure remote services
+builder.AddRemoteClient<MyApiClient>(options => {
+    options.ServiceUri = new Uri("https://api.example.com/");
+});
+
+// Configure authentication (choose one)
+builder.AddEntraAuth(tenantId, clientId);
+// or builder.AddEntraExternalAuth(domain, clientId);
+
+// Configure state management
+builder.AddClientState(state => state
+    .RegisterState<IMyState, MyState>()
+    .AddDataStores()
+        .WithAutoInitialization()
+);
+
+await builder.BuildAndRunAsync();
+```
