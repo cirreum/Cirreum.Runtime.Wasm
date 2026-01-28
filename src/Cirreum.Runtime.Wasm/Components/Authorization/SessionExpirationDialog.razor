@@ -1,0 +1,28 @@
+@namespace Cirreum.Components.Authorization
+@implements IDisposable
+
+<Dialog @ref="_dialogRef"
+		Title="User Session"
+		TitleIcon="bi bi-person-lock text-info"
+		Options="@DialogOptions">
+	<div class="dialog-body">
+		<div class="px-3">
+			<p>@_displayMessage</p>
+
+			@if (ShowCountdown && _remainingSeconds > 0) {
+				<div class="alert alert-warning mt-3">
+					<i class="bi bi-clock"></i>
+					Auto-logout in <strong>@_remainingSeconds</strong> seconds
+				</div>
+			}
+		</div>
+	</div>
+	<div class="dialog-buttons">
+		<button type="button" class="btn btn-primary" @onclick="HandleContinue">
+			@ContinueButtonText
+		</button>
+		<button type="button" class="btn btn-secondary" @onclick="HandleLogout">
+			@LogoutButtonText
+		</button>
+	</div>
+</Dialog>

@@ -1,0 +1,242 @@
+﻿@page "/detail"
+@inherits StatePageBase
+@inject IHttpClientFactory HttpClientFactory
+@inject IWasmFileSystem WasmFileSystem;
+@inject ICsvFileBuilder CsvBuilder;
+@inject IThemeState ThemeState;
+
+<AppPageTitle>Detail</AppPageTitle>
+
+<p>The <span class="text-danger">DetailTemplate</span> can be used to display additional details below an item.</p>
+<div class="row">
+	<div class="col">
+		<form class="form" onsubmit="return false;">
+			<div class="row gy-2 gx-3">
+				<label id="selectionTypeSelectorLabel" for="selectionTypeSelector" class="col-sm-auto col-form-label col-form-label-sm">Row Selection Type:</label>
+				<div class="col-sm-auto">
+					<select class="form-select form-select-sm" @bind="@SelectionType">
+						<option value="@SelectionType.None">@($"{SelectionType.None}")</option>
+						<option value="@SelectionType.Single">@($"{SelectionType.Single}")</option>
+						<option value="@SelectionType.Multiple">@($"{SelectionType.Multiple}")</option>
+					</select>
+				</div>
+			</div>
+			<div class="row mb-3">
+				<div class="col-sm-auto">
+					<small class="text-body-secondary">
+						Choose the Row Selection Type to change how the DataGrid handles Row Clicks.
+					</small>
+				</div>
+			</div>
+		</form>
+	</div>
+</div>
+<div class="row">
+	<div class="col-auto">
+		<h5>DataGrid Options</h5>
+	</div>
+</div>
+<div class="row flex-wrap mb-2">
+	<div class="col-auto">
+		<Switch @bind-Value="DGSearchable" Label="Search" />
+	</div>
+	<div class="col-auto">
+		<Switch @bind-Value="DGShowTitle" Label="Show Title" />
+	</div>
+	<div class="col-auto">
+		<Switch @bind-Value="DGShowToolbar" Label="Show Toolbar" />
+	</div>
+	<div class="col-auto">
+		<Switch @bind-Value="DGFlush" Label="Flush" />
+	</div>
+	<div class="col-auto">
+		<Switch @bind-Value="DGPageable" Label="Pageable" />
+	</div>
+	<div class="col-auto">
+		<Switch @bind-Value="DGAggregates" Label="Aggregates" />
+	</div>
+	<div class="col-auto">
+		<Switch @bind-Value="DGResponsive" Label="Responsive" />
+	</div>
+	<div class="col-auto">
+		<Switch @bind-Value="DGToggleHeaders" @bind-Value:after="ToggleHeaders" Label="Header Style" />
+	</div>
+	<div class="col-auto">
+		<Switch @bind-Value="DGBorders" Label="Borders" />
+	</div>
+</div>
+<div class="btn-group mb-2">
+	<button type="button" class="btn btn-xs btn-danger" @onclick="ToggleIsDataGridExporting">Toggle IsDataGridExporting</button>
+</div>
+
+<DataGrid Data="data"
+		  ShowFooter="@DGAggregates"
+		  HeadersCss="@DGHeaders"
+		  Searchable="@DGSearchable"
+		  ShowTitle="@DGShowTitle"
+		  ShowToolbar="@DGShowToolbar"
+		  Responsive="@DGResponsive"
+		  Bordered="@DGBorders"
+		  Flush="@DGFlush"
+		  Pageable="@DGPageable"
+		  InitialPageSize="5"
+		  Title="Detail Template"
+		  IsLoading="isLoading"
+		  IsExporting="IsDataGridExporting"
+		  SelectionType="SelectionType"
+		  @bind-SelectedItems="selectedPeople"
+		  OnRefreshData="RefreshAsync"
+		  OnExportData="ExportAsync"
+		  OnRowClicked=RowClicked
+		  OnRowDoubleClicked="RowDoubleClicked"
+		  OnRowContextMenuItemSelected="RowContextClicked">
+	<DataGridColumn Field="Id" MinWidth="100" Width="100" DefaultSortColumn="true" />
+	<DataGridColumn Field="@nameof(PersonData.Summary)" Width="100" />
+	<DataGridColumn Header="Last Name" Field="Name.Last" />
+	<DataGridColumn Field="Paid" MinWidth="100" Width="100">
+		@($"{context.Paid}")
+	</DataGridColumn>
+	<DataGridColumn Field="Balance" Format="C" Align="TextAlign.End" Aggregate="AggregateType.Sum" MinWidth="100" Width="120" />
+	<DataGridColumn Field="ActiveDataOffset" MinWidth="250">
+		@($"{context.ActiveDataOffset}" ?? string.Empty)
+	</DataGridColumn>
+	<DataGridColumn Header="Enum" Field="CreditCardType" MinWidth="100">
+		@($"{context.CreditCardType}")
+	</DataGridColumn>
+	<DataGridDetailTemplate>
+		<div class="card border-0">
+			<ul class="list-group list-group-flush">
+				<li class="list-group-item"><strong class="text-primary-emphasis">Name:</strong> @context.FullName</li>
+				<li class="list-group-item"><strong class="text-primary-emphasis">Email:</strong> <a href="mailto:@(context.Email)">@(context.Email)</a></li>
+				<li class="list-group-item"><strong class="text-primary-emphasis">Registered:</strong> @context.Registered</li>
+			</ul>
+		</div>
+	</DataGridDetailTemplate>
+	<DataGridRowContextMenuTemplate>
+		<MenuItem Label="Upload File" Value="Upload" />
+		<MenuDivider />
+		<MenuItem Label="Rename Folder" Value="Rename" />
+		<MenuItem Label="Delete Folder" Value="Delete" />
+		<MenuDivider />
+		<MenuItem Label="Properties..." Value="Properties" />
+		<MenuItem Label="Refresh" Value="Refresh" />
+	</DataGridRowContextMenuTemplate>
+</DataGrid>
+
+<div class="card border-primary mt-3">
+	<div class="card-header border-primary text-body bg-primary-subtle">
+		Selected People: <span class="badge text-bg-primary">@selectedPeople.Count</span>
+	</div>
+	<ul class="list-group list-group-flush">
+		@{
+			int counter = 0;
+		}
+		@if (selectedPeople.Any()) {
+			@foreach (var item in selectedPeople) {
+				counter++;
+				<li @key=@item class="list-group-item small"><strong>#@($"{counter}")</strong> @(item.FullName)</li>
+			}
+		} else {
+			<li class="list-group-item small"><strong>#0</strong> None</li>
+		}
+	</ul>
+</div>
+
+
+@code {
+
+	private SelectionType SelectionType { get; set; } = SelectionType.Multiple;
+	private IEnumerable<PersonData>? data;
+	private List<PersonData> selectedPeople = [];
+	private bool isLoading = true;
+	bool DGSearchable { get; set; } = true;
+	bool DGShowTitle { get; set; } = true;
+	bool DGShowToolbar { get; set; } = true;
+	bool DGResponsive { get; set; } = true;
+	bool DGFlush { get; set; } = false;
+	bool DGPageable { get; set; } = true;
+	bool DGAggregates { get; set; } = true;
+	string DGHeaders { get; set; } = "text-body bg-primary-subtle";
+	bool DGToggleHeaders { get; set; } = true;
+	void ToggleHeaders() {
+		if (DGToggleHeaders) {
+			DGHeaders = "text-body bg-primary-subtle";
+		} else {
+			DGHeaders = "";
+		}
+	}
+	bool DGBorders { get; set; } = true;
+
+	private void RowContextClicked(MenuItemEventArgs<PersonData> args) {
+
+		this.Toastr.Show(
+			$"Folder action '{args.MenuItem.Value}' was selected",
+			args.Context.FullName,
+			"DataGrid");
+
+	}
+
+	private void RowClicked(PersonData item) {
+		Toastr.Show(
+			$"Person '{item.Name}' was clicked.",
+			"Single Clicked",
+			$"selected rows: {selectedPeople.Count}.");
+	}
+
+	private void RowDoubleClicked(PersonData item) {
+		Toastr.Show(
+			$"Person '{item.Name}' was clicked.",
+			"Double Clicked",
+			$"selected rows: {selectedPeople.Count}.");
+	}
+
+	public bool IsDataGridExporting { get; set; }
+	private void ToggleIsDataGridExporting() {
+		this.IsDataGridExporting = !this.IsDataGridExporting;
+	}
+	private async Task ExportAsync() {
+		// this.IsDataGridExporting = true;
+		// Console.WriteLine(IsDataGridExporting);
+		// await Task.Delay(10_000);
+		// this.IsDataGridExporting = false;
+		if (this.data is not null) {
+			var csvBytes = CsvBuilder.BuildFile<PersonData>(this.data);
+			await WasmFileSystem.DownloadFileAsync(csvBytes, "TestFile.csv", "text/csv");
+		}
+	}
+	private async Task RefreshAsync() {
+		var client = HttpClientFactory.CreateClient("FakeData");
+		var result = await client.GetFromJsonAsync<IEnumerable<PersonData>>("FXImuy6I7yBj/data");
+		if (result is null) {
+			return;
+		}
+		data = result.ToArray();
+	}
+
+	protected override async Task OnInitializedAsync() {
+		Console.WriteLine($"DetailPage:OnInitializedAsync");
+		try {
+			Console.WriteLine($"DetailPage:OnInitializedAsync => GetData...");
+			await RefreshAsync();
+		} finally {
+			isLoading = false;
+
+			if (data is not null && data.Count() > 3) {
+				switch (this.SelectionType) {
+					case SelectionType.None:
+						break;
+					case SelectionType.Single:
+						selectedPeople.Add(data.Skip(2).Take(1).First());
+						break;
+					case SelectionType.Multiple:
+						selectedPeople.Add(data.Skip(1).Take(1).First());
+						selectedPeople.Add(data.Skip(2).Take(1).First());
+						break;
+				}
+				;
+			}
+			Console.WriteLine($"DetailPage:OnInitializedAsync => Finished...");
+		}
+	}
+
+}

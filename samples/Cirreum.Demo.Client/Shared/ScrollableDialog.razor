@@ -1,0 +1,25 @@
+﻿
+<div class="dialog-body">
+	<p>This is some placeholder content to show the scrolling behavior for modals. We use repeated line breaks to demonstrate how content can exceed minimum inner height, thereby showing inner scrolling. When content becomes longer than the predefined max-height of modal, content will be cropped and scrollable within the modal.</p>
+	<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+	<p>This content should appear at the bottom after you scroll.</p>
+</div>
+
+<div class="dialog-buttons">
+	<button type="button" @onclick="Ok" class="btn btn-primary">OK</button>
+	<button type="button" @onclick="Cancel" class="btn btn-secondary">Cancel</button>
+</div>
+
+<div class="dialog-footer">
+	<span>Be sure and scrolldown...</span>
+</div>
+
+@code {
+
+	[CascadingParameter]
+	Dialog Instance { get; set; } = default!;
+
+	Task Ok() => Instance.OkAsync();
+	Task Cancel() => Instance.CancelAsync();
+
+}

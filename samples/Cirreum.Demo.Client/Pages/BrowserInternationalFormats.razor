@@ -1,0 +1,237 @@
+﻿@page "/browser-info"
+@inject IBrowserCultureInterop BrowserCulture
+@inject IJSAppModule JS
+
+<h1>Browser Information</h1>
+
+<div class="card mb-4">
+	<div class="card-header text-bg-primary">
+		<h3 class="m-0">Time Zone & Locale Information</h3>
+	</div>
+	<div class="card-body">
+		<div class="row">
+			<div class="col-md-6">
+				<h4>Basic Time Zone Info</h4>
+				<table class="table table-striped table-bordered">
+					<tbody>
+						<tr>
+							<th>TimeZone ID</th>
+							<td>@_browserInfo.TimeZone</td>
+						</tr>
+						<tr>
+							<th>TimeZone Offset</th>
+							<td>@(_browserInfo.TimeZoneOffset / -60) hours from UTC</td>
+						</tr>
+						<tr>
+							<th>Current Date/Time (Local)</th>
+							<td>@_currentLocalTime</td>
+						</tr>
+						<tr>
+							<th>Current Date/Time (UTC)</th>
+							<td>@_currentUtcTime</td>
+						</tr>
+						<tr>
+							<th>Is Daylight Saving Time</th>
+							<td>@_isDst</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div class="col-md-6">
+				<h4>Locale Info</h4>
+				<table class="table table-striped table-bordered">
+					<tbody>
+						<tr>
+							<th>Locale</th>
+							<td>@_browserInfo.Locale</td>
+						</tr>
+						<tr>
+							<th>Calendar</th>
+							<td>@_browserInfo.Calendar</td>
+						</tr>
+						<tr>
+							<th>Numbering System</th>
+							<td>@_browserInfo.NumberingSystem</td>
+						</tr>
+						<tr>
+							<th>Hour Format</th>
+							<td>@(_browserInfo.Hour12 == true ? "12-hour" : "24-hour")</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="card mb-4">
+	<div class="card-header text-bg-primary">
+		<h3 class="m-0">Date & Time Formatting Options</h3>
+	</div>
+	<div class="card-body">
+		<div class="row">
+			<div class="col-md-6">
+				<h4>Date Components</h4>
+				<table class="table table-striped table-bordered">
+					<tbody>
+						<tr>
+							<th>Era Format</th>
+							<td>@(_browserInfo.Era ?? "Not specified")</td>
+						</tr>
+						<tr>
+							<th>Year Format</th>
+							<td>@(_browserInfo.Year ?? "Not specified")</td>
+						</tr>
+						<tr>
+							<th>Month Format</th>
+							<td>@(_browserInfo.Month ?? "Not specified")</td>
+						</tr>
+						<tr>
+							<th>Day Format</th>
+							<td>@(_browserInfo.Day ?? "Not specified")</td>
+						</tr>
+						<tr>
+							<th>Weekday Format</th>
+							<td>@(_browserInfo.Weekday ?? "Not specified")</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div class="col-md-6">
+				<h4>Time Components</h4>
+				<table class="table table-striped table-bordered">
+					<tbody>
+						<tr>
+							<th>Hour Format</th>
+							<td>@(_browserInfo.Hour ?? "Not specified")</td>
+						</tr>
+						<tr>
+							<th>Minute Format</th>
+							<td>@(_browserInfo.Minute ?? "Not specified")</td>
+						</tr>
+						<tr>
+							<th>Second Format</th>
+							<td>@(_browserInfo.Second ?? "Not specified")</td>
+						</tr>
+						<tr>
+							<th>TimeZone Name Format</th>
+							<td>@(_browserInfo.TimeZoneName ?? "Not specified")</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="card mb-4">
+	<div class="card-header text-bg-primary">
+		<h3 class="m-0">Sample Date/Time Formatting</h3>
+	</div>
+	<div class="card-body">
+		<div class="row">
+			<div class="col-12">
+				<h4>Formatted Examples</h4>
+				<table class="table table-striped table-bordered">
+					<thead>
+						<tr>
+							<th>Format</th>
+							<th>Result</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>Browser Default</td>
+							<td>@_formattedSamples.DefaultFormat</td>
+						</tr>
+						<tr>
+							<td>Date Only</td>
+							<td>@_formattedSamples.DateOnly</td>
+						</tr>
+						<tr>
+							<td>Time Only</td>
+							<td>@_formattedSamples.TimeOnly</td>
+						</tr>
+						<tr>
+							<td>Long Date & Time</td>
+							<td>@_formattedSamples.Full</td>
+						</tr>
+						<tr>
+							<td>With TimeZone Name</td>
+							<td>@_formattedSamples.WithTimeZone</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="card mb-4">
+	<div class="card-header text-bg-primary">
+		<h3 class="m-0">Browser Capabilities</h3>
+	</div>
+	<div class="card-body">
+		<div class="row">
+			<div class="col-md-6">
+				<h4>Time Zone API Support</h4>
+				<div class="mb-3">
+					<div class="d-flex align-items-center">
+						<div class="me-2">Intl.DateTimeFormat().resolvedOptions().timeZone:</div>
+						<div class="@(_hasTimeZoneSupport ? "text-success" : "text-danger")">
+							@(_hasTimeZoneSupport ? "✓ Supported" : "✗ Not Supported")
+						</div>
+					</div>
+				</div>
+				<div class="mb-3">
+					<div class="d-flex align-items-center">
+						<div class="me-2">Date.prototype.getTimezoneOffset():</div>
+						<div class="@(_hasOffsetSupport ? "text-success" : "text-danger")">
+							@(_hasOffsetSupport ? "✓ Supported" : "✗ Not Supported")
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-6">
+				<h4>Browser User Agent</h4>
+				<div class="mb-3">
+					@_userAgent
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+
+	private DateTimeFormatOptions _browserInfo = new();
+	private string _currentLocalTime = "Loading...";
+	private string _currentUtcTime = "Loading...";
+	private string _isDst = "Loading...";
+	private FormattedSamples _formattedSamples = new();
+	private bool _hasTimeZoneSupport = false;
+	private bool _hasOffsetSupport = false;
+	private string _userAgent = "Loading...";
+
+	protected override void OnInitialized() {
+		try {
+
+			_browserInfo = BrowserCulture.GetInternationalFormats();
+			_currentLocalTime = BrowserCulture.GetCurrentLocalTime();
+			_currentUtcTime = BrowserCulture.GetCurrentUtcTime();
+			_isDst = BrowserCulture.IsDaylightSavingTime();
+			_hasTimeZoneSupport = BrowserCulture.HasTimeZoneSupport();
+			_hasOffsetSupport = BrowserCulture.HasOffsetSupport();
+			_userAgent = JS.GetUserAgent();
+		} catch (Exception ex) {
+			_currentLocalTime = $"Error: {ex.Message}";
+		}
+
+		try {
+			_formattedSamples = JS.Invoke<FormattedSamples>("getFormattedSamples");
+		} catch (Exception ex) {
+			_currentLocalTime = $"GetFormattedSamples Error: {ex.Message}";
+		}
+
+	}
+}

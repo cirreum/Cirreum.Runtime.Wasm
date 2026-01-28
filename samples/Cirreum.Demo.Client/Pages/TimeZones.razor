@@ -1,0 +1,203 @@
+﻿@page "/timezone-tests"
+@inject IBrowserCultureInterop BrowserCulture
+@inject IDateTimeClock DateTimeService
+
+<h1>Browser Time Zone Capabilities Test</h1>
+
+<div class="card mb-4">
+    <div class="card-header text-bg-primary">
+        Browser Time Zone Information
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-4">JS Browser Time Zone:</dt>
+            <dd class="col-sm-8">@_browserJsTimeZone</dd>
+
+            <dt class="col-sm-4">TimeZoneInfo.Local.Id:</dt>
+            <dd class="col-sm-8">@_dotnetLocalTimeZone</dd>
+
+            <dt class="col-sm-4">IDateTimeClock.LocalTimeZoneId:</dt>
+            <dd class="col-sm-8">@_serviceLocalTimeZoneId</dd>
+
+            <dt class="col-sm-4">Browser Offset from UTC:</dt>
+            <dd class="col-sm-8">@_browserOffset</dd>
+
+            <dt class="col-sm-4">Friendly Name:</dt>
+            <dd class="col-sm-8">@_friendlyName</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header text-bg-primary">
+        TimeZoneInfo Capabilities
+    </div>
+    <div class="card-body">
+        <h5>Find TimeZone by IANA ID</h5>
+        <div class="input-group mb-3">
+            <input @bind="_testIanaId" class="form-control" placeholder="Enter IANA ID (e.g., America/New_York)" />
+            <button @onclick="TestFindTimeZoneById" class="btn btn-outline-primary">Test Lookup</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_lookupResult)) {
+            <div class="alert @(_lookupSuccess ? "alert-success" : "alert-danger")">
+                <strong>Result:</strong> @_lookupResult
+            </div>
+        }
+
+        <h5 class="mt-4">Get Friendly Name</h5>
+        <div class="input-group mb-3">
+            <input @bind="_testFriendlyIanaId" class="form-control" placeholder="Enter IANA ID for friendly name" />
+            <button @onclick="TestGetFriendlyName" class="btn btn-outline-primary">Get Friendly Name</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_friendlyNameResult)) {
+            <div class="alert alert-info">
+                <strong>Friendly Name:</strong> @_friendlyNameResult
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header text-bg-primary">
+        Time Zone List Sample (First 10)
+    </div>
+    <div class="card-body">
+        <p>Total System Time Zones: @_timeZoneCount</p>
+        <table class="table table-striped table-sm">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Display Name</th>
+                    <th>Base UTC Offset</th>
+                    <th>Friendly Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var tz in _timeZoneSample) {
+                    <tr>
+                        <td>@tz.Id</td>
+                        <td>@tz.DisplayName</td>
+                        <td>@tz.BaseUtcOffset</td>
+                        <td>@DateTimeService.GetFriendlyTimeZoneName(tz.Id)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header text-bg-primary">
+        Time Conversion Tests
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label">Convert Current Time to Different Zone:</label>
+            <div class="input-group mb-3">
+                <input @bind="_targetTimeZone" class="form-control" placeholder="Enter Target IANA ID" />
+                <button @onclick="TestTimeConversion" class="btn btn-outline-primary">Convert</button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_conversionResult)) {
+            <div class="alert alert-info">
+                <strong>Conversion Result:</strong><br />
+                @((MarkupString)_conversionResult)
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    // Browser info
+    private string _browserJsTimeZone = "Loading...";
+    private string _dotnetLocalTimeZone = "Loading...";
+    private string _serviceLocalTimeZoneId = "Loading...";
+    private string _browserOffset = "Loading...";
+    private string _friendlyName = "Loading...";
+
+    // TimeZone lookup test
+    private string _testIanaId = "America/New_York";
+    private string _lookupResult = "";
+    private bool _lookupSuccess = false;
+
+    // Friendly name test
+    private string _testFriendlyIanaId = "America/Los_Angeles";
+    private string _friendlyNameResult = "";
+
+    // Time zone sample
+    private List<TimeZoneInfo> _timeZoneSample = new();
+    private int _timeZoneCount = 0;
+
+    // Time conversion test
+    private string _targetTimeZone = "Europe/London";
+    private string _conversionResult = "";
+
+    protected override void OnInitialized() {
+        try {
+            // Get browser time zone via JavaScript
+            var formats = BrowserCulture.GetInternationalFormats();
+
+            _browserJsTimeZone = formats.TimeZone ?? "missing";
+
+            // Get browser offset
+            _browserOffset = $"{_browserJsTimeZone} ({formats.TimeZoneOffset / -60} hours from UTC))";
+            //await JSRuntime.InvokeAsync<string>(
+            //   "eval", "new Intl.DateTimeFormat().resolvedOptions().timeZone + ' (' + new Date().getTimezoneOffset()/-60 + ' hours from UTC)'");
+
+            // Get .NET time zone info
+            _dotnetLocalTimeZone = TimeZoneInfo.Local.Id;
+
+            // Get service time zone info
+            _serviceLocalTimeZoneId = DateTimeService.LocalTimeZoneId;
+
+            // Get friendly name
+            _friendlyName = DateTimeService.GetFriendlyTimeZoneName(_serviceLocalTimeZoneId);
+
+            // Get time zone sample
+            var allTimeZones = TimeZoneInfo.GetSystemTimeZones();
+            _timeZoneCount = allTimeZones.Count;
+            _timeZoneSample = allTimeZones.Take(10).ToList();
+        } catch (Exception ex) {
+            _browserJsTimeZone = $"Error: {ex.Message}";
+        }
+    }
+
+    private void TestFindTimeZoneById() {
+        try {
+            var tz = DateTimeService.GetTimeZoneByIanaId(_testIanaId);
+            _lookupResult = $"Found: {tz.Id}, Display Name: {tz.DisplayName}, UTC Offset: {tz.BaseUtcOffset}";
+            _lookupSuccess = true;
+        } catch (Exception ex) {
+            _lookupResult = $"Error: {ex.Message}";
+            _lookupSuccess = false;
+        }
+    }
+
+    private void TestGetFriendlyName() {
+        try {
+            _friendlyNameResult = DateTimeService.GetFriendlyTimeZoneName(_testFriendlyIanaId);
+        } catch (Exception ex) {
+            _friendlyNameResult = $"Error: {ex.Message}";
+        }
+    }
+
+    private void TestTimeConversion() {
+        try {
+            var now = DateTime.Now;
+            var localOffset = DateTimeService.LocalOffset;
+            var converted = DateTimeService.InTimeZone(now, _targetTimeZone);
+
+            var result = new System.Text.StringBuilder();
+            result.AppendLine($"Local time: {now:yyyy-MM-dd HH:mm:ss} ({DateTimeService.LocalTimeZoneId})");
+            result.AppendLine($"Target time: {converted:yyyy-MM-dd HH:mm:ss} ({_targetTimeZone})");
+            result.AppendLine($"Friendly target zone: {DateTimeService.GetFriendlyTimeZoneName(_targetTimeZone)}");
+
+            _conversionResult = result.ToString().Replace(Environment.NewLine, "<br/>");
+        } catch (Exception ex) {
+            _conversionResult = $"Error: {ex.Message}";
+        }
+    }
+}

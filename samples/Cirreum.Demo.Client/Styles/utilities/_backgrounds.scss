@@ -1,0 +1,37 @@
+
+// utilities/_backgrounds.scss
+@use '../abstracts' as *;
+
+.bg-marketing {
+	--bs-bg-opacity: 1;
+	background-color: rgba($purple, var(--bs-bg-opacity)) !important;
+}
+
+.bg-marketing-subtle {
+	--bs-bg-opacity: 0.25;
+	background-color: rgba($purple, var(--bs-bg-opacity)) !important;
+}
+
+.text-bg-marketing {
+	color: #f8f9fa !important;
+	background-color: rgba($purple, var(--bs-bg-opacity, 1)) !important;
+}
+
+// Dark Theme Overrides using data-bs-theme attribute
+[data-bs-theme="dark"] {
+
+	.bg-marketing {
+		--bs-bg-opacity: 1;
+		background-color: rgba($purple-dark, var(--bs-bg-opacity, 1)) !important;
+	}
+
+	.bg-marketing-subtle {
+		--bs-bg-opacity: 0.25;
+		background-color: rgba($purple-dark, var(--bs-bg-opacity, 1)) !important;
+	}
+
+	.text-bg-marketing {
+		color: #fff !important;
+		background-color: rgba($purple-dark, var(--bs-bg-opacity, 1)) !important;
+	}
+}

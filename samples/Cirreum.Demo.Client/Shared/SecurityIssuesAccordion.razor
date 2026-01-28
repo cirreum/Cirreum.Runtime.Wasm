@@ -1,0 +1,216 @@
+@* Security issues accordion component with filtering capabilities *@
+@using Cirreum.Authorization.Analysis
+
+<div class="security-issues-section p-1">
+	@if (AnalysisReport.HasIssues == true) {
+		// Use the enhanced extension method
+		var summary = AnalysisReport.GetSummary();
+
+		<!-- Summary Stats -->
+		<div class="security-summary mb-3">
+			<div class="d-flex gap-2 align-items-center">
+				<span class="badge bg-danger">@summary.ErrorCount Errors</span>
+				<span class="badge bg-warning">@summary.WarningCount Warnings</span>
+				<span class="badge bg-info">@summary.InfoCount Info</span>
+				<span class="text-muted ms-2">Total: @summary.TotalIssues issues found</span>
+				@if (!summary.Passed) {
+					<span class="badge bg-dark ms-auto">❌ FAILED</span>
+				}
+			</div>
+		</div>
+
+		<!-- Filter Buttons -->
+		<div class="filter-buttons mb-3">
+			<button class="btn btn-sm @(FilterSeverity == null ? "btn-primary" : "btn-outline-primary")"
+					@onclick="() => SetFilter(null)">
+				All Issues
+			</button>
+			<button class="btn btn-sm @(FilterSeverity == IssueSeverity.Error ? "btn-danger" : "btn-outline-danger")"
+					@onclick="() => SetFilter(IssueSeverity.Error)">
+				Errors Only
+			</button>
+			<button class="btn btn-sm @(FilterSeverity == IssueSeverity.Warning ? "btn-warning" : "btn-outline-warning")"
+					@onclick="() => SetFilter(IssueSeverity.Warning)">
+				Warnings Only
+			</button>
+			<button class="btn btn-sm @(FilterSeverity == IssueSeverity.Info ? "btn-info" : "btn-outline-info")"
+					@onclick="() => SetFilter(IssueSeverity.Info)">
+				Info Only
+			</button>
+		</div>
+
+		<!-- Security Issues Accordion -->
+		<Accordion ExpandMode="AccordionExpandMode.Single">
+			@{
+				// Use enhanced grouping methods
+				var issuesBySeverity = FilterSeverity.HasValue 
+					? AnalysisReport.FilterBySeverity(FilterSeverity.Value).GetIssuesBySeverity()
+					: AnalysisReport.GetIssuesBySeverity();
+			}
+			
+			@foreach (var (severity, severityIssues) in issuesBySeverity.OrderByDescending(kvp => kvp.Key)) {
+				@foreach (var categoryGroup in severityIssues.GroupBy(i => i.Category).OrderBy(g => g.Key)) {
+					@foreach (var issue in categoryGroup.Select((issue, index) => new { issue, index })) {
+						<AccordionItem>
+							<HeaderTemplate>
+								<div class="d-flex align-items-center gap-2 overflow-hidden lh-base w-100">
+									<!-- Severity Icon -->
+									<i class="@GetSeverityIcon(issue.issue.Severity) @GetSeverityColorClass(issue.issue.Severity)"
+									   aria-hidden="true"></i>
+
+									<!-- Severity Badge -->
+									<span class="badge @GetSeverityBadgeClass(issue.issue.Severity)">
+										@issue.issue.Severity
+									</span>
+
+									<!-- Category Badge -->
+									<span class="badge bg-secondary">@issue.issue.Category</span>
+
+									<!-- Issue Description -->
+									<span class="flex-fill text-truncate me-2">@issue.issue.Description</span>
+
+									<!-- Related Objects Count -->
+									@if (issue.issue.RelatedTypeNames.Count > 0) {
+										<small class="me-2 text-muted text-nowrap">
+											@issue.issue.RelatedTypeNames.Count type(s)
+										</small>
+									}
+								</div>
+							</HeaderTemplate>
+							<ChildContent>
+								<div class="issue-details">
+									<!-- Full Description -->
+									<div class="mb-3">
+										<h6 class="text-primary">Description</h6>
+										<p class="mb-0">@issue.issue.Description</p>
+									</div>
+
+									<!-- Category Info -->
+									<div class="mb-3">
+										<h6 class="text-primary">Category</h6>
+										<span class="badge bg-light text-dark">@issue.issue.Category</span>
+									</div>
+
+									<!-- Related Types (FIXED) -->
+									@if (issue.issue.RelatedTypeNames.Count > 0) {
+										<div class="mb-3">
+											<h6 class="text-primary">Related Types</h6>
+											<div class="related-objects">
+												@foreach (var typeName in issue.issue.RelatedTypeNames) {
+													<div class="related-object-item">
+														<code class="p-1 rounded">@typeName</code>
+													</div>
+												}
+											</div>
+										</div>
+									}
+
+									<!-- Recommendations -->
+									@if (!string.IsNullOrEmpty(issue.issue.Recommendation)) {
+										<div class="mb-3">
+											<h6 class="text-success">Recommendation</h6>
+											<div class="alert alert-light border-start border-success border-3 mb-0">
+												@issue.issue.Recommendation
+											</div>
+										</div>
+									}
+
+									<!-- Additional Context (NEW) -->
+									<div class="additional-info text-muted small">
+										<span>Analyzer: @issue.issue.Category</span>
+										@if (issue.issue.RelatedTypeNames.Count > 0) {
+											<span class="ms-3">Affects @issue.issue.RelatedTypeNames.Count type(s)</span>
+										}
+									</div>
+								</div>
+							</ChildContent>
+						</AccordionItem>
+					}
+				}
+			}
+		</Accordion>
+	} else {
+		<!-- No Issues Found -->
+		<div class="alert alert-success d-flex align-items-center">
+			<i class="bi bi-check-circle-fill me-2 fs-4" aria-hidden="true"></i>
+			<div>
+				<h5 class="alert-heading mb-1">No Security Issues Found! 🎉</h5>
+				<p class="mb-0">Your authorization system appears to be properly configured with no detected security concerns.</p>
+			</div>
+		</div>
+	}
+</div>
+
+<style>
+	.security-summary .badge {
+		font-size: 0.9em;
+	}
+
+	.filter-buttons .btn {
+		font-size: 0.875rem;
+	}
+
+	.related-objects {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.related-object-item {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+	
+	.related-object-item code {
+		background: var(--bs-tertiary-bg);
+		font-family: var(--bs-font-monospace);
+		font-size: 0.875em;
+	}
+
+	.issue-details h6 {
+		font-size: 0.9rem;
+		font-weight: 600;
+		margin-bottom: 0.5rem;
+	}
+
+	.additional-info {
+		padding-top: 1rem;
+		border-top: 1px solid var(--bs-border-color);
+		margin-top: 1rem;
+	}
+</style>
+
+@code {
+
+	[Parameter, EditorRequired] public required AnalysisReport AnalysisReport { get; set; }
+	
+	private IssueSeverity? FilterSeverity { get; set; }
+
+	private void SetFilter(IssueSeverity? severity) {
+		FilterSeverity = severity;
+		StateHasChanged();
+	}
+
+	private string GetSeverityIcon(IssueSeverity severity) => severity switch {
+		IssueSeverity.Error => "bi bi-exclamation-triangle-fill",
+		IssueSeverity.Warning => "bi bi-exclamation-triangle",
+		IssueSeverity.Info => "bi bi-info-circle",
+		_ => "bi bi-question-circle"
+	};
+
+	private string GetSeverityColorClass(IssueSeverity severity) => severity switch {
+		IssueSeverity.Error => "text-danger",
+		IssueSeverity.Warning => "text-warning", 
+		IssueSeverity.Info => "text-info",
+		_ => "text-secondary"
+	};
+
+	private string GetSeverityBadgeClass(IssueSeverity severity) => severity switch {
+		IssueSeverity.Error => "bg-danger",
+		IssueSeverity.Warning => "bg-warning text-dark",
+		IssueSeverity.Info => "bg-info",
+		_ => "bg-secondary"
+	};
+
+}

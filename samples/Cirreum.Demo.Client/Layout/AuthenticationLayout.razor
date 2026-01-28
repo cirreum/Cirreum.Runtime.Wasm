@@ -1,0 +1,10 @@
+﻿@inherits LayoutComponentBase
+<ErrorBoundary>
+	<ChildContent>
+		@Body
+		<SplashScreen />
+	</ChildContent>
+	<ErrorContent Context="exception">
+		<RedirectToError Exception="@exception" />
+	</ErrorContent>
+</ErrorBoundary>

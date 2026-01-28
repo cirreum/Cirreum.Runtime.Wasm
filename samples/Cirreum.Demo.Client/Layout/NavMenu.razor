@@ -1,0 +1,71 @@
+﻿@inherits StateComponentBase
+@inject NavigationManager NavigationManager
+@inject INavMenuState NavMenuState
+@inject IPageState PageState
+@inject IUserState UserState
+@inject IJSAppModule JS
+@inject IBreakpointMonitor BreakpointMonitor
+
+<aside class="@ContainerClassList">
+	
+	<div class="offcanvas-lg offcanvas-start"
+		 tabindex="-1"
+		 id="@NavMenuSelectors.NavMenuOffCanvasId"
+		 aria-labelledby="@NavMenuSelectors.NavMenuOffCanvasLabelId"
+		 style="--bs-offcanvas-width:250px;--bs-offcanvas-padding-x:0;">
+
+		<div class="offcanvas-header border-bottom" style="--bs-offcanvas-padding-x: 1rem;">
+			<span class="offcanvas-title fs-6" id="@NavMenuSelectors.NavMenuOffCanvasLabelId">
+				@PageState.AppName
+			</span>
+			<button type="button"
+					class="btn-close"
+					aria-label="hide navigation menu"
+					@onclick="EventUtil.AsNonRenderingEventHandler(CloseOffCanvas)" @onclick:preventDefault @onclick:stopPropagation>
+			</button>
+		</div>
+
+		<div class="@NavMenuSelectors.NavMenuOffCanvasBodyClass">
+			<nav class="@NavMenuSelectors.NavMenuClass">
+				<NavList Css="nav flex-column mb-0 pb-3 pb-md-2 pe-lg-0">
+					@NavMenuItems
+				</NavList>
+			</nav>
+		</div>
+
+	</div>
+
+	<div id="@NavMenuSelectors.NavMenuOffCanvasBackdropId"
+		 class="offcanvas-backdrop fade d-none"
+		 @onclick="@EventUtil.AsNonRenderingEventHandler(CloseOffCanvas)" @onclick:preventDefault @onclick:stopPropagation></div>
+
+	<ScrollbarBehavior Target="@NavMenuState.NavMenuScrollContainer"
+					   ShowDelay="1000"
+					   PreserveDataAttributeOnTargetChange="true" />
+
+</aside>
+
+@code {
+
+	private RenderFragment NavMenuItems => (__builder) => {
+		@foreach (var route in Routes.MainNavRoutes) {
+			@NavMenuItem(route.Path, route.Icon, route.Name, route.MatchAll)
+		}
+	};
+
+	private RenderFragment NavMenuItem(string href, string icon, string name, bool matchAll = true) => (__builder) => {
+		<NavListItemLink Href="@href"
+						 Match="@(matchAll ? NavLinkMatch.All : NavLinkMatch.Prefix)"
+						 Tooltip="@name"
+						 TooltipEnabled="@NavMenuState.IsMinimalMode"
+						 TooltipShowOnFocus="true"
+						 TooltipPlacement="Placement.Right"
+						 TooltipDelay="100">
+			<div class="d-flex align-items-center">
+				<i class="bi bi-@(icon) pe-2" aria-hidden="true"></i>
+				<span class="nav-item-text">@name</span>
+			</div>
+		</NavListItemLink>
+	};
+
+}

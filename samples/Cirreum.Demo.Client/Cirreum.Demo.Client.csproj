@@ -1,0 +1,52 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="AspNetCore.SassCompiler" Version="1.97.1" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.2" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.2" PrivateAssets="all" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\Cirreum.Runtime.Wasm\Cirreum.Runtime.Wasm.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+
+		<Using Include="Cirreum.Demo.Client" />
+		<Using Include="Cirreum.Demo.Client.Domain" />
+		<Using Include="Cirreum.Demo.Client.Domain.Users" />
+		<Using Include="Cirreum.Demo.Client.Layout" />
+		<Using Include="Cirreum.Demo.Client.Shared" />
+		<Using Include="Cirreum.Demo.Client.State" />
+
+		<Using Include="Cirreum" />
+		<Using Include="Cirreum.Authorization" />
+		<Using Include="Cirreum.Components" />
+		<Using Include="Cirreum.Components.Authentication" />
+		<Using Include="Cirreum.Components.Interop" />
+		<Using Include="Cirreum.Components.Pages" />
+		<Using Include="Cirreum.Components.Presence" />
+		<Using Include="Cirreum.Components.Theme" />
+		<Using Include="Cirreum.Components.Web" />
+		<Using Include="Cirreum.Conductor" />
+		<Using Include="Cirreum.Presence" />
+		<Using Include="Cirreum.RemoteServices" />
+		<Using Include="Cirreum.Runtime" />
+		<Using Include="Cirreum.Runtime.Authentication" />
+		<Using Include="Cirreum.Security" />
+		<Using Include="Cirreum.Startup" />
+		<Using Include="Cirreum.State" />
+
+		<Using Include="Microsoft.AspNetCore.Components.Web" />
+		<Using Include="Microsoft.AspNetCore.Components.WebAssembly.Hosting" />
+
+	</ItemGroup>
+
+</Project>

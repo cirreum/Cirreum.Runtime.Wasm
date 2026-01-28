@@ -1,0 +1,23 @@
+﻿@inject IDialogService dialogr
+
+@BodyContent
+
+@code {
+
+	RenderFragment BodyContent => __builder => {
+		<span style="color:@(Color);">Custom toast component!</span>
+	};
+
+	[CascadingParameter]
+	public ToastElement Toast { get; set; } = default!;
+
+	[Parameter]
+	public string Color { get; set; } = "mediumpurple";
+
+	protected override void OnInitialized() {
+		var cp = new ComponentParameters() {
+			{ "ChildContent", BodyContent }
+		};
+		dialogr.ShowModal<CustomDialog>(this.Toast.Title ?? "Missing Title from Toast Element", cp);
+	}
+}

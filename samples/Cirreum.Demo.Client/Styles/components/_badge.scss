@@ -1,0 +1,9 @@
+// components/_badge.scss
+
+$badge-sizes: ( xs: 0.625em, sm: 0.6875em, lg: 0.875em, xl: 1em );
+
+@each $name, $size in $badge-sizes {
+	.badge.badge-#{$name} {
+		--bs-badge-font-size: #{$size};
+	}
+}

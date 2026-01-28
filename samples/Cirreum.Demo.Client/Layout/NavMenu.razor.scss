@@ -1,0 +1,116 @@
+.nav-menu-container {
+	grid-area: navmenu;
+	background: var(--bs-body-bg);
+}
+
+.nav-menu {
+	width: 236px;
+	scroll-snap-type: y mandatory;
+	transition: width 0.2s ease;
+
+	::deep .nav-link {
+		--bs-nav-link-color: var(--bs-dark-text-emphasis);
+		--bs-nav-link-hover-color: var(--bs-body-color);
+		position: relative;
+		padding: 8px 8px 8px 16px;
+		margin: 0 3px 3px 3px;
+		border-radius: 0 6px 6px 0;
+		text-decoration: none;
+		scroll-snap-align: start;
+
+		i {
+			color: var(--bs-primary-text-emphasis);
+		}
+
+		&:focus:not(.active) {
+			background: var(--bs-tertiary-bg);
+		}
+
+		&:hover:not(.active) {
+			background: var(--bs-tertiary-bg);
+
+			&::before {
+				content: "";
+				display: block;
+				position: absolute;
+				top: 0;
+				bottom: 0;
+				left: 0;
+				right: unset;
+				width: 3px;
+				background: var(--bs-border-color);
+				border-radius: 0;
+				margin: 0;
+				z-index: 4;
+			}
+		}
+
+		&.active {
+			--bs-nav-link-color: var(--bs-body-color);
+			background: var(--bs-tertiary-bg);
+			scroll-snap-stop: always;
+
+			&::before {
+				content: "";
+				display: block;
+				position: absolute;
+				top: 0;
+				bottom: 0;
+				left: 0;
+				right: unset;
+				width: 3px;
+				background: var(--bs-primary);
+				border-radius: 0;
+				margin: 0;
+				z-index: 5;
+			}
+
+			i {
+				color: var(--bs-primary);
+			}
+		}
+	}
+}
+
+.nav-item-text {
+	max-width: 100%; // Set to wider than any text will be
+	opacity: 1;
+	transition: max-width 0.2s ease, opacity 0.8s ease;
+}
+
+@media (min-width: 992px) {
+	/* Large Breakpoint */
+	.nav-menu-container {
+		position: fixed;
+		top: 50px;
+		padding: 0 0 0.25rem 0.25rem;
+		margin: 0 0 -0.25rem -0.25rem;
+		overflow-y: auto;
+		z-index: 1;
+		/* Minimal Mode */
+		&.minimal-mode {
+
+			.nav-menu {
+				width: 66px;
+			}
+
+			.nav-item-text {
+				overflow: hidden;
+				max-width: 0;
+				opacity: 0;
+			}
+
+			.nav-menu ::deep .nav-link {
+				display: flex;
+				justify-content: center;
+			}
+		}
+	}
+
+	/* Prevent horizontal overflow during transition */
+	.nav-menu {
+		overflow-x: hidden;
+		white-space: nowrap;
+	}
+
+}

@@ -1,0 +1,585 @@
+﻿@page "/dialogs"
+@inject IDialogService Dialogr
+@inject IToastService Toastr
+
+<AppPageTitle>Dialog Demo</AppPageTitle>
+
+<div class="mb-4">
+	<h4>Dialogs</h4>
+
+	<div class="hstack gap-3 text-nowrap flex-wrap mb-3">
+
+		<label>Fixed Width:</label>
+		<DropdownButton TItemType="string"
+						IsDropMenu="false"
+						Text="@SelectedDialogWidth"
+						ButtonSize="ButtonSize.Small"
+						SelectedValue="@("none")"
+						ButtonColor="ButtonColor.Primary"
+						SelectedValueChanged="OnDialogWidthSelected"
+						Tooltip="select the dialog width (in pixels)...">
+			<DropdownItemButton Value="@("none")">
+				none
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("auto")">
+				auto
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("min-content")">
+				min-content
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("max-content")">
+				max-content
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("fit-content")">
+				fit-content
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("-webkit-fill-available")">
+				stretch (-webkit-fill-available)
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("unset")">
+				Unset
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("50%")">
+				50%
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("100%")">
+				100%
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("75vw")">
+				75vw
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("50rem")">
+				50rem
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("350px")">
+				350px
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("500px")">
+				500px
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("650px")">
+				650px
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("765px")">
+				765px
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("800px")">
+				800px
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("1140px")">
+				1140px
+			</DropdownItemButton>
+			<DropdownItemButton Value="@("1200px")">
+				1200px
+			</DropdownItemButton>
+		</DropdownButton>
+
+		<label>Max Width:</label>
+		<DropdownButton TItemType="DialogSize"
+						IsDropMenu="false"
+						Text="@($"{SelectedDialogSize}")"
+						ButtonSize="ButtonSize.Small"
+						SelectedValue="@DialogSize.Default"
+						ButtonColor="ButtonColor.Primary"
+						SelectedValueChanged="OnDialogSizeSelected"
+						Tooltip="select the dialog sizing (max-width)...">
+			@foreach (var item in Enum.GetValues<DialogSize>()) {
+				<DropdownItemButton TItemType="DialogSize" Value="@item">
+					<Tooltip Title="@(item.ToDescription())">
+						@item
+					</Tooltip>
+				</DropdownItemButton>
+			}
+		</DropdownButton>
+
+		<label>Position:</label>
+		<DropdownButton TItemType="DialogPosition"
+						IsDropMenu="false"
+						Text="@($"{SelectedDialogPosition}")"
+						ButtonSize="ButtonSize.Small"
+						SelectedValue="@DialogPosition.Center"
+						ButtonColor="ButtonColor.Primary"
+						SelectedValueChanged="OnDialogPositionSelected"
+						Tooltip="select the dialog positioning (positioned dialogs are not draggable)...">
+			@foreach (var item in Enum.GetValues<DialogPosition>()) {
+				<DropdownItemButton TItemType="DialogPosition" Value="@item">
+					@item
+				</DropdownItemButton>
+			}
+		</DropdownButton>
+
+	</div>
+
+	<div class="hstack gap-2 text-nowrap flex-wrap">
+
+		<Tooltip Title="opens a Window modal dialog with title bar and draggability">
+			<button type="button" class="btn btn-secondary" @onclick="OpenWindow">Window</button>
+		</Tooltip>
+
+		<Tooltip Title="opens a standard dialog with draggability but no header title bar">
+			<button type="button" class="btn btn-secondary" @onclick="OpenDialogDraggableNoHeader">No Header</button>
+		</Tooltip>
+
+		<Tooltip Title="opens a Standard dialog with the selected fixed-width (Width) and max-width (Sizing)">
+			<button type="button" class="btn btn-secondary" @onclick="OpenDialogWidthModal">Typical Width</button>
+		</Tooltip>
+
+		<Tooltip Title="opens a Wide dialog with the selected fixed-width (Width) and max-width (Sizing)">
+			<button type="button" class="btn btn-secondary" @onclick="OpenDialogSizedModal">Wide Width</button>
+		</Tooltip>
+
+		<Tooltip Title="opens a positioned dialog">
+			<button type="button" class="btn btn-secondary" @onclick="OpenDialogPositionedModal">Positioned</button>
+		</Tooltip>
+
+		<Tooltip Title="opens a user custom dialog">
+			<button type="button" class="btn btn-secondary" @onclick="OpenCustomDialog">Custom</button>
+		</Tooltip>
+
+		<Tooltip Title="opens a user dialog with a custom title">
+			<button type="button" class="btn btn-secondary" @onclick="ShowCustomTitleDialog">Custom Title</button>
+		</Tooltip>
+
+		<Tooltip Title="opens a dialog with a render fragement">
+			<button type="button" class="btn btn-secondary" @onclick="ShowFragmentDialog">Fragment</button>
+		</Tooltip>
+
+		<Tooltip Title="opens several dialogs">
+			<button type="button" class="btn btn-secondary" @onclick="OpenMultipleDialogs">Multiple</button>
+		</Tooltip>
+
+		<Tooltip Title="opens a normal dialog without any animation">
+			<button type="button" class="btn btn-secondary" @onclick="OpenDialogWithOutAnimation">No Animation</button>
+		</Tooltip>
+
+		<Tooltip Title="opens a question prompt">
+			<button type="button" class="btn btn-secondary" @onclick="OpenQuestionPrompt">Question Prompt</button>
+		</Tooltip>
+
+		<Tooltip Title="opens an alert prompt">
+			<button type="button" class="btn btn-secondary" @onclick="OpenAlertPrompt">Alert Prompt</button>
+		</Tooltip>
+
+		<Tooltip Title="test the Add Event modal">
+			<button type="button" class="btn btn-secondary" @onclick="AddEventModal">Add Event</button>
+		</Tooltip>
+
+		<Tooltip Title="opens a dialog with a scrollable body">
+			<button type="button" class="btn btn-secondary" @onclick="ShowScrollable">Scrollable</button>
+		</Tooltip>
+
+	</div>
+
+</div>
+
+<div class="mb-4">
+
+	<h4>Toast Location</h4>
+
+	<div>
+		<Switch @bind-Value="ShowCopyToClipboard" Inline=true Label="Show CopyToClipboard" />
+	</div>
+
+	<div class="hstack gap-2 text-nowrap flex-wrap">
+
+		<DropdownButton TItemType="ToastPosition"
+						IsDropMenu="false"
+						Text="@($"{SelectedToastPosition}")"
+						SelectedValue="@ToastPosition.BottomRight"
+						SelectedValueChanged="OnToastPositionSelected"
+						ButtonOutlined="true"
+						ButtonColor="ButtonColor.Info">
+			@foreach (var item in Enum.GetValues<ToastPosition>()) {
+				<DropdownItemButton Value="@item">
+					@item
+				</DropdownItemButton>
+			}
+		</DropdownButton>
+
+		<div class="vr"></div>
+
+		<Tooltip Title="shows an ambient toast">
+			<button type="button" class="btn btn-outline-secondary" @onclick="ShowAmbientDefaultToast">Ambient</button>
+		</Tooltip>
+
+		<Tooltip Title="shows this applications default toast">
+			<button @onclick="ShowDefaultToast" type="button" class="btn btn-secondary">App Default</button>
+		</Tooltip>
+
+		<Tooltip Title="shows a primary toast">
+			<button type="button" class="btn btn-primary" @onclick="ShowPrimary">Primary</button>
+		</Tooltip>
+
+		<Tooltip Title="shows a secondary toast">
+			<button type="button" class="btn btn-secondary" @onclick="ShowSecondary">Secondary</button>
+		</Tooltip>
+
+		<Tooltip Title="shows a danger toast">
+			<button type="button" class="btn btn-danger" @onclick="ShowDanger">Danger</button>
+		</Tooltip>
+
+		<Tooltip Title="shows a warning toast">
+			<button type="button" class="btn btn-warning" @onclick="ShowWarning">Warning</button>
+		</Tooltip>
+
+		<Tooltip Title="shows an info toast">
+			<button type="button" class="btn btn-info" @onclick="ShowInfo">Info</button>
+		</Tooltip>
+
+		<Tooltip Title="shows a success toast">
+			<button type="button" class="btn btn-success" @onclick="ShowSuccess">Success</button>
+		</Tooltip>
+
+		<Tooltip Title="shows a dark toast">
+			<button type="button" class="btn btn-dark" @onclick="ShowDark">Dark</button>
+		</Tooltip>
+
+		<Tooltip Title="shows a light toast">
+			<button type="button" class="btn btn-light" @onclick="ShowLight">Light</button>
+		</Tooltip>
+
+	</div>
+
+</div>
+
+<div class="mb-4">
+
+	<h4>Toast Type</h4>
+
+	<div class="hstack gap-2 text-nowrap flex-wrap">
+
+		<DropdownButton TItemType="ToastStyleType"
+						IsDropMenu="false"
+						Text="@($"{SelectedToastType}")"
+						SelectedValue="@ToastStyleType.Default"
+						SelectedValueChanged="OnToastTypeSelected"
+						ButtonColor="ButtonColor.Info"
+						ButtonSize="ButtonSize.Small"
+						ButtonOutlined="true">
+			@foreach (var item in Enum.GetValues<ToastStyleType>()) {
+				<DropdownItemButton Value="@item">
+					@item
+				</DropdownItemButton>
+			}
+		</DropdownButton>
+
+		<div class="vr"></div>
+
+		<button @onclick="ShowLongTitleToast" type="button" class="btn btn-info btn-sm">
+			Long Title
+		</button>
+
+		<button @onclick="ShowDisableTimeoutToast" type="button" class="btn btn-info btn-sm">
+			No Timeout Toast
+		</button>
+
+		<button @onclick="ShowDisableProgressToast" type="button" class="btn btn-info btn-sm">
+			No Progress Toast
+		</button>
+
+		<button @onclick="ShowDisableProgressAndTimeoutToast" type="button" class="btn btn-info btn-sm">
+			No Timeout or Progress Toast
+		</button>
+
+		<button @onclick="ShowFragmentToast" type="button" class="btn btn-info btn-sm">
+			Custom Fragment Toast
+		</button>
+
+	</div>
+
+</div>
+<div class="mb-4">
+
+	<h4>Upload File with Progress</h4>
+
+	<div class="hstack gap-2 text-nowrap flex-wrap">
+
+		<button @onclick="ShowUploadFileProgressToast" disabled="@isOpen" type="button" class="btn btn-info btn-sm">
+			Upload Progress
+		</button>
+		<button @onclick="UpdateUploadFileProgressToast" disabled="@(!isOpen || isUpdating)" type="button" class="btn btn-info btn-sm">
+			Update
+		</button>
+		<button @onclick="ResetUploadFileProgressToast" disabled="@(!isOpen || !isUpdating)" type="button" class="btn btn-info btn-sm">
+			Reset
+		</button>
+		<button @onclick="CloseUploadFileProgressToast" disabled="@(!isOpen)" type="button" class="btn btn-info btn-sm">
+			Close
+		</button>
+
+	</div>
+
+</div>
+
+<div class="mb-4">
+	<h4>Lift</h4>
+	<div class="d-flex flex-wrap gap-2">
+		<div class="bd-example m-0 border-0">
+			<!-- Lift Examples Container -->
+			<div class="d-flex flex-wrap gap-3 p-4">
+				<!-- Extra Small Lift -->
+				<div class="col-12 col-sm-6 col-md-3">
+					<div class="lift lift-xs p-3 bg-body-secondary rounded border">
+						<h6 class="mb-1">Extra Small Lift</h6>
+						<p class="mb-0 small text-muted">Subtle lift effect (2px)</p>
+					</div>
+				</div>
+
+				<!-- Small Lift -->
+				<div class="col-12 col-sm-6 col-md-3">
+					<div class="lift lift-sm p-3 bg-body-secondary rounded border">
+						<h6 class="mb-1">Small Lift</h6>
+						<p class="mb-0 small text-muted">Gentle lift effect (4px)</p>
+					</div>
+				</div>
+
+				<!-- Medium Lift (Default) -->
+				<div class="col-12 col-sm-6 col-md-3">
+					<div class="lift p-3 bg-body-secondary rounded border">
+						<h6 class="mb-1">Medium Lift</h6>
+						<p class="mb-0 small text-muted">Default lift effect (8px)</p>
+					</div>
+				</div>
+
+				<!-- Large Lift -->
+				<div class="col-12 col-sm-6 col-md-3">
+					<div class="lift lift-lg p-3 bg-body-secondary rounded border">
+						<h6 class="mb-1">Large Lift</h6>
+						<p class="mb-0 small text-muted">Prominent lift effect (12px)</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- Card Examples -->
+			<div class="mt-4">
+				<h6 class="mb-3">Card Components with Lift</h6>
+				<div class="row g-3">
+					<!-- Card with XS Lift -->
+					<div class="col-12 col-md-6 col-lg-3">
+						<div class="card lift lift-xs h-100">
+							<div class="card-body">
+								<h5 class="card-title">Card XS</h5>
+								<p class="card-text">This card has an extra small lift effect on hover.</p>
+								<a href="#" class="btn btn-primary btn-sm">Learn More</a>
+							</div>
+						</div>
+					</div>
+
+					<!-- Card with SM Lift -->
+					<div class="col-12 col-md-6 col-lg-3">
+						<div class="card lift lift-sm h-100">
+							<div class="card-body">
+								<h5 class="card-title">Card SM</h5>
+								<p class="card-text">This card has a small lift effect on hover.</p>
+								<a href="#" class="btn btn-primary btn-sm">Learn More</a>
+							</div>
+						</div>
+					</div>
+
+					<!-- Card with Default Lift -->
+					<div class="col-12 col-md-6 col-lg-3">
+						<div class="card lift h-100">
+							<div class="card-body">
+								<h5 class="card-title">Card MD</h5>
+								<p class="card-text">This card has the default medium lift effect on hover.</p>
+								<a href="#" class="btn btn-primary btn-sm">Learn More</a>
+							</div>
+						</div>
+					</div>
+
+					<!-- Card with LG Lift -->
+					<div class="col-12 col-md-6 col-lg-3">
+						<div class="card lift lift-lg h-100">
+							<div class="card-body">
+								<h5 class="card-title">Card LG</h5>
+								<p class="card-text">This card has a large lift effect on hover.</p>
+								<a href="#" class="btn btn-primary btn-sm">Learn More</a>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Button Examples -->
+			<div class="mt-4">
+				<h6 class="mb-3">Buttons with Lift</h6>
+				<div class="d-flex flex-wrap gap-2">
+					<button class="btn btn-primary lift lift-xs">Button XS Lift</button>
+					<button class="btn btn-secondary lift lift-sm">Button SM Lift</button>
+					<button class="btn btn-success lift">Button MD Lift</button>
+					<button class="btn btn-warning lift lift-lg">Button LG Lift</button>
+				</div>
+			</div>
+
+			<!-- Theme-Aware Example -->
+			<div class="mt-4">
+				<h6 class="mb-3">Theme-Aware Shadows</h6>
+				<div class="alert alert-info">
+					The lift effect automatically adapts to your current theme (light/dark).
+				</div>
+				<div class="row g-3">
+					<div class="col-md-6">
+						<div class="lift lift-lg p-4 bg-body rounded border text-center">
+							<i class="bi bi-sun fs-1 mb-2 d-block"></i>
+							<p class="mb-0">The shadow adjusts automatically based on the active Bootstrap theme</p>
+						</div>
+					</div>
+					<div class="col-md-6">
+						<div class="lift lift-lg p-4 bg-body rounded border text-center">
+							<i class="bi bi-moon fs-1 mb-2 d-block"></i>
+							<p class="mb-0">Try switching themes to see the shadow adapt</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+<div class="mb-4">
+	<h4>Alerts</h4>
+
+	<div class="d-flex flex-wrap gap-2">
+
+		<div class="bd-example m-0 border-0">
+
+			<div class="alert alert-primary" role="alert">
+				A simple primary alert with <a href="#" class="alert-link">an example link</a>. Give it a click if you like.
+			</div>
+			<div class="alert alert-secondary" role="alert">
+				A simple secondary alert with <a href="#" class="alert-link">an example link</a>. Give it a click if you like.
+			</div>
+			<div class="alert alert-success" role="alert">
+				A simple success alert with <a href="#" class="alert-link">an example link</a>. Give it a click if you like.
+			</div>
+			<div class="alert alert-danger" role="alert">
+				A simple danger alert with <a href="#" class="alert-link">an example link</a>. Give it a click if you like.
+			</div>
+			<div class="alert alert-warning" role="alert">
+				A simple warning alert with <a href="#" class="alert-link">an example link</a>. Give it a click if you like.
+			</div>
+			<div class="alert alert-info" role="alert">
+				A simple info alert with <a href="#" class="alert-link">an example link</a>. Give it a click if you like.
+			</div>
+			<div class="alert alert-light" role="alert">
+				A simple light alert with <a href="#" class="alert-link">an example link</a>. Give it a click if you like.
+			</div>
+			<div class="alert alert-dark" role="alert">
+				A simple dark alert with <a href="#" class="alert-link">an example link</a>. Give it a click if you like.
+			</div>
+
+		</div>
+
+		<div class="bd-example m-0 border-0">
+
+			<div class="alert alert-success" role="alert">
+				<h4 class="alert-heading">Well done!</h4>
+				<p>Aww yeah, you successfully read this important alert message. This example text is going to run a bit longer so that you can see how spacing within an alert works with this kind of content.</p>
+				<hr>
+				<p class="mb-0">Whenever you need to, be sure to use margin utilities to keep things nice and tidy.</p>
+			</div>
+
+		</div>
+
+		<div class="bd-example m-0 border-0">
+
+			<div class="alert alert-primary d-flex align-items-center" role="alert">
+				<i class="bi bi-info-circle-fill flex-shrink-0 me-2" role="img" aria-label="Info:"></i>
+				<div>
+					An example alert with an icon
+				</div>
+			</div>
+			<div class="alert alert-success d-flex align-items-center" role="alert">
+				<i class="bi bi-check-circle-fill flex-shrink-0 me-2" role="img" aria-label="Success:"></i>
+				<div>
+					An example success alert with an icon
+				</div>
+			</div>
+			<div class="alert alert-warning d-flex align-items-center" role="alert">
+				<i class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2" role="img" aria-label="Warning:"></i>
+				<div>
+					An example warning alert with an icon
+				</div>
+			</div>
+			<div class="alert alert-danger d-flex align-items-center" role="alert">
+				<i class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2" role="img" aria-label="Danger:"></i>
+				<div>
+					An example danger alert with an icon
+				</div>
+			</div>
+
+		</div>
+
+		<div class="bd-example m-0 border-0">
+			<div class="alert alert-warning alert-dismissible fade show" role="alert">
+				<strong>Holy guacamole!</strong> You should check in on some of those fields below.
+				<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+@code {
+
+	RenderFragment customContent => __builder => {
+		<SurveyPrompt />
+	};
+
+	void ShowFragmentDialog() {
+		//
+		// Referenced fragment
+		//
+		//this.Dialogr.Show(customContent,
+		//"Fragment Content",
+		//DialogOptions.AsWindow);
+
+		//
+		// Inline fragment
+		//
+		this.Dialogr
+		.Show(
+@<div class="dialog-body"><span style="color:mediumpurple;">Custom fragment dialog!</span></div>, "Fragment Content", DialogOptions.AsWindow);
+	}
+
+	RenderFragment customTitle => __builder => {
+		<h5 class="dialog-title">
+			<i class="bi bi-window text-info" aria-hidden="true"></i> <span>Custom Window Title</span>
+		</h5>
+	};
+
+	void ShowCustomTitleDialog() {
+
+		this.Dialogr.Show(
+@<div class="dialog-body"><span style="color:mediumpurple;">Custom fragment dialog!</span></div>, customTitle, DialogOptions.AsWindow);
+
+		this.Dialogr.Show(@<div class="dialog-body"><span style="color:mediumpurple;">Custom fragment dialog!</span></div>, (RenderFragment)(@<div class="dialog-title text-info"><i class="bi bi-person" aria-hidden="true"></i> <span>Inline Title Fragment</span></div>), DialogOptions.AsWindow);
+
+	}
+
+	void ShowFragmentToast() {
+
+		//this.Toastr.Show(@<span style="color:mediumpurple;">Custom templated toast!</span>, "App", "Default");
+
+		var cp = new ComponentParameters() {
+			{ "Color", "mediumpurple" }
+		};
+		this.Toastr.Show<CustomToastMessage>("Dynamic Component", "CustomToastMessage", parameters: cp);
+
+		//this.Toastr.Show(customToastMessage, "App", "Default");
+
+	}
+
+	RenderFragment customToastMessage => __builder => {
+		<span style="color:mediumpurple;">Custom toast RenderFragment!</span>
+	};
+
+	RenderFragment uploadToastMessage => __builder => {
+		<div class="d-flex flex-column align-items-center gap-2 p-1">
+			<div class="text-center text-@(SelectedToastType.ToName())">@($"{uploadProgress}%")</div>
+			<Progress Color="@SelectedToastType.ToBackgroundColor()" Percentage="@uploadProgress" AriaLabel="file upload" Width="300px" />
+		</div>
+	};
+
+}

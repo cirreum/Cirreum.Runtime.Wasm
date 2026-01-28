@@ -1,0 +1,42 @@
+﻿<AppPageTitle>@PageTitle</AppPageTitle>
+<div class="container py-5">
+	<div class="row justify-content-center">
+		<div class="col-md-8 col-lg-6">
+			<div class="text-center">
+				<div class="error-image-container mb-4">
+					<img class="img-fluid w-100" alt="404 image" src="@ImagePath">
+					<div class="vignette-overlay"></div>
+				</div>
+				<p class="lead mb-4">Hmmm, the requested page appears to not exist.</p>
+				<a href="" class="btn btn-primary" title="Please return to the home page">
+					<i class="bi bi-arrow-left-short me-1"></i>
+					@ReturnToHomeButtonText
+				</a>
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+
+	///<summary>
+	/// The title of the page, displayed in the browser tab and as a heading on the page.
+	/// Defaults to "Error 404 (Not found)" if not set.
+	///</summary>
+	[Parameter]
+	public string PageTitle { get; set; } = "Error 404 (Not found)";
+
+	///<summary>
+	/// The text for the button that returns the user to the home page.
+	/// Defaults to "Return Home" if not set.
+	///</summary>
+	[Parameter]
+	public string ReturnToHomeButtonText { get; set; } = "Return Home";
+
+	///<summary>
+	/// The path to the image to display in the error page.
+	/// Defaults to "/racing-404-not-found.webp" if not set.
+	///</summary>
+	[Parameter]
+	public string ImagePath { get; set; } = "/racing-404-not-found.webp";
+}

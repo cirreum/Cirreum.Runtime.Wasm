@@ -1,0 +1,20 @@
+﻿@inherits AlertPrompt
+
+<div class="@AlertClass" role="alert">
+	<span class="@IconClass" aria-hidden="true"></span>
+	<strong>@Message</strong>
+	<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" @onclick="OnDimiss"></button>
+	<ul>
+		@foreach (var message in ErrorMessages)
+		{
+			<li>@message</li>
+		}
+	</ul>
+</div>
+
+@code {
+
+	[Parameter]
+	public IEnumerable<string> ErrorMessages { get; set; } = [];
+
+}

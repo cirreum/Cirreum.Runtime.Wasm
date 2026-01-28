@@ -1,0 +1,136 @@
+.notification-item {
+	position: relative;
+	padding: 1rem 1.25rem;
+	border-bottom: 1px solid var(--bs-border-color);
+	transition: background-color 0.15s ease;
+	cursor: pointer;
+}
+
+.notification-item:hover {
+	background-color: var(--bs-secondary-bg);
+}
+
+.notification-item.unread {
+	background-color: rgba(var(--bs-tertiary-bg-rgb),1);
+}
+
+.notification-item.unread:hover {
+	background-color: rgba(var(--bs-tertiary-bg-rgb),1);
+	filter: brightness(0.95);
+}
+
+[data-bs-theme="dark"] .notification-item.unread:hover {
+	filter: brightness(1.1);
+}
+
+.notification-content {
+	display: flex;
+	gap: 0.875rem;
+}
+
+/* Icons */
+.notification-icon {
+	flex-shrink: 0;
+	width: 2.25rem;
+	height: 2.25rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--bs-border-radius);
+}
+
+.notification-item.info .notification-icon {
+	color: var(--bs-info-text);
+}
+
+.notification-item.success .notification-icon {
+	color: var(--bs-success-text);
+}
+
+.notification-item.warning .notification-icon {
+	color: var(--bs-warning-text);
+}
+
+.notification-item.error .notification-icon {
+	color: var(--bs-danger-text);
+}
+
+/* Body */
+.notification-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.notification-item-title {
+	font-size: 0.875rem;
+	font-weight: 600;
+	color: var(--bs-body-color);
+	line-height: 1.4;
+	flex: 1;
+	padding-right: 0.5rem;
+}
+
+.notification-message {
+	font-size: 0.8125rem;
+	color: var(--bs-secondary-color);
+	margin: 0 0 0.5rem 0;
+	line-height: 1.5;
+}
+
+/* Meta */
+.notification-time {
+	font-size: 0.75rem;
+	color: var(--bs-secondary-color);
+	opacity: 0.75;
+}
+
+.notification-action {
+	font-size: 0.75rem;
+	font-weight: 500;
+	color: var(--bs-primary);
+	text-decoration: none;
+	padding: 0.125rem 0;
+	border-bottom: 1px solid transparent;
+	transition: border-color 0.15s ease;
+}
+
+.notification-action:hover {
+	border-bottom-color: var(--bs-primary);
+}
+
+/* Close Button */
+.notification-close {
+	flex-shrink: 0;
+	width: 1.5rem;
+	height: 1.5rem;
+	padding: 0;
+	margin-left: 0.5rem;
+	background: none;
+	border: none;
+	color: var(--bs-secondary-color);
+	cursor: pointer;
+	border-radius: var(--bs-border-radius-sm);
+	transition: all 0.15s ease;
+}
+
+.notification-close:hover {
+	color: var(--bs-body-color);
+	background-color: var(--bs-secondary-bg);
+}
+
+.notification-close svg {
+	width: 1rem;
+	height: 1rem;
+}
+
+/* Unread Indicator */
+.unread-indicator {
+	position: absolute;
+	left: 0.5rem;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 0.375rem;
+	height: 0.375rem;
+	background-color: var(--bs-primary);
+	border-radius: 50%;
+}

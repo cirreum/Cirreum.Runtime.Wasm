@@ -1,0 +1,11 @@
+﻿@using System.Runtime.InteropServices
+
+<footer class="footer fixed-bottom">
+	<div class="copyright ms-auto">
+		Championship Off-Road Racing &copy; @(CopyRightYear). All rights reserved.
+	</div>
+</footer>
+
+@code {
+	string CopyRightYear = DateTimeOffset.Now.Year.ToString();
+}

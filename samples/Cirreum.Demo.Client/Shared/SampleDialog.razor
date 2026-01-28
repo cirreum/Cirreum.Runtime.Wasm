@@ -1,0 +1,82 @@
+﻿<div class="dialog-body">
+	<div class="alert alert-secondary" role="alert">
+
+		<span class="oi oi-pencil mr-2" aria-hidden="true"></span>
+		<strong>@MessagePrefix</strong>
+
+		<span class="text-nowrap">
+			Please take our
+			<Tooltip Title="This helps us build better software">
+				<a target="_blank" class="font-weight-bold" href="https://go.microsoft.com/fwlink/?linkid=2137916">brief survey</a>
+			</Tooltip>
+		</span>
+		and tell us what you think.
+
+	</div>
+	<div>
+		<p>
+			<span>Show nested Dialog</span>
+		</p>
+		<DropdownButton TItemType="DialogPosition"
+						AriaLabel="Nested Dialog Position"
+						Text="@($"{SelectedDialogPosition}")"
+						ButtonColor="ButtonColor.Primary"
+						SelectedValue="@SelectedDialogPosition"
+						SelectedValueChanged="OnDialogPositionSelected"
+						IsSplitButton="true"
+						OnSplitButtonClicked="OpenNestedModal">
+			@foreach (var item in Enum.GetValues<DialogPosition>()) {
+				<DropdownItemButton Value="@item">
+					@item.ToString()
+				</DropdownItemButton>
+			}
+		</DropdownButton>
+	</div>
+</div>
+
+<div class="dialog-buttons">
+	<button type="button" @onclick="Close" class="btn btn-primary">OK</button>
+	<button type="button" @onclick="Cancel" class="btn btn-secondary">Cancel</button>
+</div>
+
+@code {
+
+	[CascadingParameter]
+	Dialog Instance { get; set; } = default!;
+
+	[Inject]
+	public IDialogService DialogService { get; set; } = default!;
+
+	DialogPosition SelectedDialogPosition { get; set; } = DialogPosition.Center;
+	void OnDialogPositionSelected(DialogPosition value) {
+		this.SelectedDialogPosition = value;
+		this.Instance?.SetTitle($"Demo: {this.SelectedDialogPosition}");
+	}
+
+
+	[Parameter]
+	public string MessagePrefix { get; set; } = "";
+
+	[Parameter]
+	public DialogPosition DefaultPosition { get; set; }
+
+
+	protected override void OnInitialized() {
+		base.OnInitialized();
+		this.SelectedDialogPosition = this.DefaultPosition;
+	}
+
+	void OpenNestedModal() {
+		var dialogOptions = DialogOptions.AsModal;
+		dialogOptions.Position = this.SelectedDialogPosition;
+		this.DialogService.Show<SampleDialog>("Nested Demo",
+			new ComponentParameters { 
+				{ nameof(SampleDialog.DefaultPosition), this.SelectedDialogPosition } 
+			},
+			dialogOptions);
+	}
+
+	Task Close() => Instance.CloseAsync(DialogResult.Ok());
+	Task Cancel() => Instance.CancelAsync();
+
+}

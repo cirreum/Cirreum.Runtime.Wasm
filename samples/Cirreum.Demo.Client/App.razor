@@ -1,0 +1,63 @@
+﻿
+<HeadContent>
+	<meta name="description" content="Cirreum Demo Client Application.">
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+	<meta name="apple-mobile-web-app-title" content="Cirreum Demo Client">
+	<meta name="application-name" content="Cirreum Demo Client">
+	<meta name="msapplication-TileColor" content="#2d89ef">
+	<ContentSecurityPolicyMetaTag />
+</HeadContent>
+
+@* <Router AppAssembly="@typeof(App).Assembly">
+	<Found Context="routeData">
+		<AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+			<NotAuthorized>
+				@if (context.User.Identity?.IsAuthenticated == true) {
+					<RedirectToUnauthorized UnauthorizedPage="/unauthorized" />
+				} else {
+					<RedirectToLogin />
+				}
+			</NotAuthorized>
+			<Authorizing>
+				<div style="position:absolute; top:30vh; width:70%; text-align:center">
+					<div class="p-3">authorizing...</div>
+					<PulseSpinner Color="#ccc" Center="true" />
+				</div>
+				<div class="modal-overlay"></div>
+			</Authorizing>
+		</AuthorizeRouteView>
+	</Found>
+	<NotFound>
+		<LayoutView Layout="@typeof(MainLayout)">
+			<Custom404 />
+		</LayoutView>
+	</NotFound>
+</Router> *@
+
+@* For use with no-auth *@
+<Router AppAssembly="@typeof(App).Assembly">
+	<Found Context="routeData">
+		<RouteView RouteData="@routeData" DefaultLayout="@typeof(MinimalLayout)" />
+	</Found>
+	<NotFound>
+		<LayoutView Layout="@typeof(MinimalLayout)">
+			<Custom404 />
+		</LayoutView>
+	</NotFound>
+</Router>
+
+<DialogContainer DefaultOptions="@(DialogOptions.Default)" />
+<MenuContainer />
+<ToastContainer ToastType="ToastStyleType.Primary"
+				ShowProgressBar="true"
+				PauseProgressOnHover="true" />
+<TooltipContainer />
+@* <SessionActivityMonitor EnableLogging="true" /> *@
+@* <SessionExpirationDialog ShowCountdown="true"
+						 AutoLogoutSeconds="30"
+						 OnSessionContinued="OnUserContinued" /> *@
+@* <ApplicationInsightsInit IsWasmStandalone="true" /> *@

@@ -1,0 +1,129 @@
+:root {
+	--guest-user-img: url(_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg);
+	
+	// User profile dimensions
+	--user-profile-min-width: 325px;
+	--user-profile-pic-size: 58px;
+	--user-profile-name-max-width: 210px;
+	--user-profile-text-max-width: 220px;
+	
+	// User profile colors
+	--user-profile-bg: #efefef;
+	--user-profile-bg-dark: #222;
+}
+
+// Mixin for consistent text truncation
+@mixin text-truncate {
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+.user-profile-guest-icon {
+	content: var(--guest-user-img);
+}
+
+.user-profile {
+	color: var(--bs-text-emphasis);
+	min-width: var(--user-profile-min-width);
+	background-color: var(--user-profile-bg);
+	border-radius: 6px 6px 0 0;
+	margin: var(--bs-dropdown-padding-y) calc(-1 * var(--bs-dropdown-padding-x));
+
+	// Container layout
+	&__container {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 1rem;
+		margin: -8px 0;
+	}
+
+	// Content stack
+	&__content {
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		min-width: 0; // Allow flex child to shrink below content width
+		flex: 1; // Take remaining space
+	}
+
+	.name {
+		@include text-truncate;
+		max-width: var(--user-profile-name-max-width);
+		font-size: 18px;
+		font-weight: 700;
+		display: block;
+	}
+
+	.company,
+	.email {
+		@include text-truncate;
+		max-width: var(--user-profile-text-max-width);
+		display: block;
+	}
+
+	.pic {
+		display: block;
+		border-radius: 50%;
+		overflow: hidden;
+		width: 58px;
+		height: 58px;
+		flex-shrink: 0;
+
+		margin: {
+			left: 2px;
+			right: 4px;
+			top: 4px;
+			bottom: 4px;
+		}
+	}
+
+	.presence {
+		font-size: 0.75rem;
+		line-height: 1.5rem;
+		user-select: none;
+		
+		span {
+			@include text-truncate;
+			display: inline-block;
+			max-width: var(--user-profile-text-max-width);
+			vertical-align: middle;
+		}
+		
+		i {
+			vertical-align: middle;
+		}
+
+		&--available { color: var(--presence-available); }
+		&--away { color: var(--presence-away); }
+		&--busy { color: var(--presence-busy); }
+		&--dnd { color: var(--presence-dnd); }
+		&--offline { color: var(--presence-offline); }
+		&--oof { color: var(--presence-oof); }
+		&--unknown { color: var(--presence-unknown); }
+	}
+
+	.profile-pic {
+		position: relative;
+		width: 100%;
+		height: 100%;
+		border-radius: 50%;
+		overflow: hidden;
+
+		background: {
+			size: cover;
+			position: center center;
+			repeat: no-repeat;
+		}
+	}
+}
+
+[data-bs-theme=dark] .user-profile {
+	background-color: var(--user-profile-bg-dark);
+	box-shadow: inset -1px 0px 2px 1px rgba(51, 51, 51, 0.5333333333), inset 1px 0px 2px 1px rgba(51, 51, 51, 0.5333333333);
+	
+	.profile-pic:not([style*="--profile-pic-image"]) {
+		background-color: var(--bs-gray-800);
+	}
+}

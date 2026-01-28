@@ -1,0 +1,103 @@
+﻿<div class="notification-item @(!Notification.IsRead ? "unread" : "") @GetTypeClass()"
+	 @onclick="HandleClick">
+	<div class="notification-content">
+		<div class="notification-icon">
+			@GetIcon()
+		</div>
+
+		<div class="notification-body">
+			<div class="d-flex align-items-start justify-content-between mb-1">
+				<h4 class="notification-item-title mb-0">@Notification.Title</h4>
+				<button class="notification-close"
+						@onclick="HandleDismiss"
+						@onclick:stopPropagation="true"
+						title="Dismiss">
+					<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+				</button>
+			</div>
+			<p class="notification-message">@Notification.Message</p>
+
+			<div class="hstack gap-2">
+				@if (Notification.ActionUrl != null) {
+					<a href="@Notification.ActionUrl"
+					   class="notification-action"
+					   @onclick="HandleActionClick"
+					   @onclick:stopPropagation="true">
+						@(Notification.ActionText ?? "View")
+					</a>
+				}
+				<span class="notification-time ms-auto">@currentTimeDisplay</span>
+			</div>
+		</div>
+	</div>
+
+	@if (!Notification.IsRead) {
+		<div class="unread-indicator"></div>
+	}
+</div>
+
+@code {
+
+	private string currentTimeDisplay = string.Empty;
+
+	[Parameter, EditorRequired]
+	public Notification Notification { get; set; } = default!;
+
+	[Parameter]
+	public EventCallback OnRead { get; set; }
+
+	[Parameter]
+	public EventCallback OnRemove { get; set; }
+
+	protected override void OnInitialized() {
+		UpdateTimeDisplay();
+	}
+
+	private void UpdateTimeDisplay() {
+		currentTimeDisplay = FormatTime(Notification.Timestamp);
+	}
+
+	private async Task HandleClick() {
+		// Mark as read when clicking anywhere on the notification
+		if (!Notification.IsRead) {
+			await OnRead.InvokeAsync();
+		}
+	}
+
+	private async Task HandleActionClick() {
+		// Mark as read when clicking action link
+		if (!Notification.IsRead) {
+			await OnRead.InvokeAsync();
+		}
+		// Link navigation happens automatically
+	}
+
+	private async Task HandleDismiss() {
+		// Mark as read and remove
+		if (!Notification.IsRead) {
+			await OnRead.InvokeAsync();
+		}
+		await OnRemove.InvokeAsync();
+	}
+
+	private string GetTypeClass() => Notification.Type.ToString().ToLower();
+
+	private RenderFragment GetIcon() => Notification.Type switch {
+		NotificationType.Success => @<i class="bi bi-check-circle-fill" />,
+		NotificationType.Warning => @<i class="bi bi-exclamation-triangle-fill"></i>,
+		NotificationType.Error => @<i class="bi bi-x-circle-fill"></i>,
+		_ => @<i class="bi bi-info-circle-fill"></i>
+	};
+
+	private string FormatTime(DateTime timestamp) {
+		var elapsed = DateTime.UtcNow - timestamp;
+
+		return elapsed.TotalMinutes < 1 ? "Just now" :
+			   elapsed.TotalMinutes < 60 ? $"{(int)elapsed.TotalMinutes}m ago" :
+			   elapsed.TotalHours < 24 ? $"{(int)elapsed.TotalHours}h ago" :
+			   elapsed.TotalDays < 7 ? $"{(int)elapsed.TotalDays}d ago" :
+			   timestamp.ToString("MMM d");
+	}
+}

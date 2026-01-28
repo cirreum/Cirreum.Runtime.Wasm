@@ -1,0 +1,20 @@
+// components/_alerts.scss
+@use '../abstracts' as *;
+
+// Marketing Alert - Light Theme (default)
+.alert.alert-marketing {
+	--bs-alert-color: #{$purple-text-emphasis};
+	--bs-alert-bg: #{$purple-bg-subtle};
+	--bs-alert-border-color: #{$purple-border-subtle};
+	--bs-alert-link-color: #{$purple-text-emphasis};
+}
+
+// Dark Theme Overrides using data-bs-theme attribute
+[data-bs-theme="dark"] {
+	.alert.alert-marketing {
+		--bs-alert-color: #{$purple-text-emphasis-dark};
+		--bs-alert-bg: #{$purple-bg-subtle-dark};
+		--bs-alert-border-color: #{$purple-border-subtle-dark};
+		--bs-alert-link-color: #{$purple-text-emphasis-dark};
+	}
+}

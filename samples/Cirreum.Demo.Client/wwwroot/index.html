@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Cirreum.Demo.Client</title>
+	<base href="/" />
+	<link href="css/site.css" rel="stylesheet" type="text/css" />
+	<link href="css/docs.css" rel="stylesheet" type="text/css" />
+	<link href="css/hljs_vs_light.css" rel="stylesheet" type="text/css" />
+	<script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+	<link rel="preload" id="webassembly" />
+	<script type="importmap"></script>
+</head>
+
+<body>
+	<noscript>You need to enable JavaScript to run this app.</noscript>
+
+	<div id="app">
+		<style id="splash-style">
+
+			*, ::after, ::before {
+				box-sizing: border-box;
+			}
+
+			html, body {
+				font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+				font-size: 16px;
+				overflow: hidden;
+				margin: 0;
+				-webkit-text-size-adjust: 100%;
+				-webkit-tap-highlight-color: transparent;
+			}
+
+			.splash-container {
+				margin: 0 auto;
+			}
+
+			.splash-backdrop {
+				user-select: none;
+				display: block;
+				position: fixed;
+				inset: 0;
+				background-color: rgba(190, 190, 190, .25);
+			}
+
+			.splash-screen {
+				/* default to mobile */
+				position: absolute;
+				top: 0;
+				bottom: 0;
+				left: 0;
+				right: 0;
+				background: #fff;
+			}
+
+			.splash-screen-content {
+				display: contents;
+				user-select: none;
+			}
+
+			.splash-contents {
+				width: 100vw;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+			}
+
+			.splash-title {
+				margin-top: 1rem;
+				margin-bottom: 1rem;
+				font-weight: 500;
+				line-height: 1.2;
+				font-size: calc(0.5rem + 3vw);
+			}
+
+			.splash-subtitle {
+				margin-bottom: 2rem;
+				font-size: calc(0.5rem + 4vw);
+			}
+
+			.splash-busy-text {
+				font-size: calc(0.5rem + 1vw);
+				margin: 1rem 0;
+				color: #3498db;
+			}
+
+			.splash-extra-text {
+				font-size: 14px;
+				color: #6c757d;
+			}
+
+			.progress-bar {
+				position: relative;
+				height: 3px;
+				width: calc(1rem + 50vw);
+			}
+
+				.progress-bar > span {
+					width: var(--blazor-load-percentage, 1%);
+					position: absolute;
+					height: 3px;
+					background-image: linear-gradient(#3498db 0 0);
+					-webkit-transition: width 0.2s linear;
+					-moz-transition: width 0.2s linear;
+					-o-transition: width 0.2s linear;
+					transition: width 0.2s linear;
+				}
+
+			@media (prefers-color-scheme: dark) {
+				html, body {
+					background-color: #222;
+					color: #ddd;
+				}
+
+				.splash-backdrop {
+					background-color: rgba(30, 30, 30, 0.25);
+				}
+
+				.splash-screen {
+					background: #222;
+				}
+			}
+
+			@media(min-width: 576px) {
+
+				.splash-body {
+					/* aka .dialog-body */
+					padding: 1rem 1rem;
+				}
+
+				.splash-screen {
+					/* aka .dialog */
+					position: absolute;
+					top: 50%;
+					left: 50%;
+					bottom: unset;
+					right: unset;
+					transform: translate(-50%, -50%);
+					border-radius: 1rem;
+					box-shadow: rgba(0, 0, 0, 0.28) 0px 16px 18px 0px, rgba(0, 0, 0, 0.12) 0px 4px 16px 0px; /*0 1rem 3rem rgba(0, 0, 0, 0.175);*/
+				}
+
+				@media (prefers-color-scheme: dark) {
+					.splash-screen {
+						box-shadow: rgba(0, 0, 0, 0.25) 0px 16px 18px 0px, rgba(0, 0, 0, 0.15) 0px 4px 16px 0px;
+					}
+				}
+
+				.splash-contents {
+					width: 450px;
+				}
+
+				.splash-title {
+					font-size: 1.75rem
+				}
+
+				.splash-subtitle {
+					font-size: 1.5rem;
+				}
+
+				.progress-bar {
+					width: 320px;
+				}
+
+				.splash-busy-text {
+					font-size: 14px;
+				}
+			}
+		</style>
+		<div class="splash-backdrop"></div>
+		<div class="splash-screen">
+			<div class="splash-screen-content">
+				<div class="splash-body">
+					<div class="splash-contents">
+						<span class="splash-title">
+							Championship Off-Road Racing
+						</span>
+						<div class="splash-subtitle">
+							Race Management System
+						</div>
+						<div class="progress-bar">
+							<span></span>
+						</div>
+						<p class="splash-busy-text">Hang tight, while we prepare the application...</p>
+						<p class="splash-extra-text">please wait</p>
+						<p>
+							<img src="/splash-screen-icon.png" width="100" style="width:100px;" />
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!--asm-name= [client assembly name]-->
+	<!--app-name= [friendly public name]-->
+	<!--app-theme= theme name [default | aqua | aspire | excel | office | outlook | windows ]-->
+	<!--font-name= [null | default | valid package name from cdnfonts.com]-->
+	<!--auth-type= [null | none | msal | oidc | dynamic ]-->
+	<!--pwa-script= [null | none | service-worker.js | service-worker.published.js]-->
+	<script src="_content/Cirreum.Runtime.Wasm/js/cirreum-wasm-loader#[.{fingerprint}].js"
+			asm-name="Cirreum.Demo.Client"
+			app-name="Cirreum Demo Client"
+			app-theme="aqua"
+			auth-type="none"
+			async></script>
+
+	<script>
+		window.getFormattedSamples = function () {
+			const now = new Date();
+			let supportsNewOptions = false;
+			try {
+				new Intl.DateTimeFormat('en', { dateStyle: 'full' }).format(now);
+				supportsNewOptions = true;
+			}
+			catch (e) {
+				supportsNewOptions = false;
+			}
+			let fullFormatted;
+			if (supportsNewOptions) {
+				try {
+					fullFormatted = new Intl.DateTimeFormat(undefined, {
+						dateStyle: 'full',
+						timeStyle: 'long'
+					}).format(now);
+				}
+				catch (e) {
+					fullFormatted = now.toLocaleString();
+				}
+			}
+			else {
+				try {
+					fullFormatted = new Intl.DateTimeFormat(undefined, {
+						year: 'numeric',
+						month: 'long',
+						day: 'numeric',
+						hour: '2-digit',
+						minute: '2-digit',
+						second: '2-digit'
+					}).format(now);
+				}
+				catch (e) {
+					fullFormatted = now.toLocaleString();
+				}
+			}
+			let withTimeZoneFormatted;
+			let timeZoneName;
+			try {
+				const formatter = new Intl.DateTimeFormat(undefined, { timeZoneName: 'long' });
+				const parts = formatter.formatToParts(now);
+				const timeZonePart = parts.find(part => part.type === 'timeZoneName');
+				timeZoneName = timeZonePart ? timeZonePart.value :
+					Intl.DateTimeFormat().resolvedOptions().timeZone;
+			}
+			catch (e) {
+				timeZoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+			}
+			let dateTimeFormat;
+			try {
+				dateTimeFormat = new Intl.DateTimeFormat(undefined, {
+					year: 'numeric',
+					month: 'numeric',
+					day: 'numeric',
+					hour: 'numeric',
+					minute: '2-digit',
+					second: '2-digit'
+				}).format(now);
+			}
+			catch (e) {
+				dateTimeFormat = now.toLocaleString();
+			}
+			const withTimeZone = `${dateTimeFormat} (${timeZoneName})`;
+			return {
+				defaultFormat: now.toLocaleString(),
+				dateOnly: now.toLocaleDateString(),
+				timeOnly: now.toLocaleTimeString(),
+				full: fullFormatted,
+				withTimeZone: withTimeZone
+			};
+		};
+	</script>
+</body>
+
+</html>

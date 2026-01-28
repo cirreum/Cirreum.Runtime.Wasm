@@ -1,0 +1,75 @@
+﻿@layout MinimalLayout
+@attribute [AllowAnonymous]
+@page "/error"
+@using Cirreum.Storage
+@inject NavigationManager NavigationManager
+@inject ISessionStorageService SessionStorage
+
+<div class="container-sm mt-5">
+	<div class="card shadow-sm mx-auto" style="max-width: 600px;">
+		<div class="card-body p-4">
+			<div class="text-center mb-4">
+				<i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+			</div>
+
+			<h2 class="card-title text-center mb-3">We've Encountered an Error</h2>
+
+			<p class="card-text text-center mb-4">
+				We apologize for the inconvenience. Our team has been automatically notified and is working on a solution.
+			</p>
+
+			@if (!string.IsNullOrEmpty(Id)) {
+				<div class="card mb-4">
+					<div class="card-body p-2 text-center rounded">
+						<span class="fw-bold">Error Reference:</span>
+						<code class="ms-2 user-select-all">@Id</code>
+						<CopyToClipboardButton ShowLabel="true" Text="@Id" />
+					</div>
+				</div>
+			}
+
+			<div class="d-flex justify-content-center gap-3">
+				<button class="btn btn-primary" @onclick="ReturnHome">
+					<i class="bi bi-house-door me-2"></i>Return to Home
+				</button>
+				@if (!string.IsNullOrEmpty(Id)) {
+					<button class="btn btn-outline-secondary" @onclick="ReportProblem">
+						<i class="bi bi-chat-dots me-2"></i>Contact Support
+					</button>
+				}
+			</div>
+	
+			@if (!string.IsNullOrWhiteSpace(errorMessage)) {
+				<div class="alert alert-danger mt-3">
+					@errorMessage
+				</div>
+			}
+
+		</div>
+	</div>
+</div>
+
+@code {
+
+	[Parameter]
+	[SupplyParameterFromQuery]
+	public string Id { get; set; } = "";
+
+	private void ReturnHome() {
+		NavigationManager.NavigateTo("/");
+	}
+
+	private void ReportProblem() {
+		var subject = Uri.EscapeDataString($"Error Report - {Id}");
+		var body = Uri.EscapeDataString($"I encountered an error (ID: {Id}).\n\nHere's what I was trying to do:\n\n");
+		NavigationManager.NavigateTo($"mailto:support@corracing.com?subject={subject}&body={body}");
+	}
+
+	private string errorMessage = "";
+	protected override async Task OnInitializedAsync() {
+		if (this.Id.HasValue()) {
+			this.errorMessage = await SessionStorage.GetItemAsStringAsync($"last-error-{this.Id}") ?? "";
+		}
+	}
+
+}

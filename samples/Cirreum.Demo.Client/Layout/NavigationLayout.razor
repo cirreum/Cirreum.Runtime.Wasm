@@ -1,0 +1,22 @@
+﻿@inherits LayoutComponentBase
+
+<Header />
+<div class="main-container">
+	<NavMenu />
+	<main class="app-main">
+		<ErrorBoundary>
+			<ChildContent>
+				@Body
+				<ScrollToTop Color="ButtonColor.OutlinePrimary">
+					<i class="bi bi-chevron-up"></i>
+				</ScrollToTop>
+				<SplashScreen />
+			</ChildContent>
+			<ErrorContent Context="exception">
+				<RedirectToError Exception="@exception" />
+			</ErrorContent>
+		</ErrorBoundary>
+	</main>
+</div>
+<Footer />
+<Microsoft.AspNetCore.Components.Sections.SectionOutlet SectionName="optional-tooltip-section" />

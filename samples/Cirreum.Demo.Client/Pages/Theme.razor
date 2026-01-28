@@ -1,0 +1,2627 @@
+﻿@using System.Collections.Immutable
+@page "/theme"
+@inherits StatePageBase
+@inject ICsvFileBuilder CsvBuilder;
+@inject IWasmFileSystem WasmFileSystem;
+
+<AppPageTitle>Theme</AppPageTitle>
+
+<!-- TreeView
+================================================== -->
+<div class="bs-docs-section clearfix">
+	<div class="row">
+		<div class="col-lg-12">
+			<div class="page-header">
+				<h1 id="treeView">TreeView</h1>
+			</div>
+
+			<div class="bs-component">
+				<div class="container-fluid">
+					<div class="row mb-2">
+						<div class="col-4">
+							<fieldset>
+								<legend>TreeView Options</legend>
+								<Switch Label="Show Icons" @bind-Value="ShowIcons" />
+								<Switch Label="Show Header" @bind-Value="ShowTreeViewHeader" />
+								<Switch Label="Show Footer" @bind-Value="ShowTreeViewFooter" />
+								<Switch Label="Show Node Headers" @bind-Value="ShowTreeViewNodeHeaders" />
+								<div class="p-2 d-flex flex-wrap gap-1">
+									<button class="btn btn-secondary btn-sm" @onclick="ResetFolders">Reload</button>
+									<button class="btn btn-secondary btn-sm" @onclick="ClearFolders">Clear</button>
+								</div>
+								<div class="p-2 d-flex flex-wrap gap-1">
+									<button class="btn btn-secondary btn-sm" @onclick="ExpandAll">Expand All</button>
+									<button class="btn btn-secondary btn-sm" @onclick="CollapseAll">Collapse All</button>
+									<button class="btn btn-secondary btn-sm" @onclick="SelectRandomNode">Select Random</button>
+								</div>
+								<div class="p-2">
+									<Switch Label="Contains" @bind-Value="ContainsText" />
+									<Switch Label="Include Selected" @bind-Value="IncludeSelectedNodes" />
+									<Switch Label="Include Hidden" @bind-Value="IncludeHiddenNodes" />
+									<Switch Label="Include Disabled" @bind-Value="IncludeDisabled" />
+									<Switch Label="Case Sensitive" @bind-Value="CaseSensitive" />
+									<div class="p-2">
+										<TextSearch Label="select node" AriaLabel="select treeview node by name" OnSearchChanged="HandleTreeViewSearchTextChanged" />
+									</div>
+								</div>
+							</fieldset>
+						</div>
+						<div class="col-8">
+							<fieldset>
+								<legend>DataGrid Options</legend>
+								<Switch Label="Flush" @bind-Value="DGFlush" />
+								<Switch Label="Pageable" @bind-Value="DGPageable" />
+								<Switch Label="Responsive" @bind-Value="DGResponsive" />
+							</fieldset>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-lg-4 col-6">
+							<TreeView @ref=TreeviewRef
+									  AutoExpandAll="false"
+									  ShowIcons="@ShowIcons"
+									  ShowHeader="@ShowTreeViewHeader"
+									  ShowFooter="@ShowTreeViewFooter"
+									  ShowNodeHeaders="@ShowTreeViewNodeHeaders"
+									  Model="@Items"
+									  OnNodeSelected="@SelectFolder"
+									  OnNodeExpanded="@HandleNodeExpanded"
+									  OnNodeCollapsed="@HandleNodeCollapsed"
+									  OnNodeContextMenuItemSelected="@ContextMenuItemSelected"
+									  Height="250px">
+								<HeaderTemplate>
+									<div class="hstack">
+										<div class="me-auto">
+											Root Nodes
+										</div>
+										<span class="ms-2 badge round-pill text-bg-primary">@Items.Count</span>
+									</div>
+								</HeaderTemplate>
+								<FooterTemplate>
+									<div class="hstack">
+										<div class="me-auto">
+											Selected: @SelectedFolderName
+										</div>
+										<span class="ms-2 badge round-pill text-bg-primary">@SelectedFolderData.Count</span>
+									</div>
+								</FooterTemplate>
+								<NodeContextMenu>
+									<MenuItem Label="Upload File" Value="Upload" />
+									<MenuDivider />
+									<MenuItem Label="Rename Folder" Value="Rename" />
+									<MenuItem Label="Delete Folder" Value="Delete" />
+									<MenuDivider />
+									<MenuItem Label="Properties..." Value="Properties" />
+									<MenuItem Label="Refresh" Value="Refresh" />
+								</NodeContextMenu>
+								<EmptyTemplate>
+									<div class="text-center text-warning">Damn... No Items!</div>
+								</EmptyTemplate>
+							</TreeView>
+						</div>
+						<div class="col-lg-8 col-6">
+							<DataGrid Responsive="@DGResponsive"
+									  Pageable="@DGPageable"
+									  Flush="@DGFlush"
+									  Data="SelectedFolderData"
+									  SelectedItems="SelectedData"
+									  SelectionType="SelectionType.Multiple"
+									  OnRefreshData="RefreshDataSourceAsync"
+									  OnExportData="ExportDataGrid">
+								<DataGridTitleTemplate>
+									<div>
+										<span>@SelectedFolderTitle</span>
+									</div>
+								</DataGridTitleTemplate>
+								<DataGridColumn Field="@nameof(FileData.Name)" DefaultSortColumn="true" VisibleInColumnChooser="false" />
+								<DataGridColumn Field="@nameof(FileData.ModifiedDate)" Header="Last Modified" />
+								<DataGridColumn Field="@nameof(FileData.Type)" />
+								<DataGridColumn Field="@nameof(FileData.FileSize)" Header="Size">
+									@(context.IsFile ? Humanizer.ByteSize.FromBytes(context.FileSize).ToString() : "")
+								</DataGridColumn>
+							</DataGrid>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+<!-- Navbar
+================================================== -->
+<div class="bs-docs-section clearfix">
+	<div class="row">
+		<div class="col-lg-12">
+			<div class="page-header">
+				<h1 id="navbars">Navbars</h1>
+			</div>
+
+			<div class="bs-component">
+				<nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
+					<div class="container-fluid">
+						<a class="navbar-brand" href="#">Navbar</a>
+						<button class="navbar-toggler" type="button" name="toggle navbar" data-bs-toggle="collapse" data-bs-target="#navbarColor01" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
+							<span class="navbar-toggler-icon" aria-hidden="true"></span>
+						</button>
+
+						<div class="collapse navbar-collapse" id="navbarColor01">
+							<NavList Css="navbar-nav me-auto">
+								<NavListItemLink>
+									Home
+									<span class="visually-hidden">(current)</span>
+								</NavListItemLink>
+								<NavListItemLink>
+									Features
+								</NavListItemLink>
+								<NavListItemLink>
+									Pricing
+								</NavListItemLink>
+								<NavListItemLink>
+									About
+								</NavListItemLink>
+								<NavListDropdownButton TItemType="string" Text="Dropdown">
+									@DropDownButtonsTemplate
+								</NavListDropdownButton>
+							</NavList>
+							<form class="d-flex">
+								<input class="form-control me-sm-2" type="search" placeholder="Search">
+								<button class="btn btn-secondary my-2 my-sm-0" type="submit">Search</button>
+							</form>
+						</div>
+					</div>
+				</nav>
+			</div>
+
+			<div class="bs-component">
+				<nav class="navbar navbar-expand-lg bg-dark" data-bs-theme="dark">
+					<div class="container-fluid">
+						<a class="navbar-brand" href="/theme#navbars" target="_top">Navbar</a>
+						<button class="navbar-toggler" type="button" name="toggle navbar" data-bs-toggle="collapse" data-bs-target="#navbarColor02" aria-controls="navbarColor02" aria-expanded="false" aria-label="Toggle navigation">
+							<span class="navbar-toggler-icon" aria-hidden="true"></span>
+						</button>
+
+						<div class="collapse navbar-collapse" id="navbarColor02">
+							<NavList Css="navbar-nav me-auto">
+								<NavListItemLink>
+									Home
+									<span class="visually-hidden">(current)</span>
+								</NavListItemLink>
+								<NavListItemLink>
+									Features
+								</NavListItemLink>
+								<NavListItemLink>
+									Pricing
+								</NavListItemLink>
+								<NavListItemLink>
+									About
+								</NavListItemLink>
+								<NavListDropdownButton TItemType="string" Text="Dropdown">
+									@DropDownButtonsTemplate
+								</NavListDropdownButton>
+							</NavList>
+							<form class="d-flex">
+								<input class="form-control me-sm-2" type="search" placeholder="Search">
+								<button class="btn btn-secondary my-2 my-sm-0" type="submit">Search</button>
+							</form>
+						</div>
+					</div>
+				</nav>
+			</div>
+
+			<div class="bs-component">
+				<nav class="navbar navbar-expand-lg bg-light" data-bs-theme="light">
+					<div class="container-fluid">
+						<a class="navbar-brand" href="/theme#navbars" target="_top">Navbar</a>
+						<button class="navbar-toggler" type="button" name="toggle navbar" data-bs-toggle="collapse" data-bs-target="#navbarColor03" aria-controls="navbarColor03" aria-expanded="false" aria-label="Toggle navigation">
+							<span class="navbar-toggler-icon" aria-hidden="true"></span>
+						</button>
+
+						<div class="collapse navbar-collapse" id="navbarColor03">
+							<NavList Css="navbar-nav me-auto">
+								<NavListItemLink>
+									Home
+									<span class="visually-hidden">(current)</span>
+								</NavListItemLink>
+								<NavListItemLink>
+									Features
+								</NavListItemLink>
+								<NavListItemLink>
+									Pricing
+								</NavListItemLink>
+								<NavListItemLink>
+									About
+								</NavListItemLink>
+								<NavListDropdownButton TItemType="string" Text="Dropdown">
+									@DropDownButtonsTemplate
+								</NavListDropdownButton>
+							</NavList>
+							<form class="d-flex">
+								<input class="form-control me-sm-2" type="search" placeholder="Search">
+								<button class="btn btn-secondary my-2 my-sm-0" type="submit">Search</button>
+							</form>
+						</div>
+					</div>
+				</nav>
+			</div>
+
+			<div class="bs-component">
+				<nav class="navbar navbar-expand-lg bg-body-tertiary">
+					<div class="container-fluid">
+						<a class="navbar-brand" href="/theme#navbars" target="_top">Navbar</a>
+						<button class="navbar-toggler" type="button" name="toggle navbar" data-bs-toggle="collapse" data-bs-target="#navbarColor04" aria-controls="navbarColor04" aria-expanded="false" aria-label="Toggle navigation">
+							<span class="navbar-toggler-icon" aria-hidden="true"></span>
+						</button>
+
+						<div class="collapse navbar-collapse" id="navbarColor04">
+							<NavList Css="navbar-nav me-auto">
+								<NavListItemLink>
+									Home
+									<span class="visually-hidden">(current)</span>
+								</NavListItemLink>
+								<NavListItemLink>
+									Features
+								</NavListItemLink>
+								<NavListItemLink>
+									Pricing
+								</NavListItemLink>
+								<NavListItemLink>
+									About
+								</NavListItemLink>
+								<NavListDropdownButton TItemType="string" Text="Dropdown">
+									@DropDownButtonsTemplate
+								</NavListDropdownButton>
+							</NavList>
+							<form class="d-flex">
+								<input class="form-control me-sm-2" type="search" placeholder="Search">
+								<button class="btn btn-secondary my-2 my-sm-0" type="submit">Search</button>
+							</form>
+						</div>
+					</div>
+				</nav>
+			</div>
+
+		</div>
+	</div>
+</div>
+
+<!-- Buttons
+================================================== -->
+<div class="bs-docs-section">
+	<div class="page-header">
+		<div class="row">
+			<div class="col-lg-12">
+				<h1 id="buttons">Buttons</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-lg-8">
+
+			<!--Button Default-->
+			<div class="bs-component d-flex flex-wrap gap-2">
+				<button type="button" class="btn btn-primary">Primary</button>
+				<button type="button" class="btn btn-secondary">Secondary</button>
+				<button type="button" class="btn btn-success">Success</button>
+				<button type="button" class="btn btn-info">Info</button>
+				<button type="button" class="btn btn-warning">Warning</button>
+				<button type="button" class="btn btn-danger">Danger</button>
+				<button type="button" class="btn btn-light">Light</button>
+				<button type="button" class="btn btn-dark">Dark</button>
+				<button type="button" class="btn btn-link">Link</button>
+			</div>
+
+			<!--Button Default Disabled-->
+			<div class="bs-component d-flex flex-wrap gap-2">
+				<button type="button" class="btn btn-primary disabled">Primary</button>
+				<button type="button" class="btn btn-secondary disabled">Secondary</button>
+				<button type="button" class="btn btn-success disabled">Success</button>
+				<button type="button" class="btn btn-info disabled">Info</button>
+				<button type="button" class="btn btn-warning disabled">Warning</button>
+				<button type="button" class="btn btn-danger disabled">Danger</button>
+				<button type="button" class="btn btn-light disabled">Light</button>
+				<button type="button" class="btn btn-dark disabled">Dark</button>
+				<button type="button" class="btn btn-link disabled">Link</button>
+			</div>
+
+			<!--Button Outine Default-->
+			<div class="bs-component d-flex flex-wrap gap-2">
+				<button type="button" class="btn btn-outline-primary">Primary</button>
+				<button type="button" class="btn btn-outline-secondary">Secondary</button>
+				<button type="button" class="btn btn-outline-success">Success</button>
+				<button type="button" class="btn btn-outline-info">Info</button>
+				<button type="button" class="btn btn-outline-warning">Warning</button>
+				<button type="button" class="btn btn-outline-danger">Danger</button>
+				<button type="button" class="btn btn-outline-light">Light</button>
+				<button type="button" class="btn btn-outline-dark">Dark</button>
+			</div>
+
+			<!--Dropdown Default[Down,Start]-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Default[Down] Centered-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ResponsiveAlignment="DropdownAlignment.Centered"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ResponsiveAlignment="DropdownAlignment.Centered"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ResponsiveAlignment="DropdownAlignment.Centered"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ResponsiveAlignment="DropdownAlignment.Centered"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Default[Down] End-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ResponsiveAlignment="DropdownAlignment.End"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ResponsiveAlignment="DropdownAlignment.End"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ResponsiveAlignment="DropdownAlignment.End"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ResponsiveAlignment="DropdownAlignment.End"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Up Start-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Up"
+								ResponsiveAlignment="DropdownAlignment.Start"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Up"
+								ResponsiveAlignment="DropdownAlignment.Start"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Up"
+								ResponsiveAlignment="DropdownAlignment.Start"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Up"
+								ResponsiveAlignment="DropdownAlignment.Start"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Up Centered-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Up"
+								ResponsiveAlignment="DropdownAlignment.Centered"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Up"
+								ResponsiveAlignment="DropdownAlignment.Centered"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Up"
+								ResponsiveAlignment="DropdownAlignment.Centered"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Up"
+								ResponsiveAlignment="DropdownAlignment.Centered"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Up End-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Up"
+								ResponsiveAlignment="DropdownAlignment.End"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Up"
+								ResponsiveAlignment="DropdownAlignment.End"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Up"
+								ResponsiveAlignment="DropdownAlignment.End"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Up"
+								ResponsiveAlignment="DropdownAlignment.End"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Default[Down,Start] Disabled-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								IsDisabled=true
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								IsDisabled=true
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								IsDisabled=true
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								IsDisabled=true
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Left Default[Start]-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								DropdownDirection="DropdownDirection.Left"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								DropdownDirection="DropdownDirection.Left"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								DropdownDirection="DropdownDirection.Left"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								DropdownDirection="DropdownDirection.Left"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Right Default[Start]-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Right"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Right"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Right"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								DropdownDirection="DropdownDirection.Right"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Split Default[Down,Start]-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Split Up Default[Start]-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								DropdownDirection="DropdownDirection.Up"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								DropdownDirection="DropdownDirection.Up"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								DropdownDirection="DropdownDirection.Up"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								DropdownDirection="DropdownDirection.Up"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Split Left Default[Start]-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								DropdownDirection="DropdownDirection.Left"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								DropdownDirection="DropdownDirection.Left"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								DropdownDirection="DropdownDirection.Left"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								DropdownDirection="DropdownDirection.Left"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Split Right Default[Start]-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								DropdownDirection="DropdownDirection.Right"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								DropdownDirection="DropdownDirection.Right"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								DropdownDirection="DropdownDirection.Right"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								DropdownDirection="DropdownDirection.Right"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Split Outline Large-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.Large"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.Large"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.Large"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.Large"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+			</div>
+
+			<!--Dropdown Split Outline Default-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.Default"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.Default"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.Default"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.Default"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Split Outline Small-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.Small"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.Small"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.Small"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.Small"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+			<!--Dropdown Split Outline ExtraSmall-->
+			<div class="bs-component d-flex gap-2">
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Primary)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.ExtraSmall"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Primary">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Success)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.ExtraSmall"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Success">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Info)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.ExtraSmall"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Info">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+				<DropdownButton TItemType="string"
+								Text="@nameof(ButtonColor.Danger)"
+								SelectedValueChanged="HandleActionMenuItemSelected"
+								OnSplitButtonClicked="@HandleSplitButtonClicked"
+								IsSplitButton="true"
+								ButtonSize="ButtonSize.ExtraSmall"
+								ButtonOutlined="true"
+								ButtonColor="ButtonColor.Danger">
+					@DropDownButtonsTemplate
+				</DropdownButton>
+
+			</div>
+
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="d-grid gap-2">
+					<button class="btn btn-lg btn-primary" type="button">Block button</button>
+					<button class="btn btn-lg btn-primary" type="button">Block button</button>
+				</div>
+			</div>
+
+			<div class="bs-component mb-3">
+				<div class="btn-group d-flex flex-wrap" role="group" aria-label="Basic checkbox toggle button group">
+					<input type="checkbox" class="btn-check" id="btncheck1" checked="" autocomplete="off">
+					<label class="btn btn-primary" for="btncheck1">Checkbox 1</label>
+					<input type="checkbox" class="btn-check" id="btncheck2" autocomplete="off">
+					<label class="btn btn-primary" for="btncheck2">Checkbox 2</label>
+					<input type="checkbox" class="btn-check" id="btncheck3" autocomplete="off">
+					<label class="btn btn-primary" for="btncheck3">Checkbox 3</label>
+				</div>
+			</div>
+
+			<div class="bs-component d-flex flex-wrap mb-3">
+				<input type="checkbox" class="btn-check" id="btn-check" autocomplete="off">
+				<label class="btn btn-primary" for="btn-check">Single toggle</label>
+
+				<input type="checkbox" class="btn-check" id="btn-check-2" checked autocomplete="off">
+				<label class="btn btn-primary" for="btn-check-2">Checked</label>
+
+				<input type="checkbox" class="btn-check" id="btn-check-3" autocomplete="off" disabled>
+				<label class="btn btn-primary" for="btn-check-3">Disabled</label>
+			</div>
+
+			<div class="bs-component d-flex flex-wrap mb-3">
+				<input type="checkbox" class="btn-check" id="btn-check-4" autocomplete="off">
+				<label class="btn" for="btn-check-4">Single toggle</label>
+
+				<input type="checkbox" class="btn-check" id="btn-check-5" checked autocomplete="off">
+				<label class="btn" for="btn-check-5">Checked</label>
+
+				<input type="checkbox" class="btn-check" id="btn-check-6" autocomplete="off" disabled>
+				<label class="btn" for="btn-check-6">Disabled</label>
+			</div>
+
+			<div class="bs-component d-flex flex-wrap mb-3">
+				<input type="radio" class="btn-check" name="options" id="option1" autocomplete="off" checked>
+				<label class="btn btn-secondary" for="option1">Checked</label>
+
+				<input type="radio" class="btn-check" name="options" id="option2" autocomplete="off">
+				<label class="btn btn-secondary" for="option2">Radio</label>
+
+				<input type="radio" class="btn-check" name="options" id="option3" autocomplete="off" disabled>
+				<label class="btn btn-secondary" for="option3">Disabled</label>
+
+				<input type="radio" class="btn-check" name="options" id="option4" autocomplete="off">
+				<label class="btn btn-secondary" for="option4">Radio</label>
+			</div>
+
+			<div class="bs-component d-flex flex-wrap mb-3">
+				<input type="radio" class="btn-check" name="options-base" id="option5" autocomplete="off" checked>
+				<label class="btn" for="option5">Checked</label>
+
+				<input type="radio" class="btn-check" name="options-base" id="option6" autocomplete="off">
+				<label class="btn" for="option6">Radio</label>
+
+				<input type="radio" class="btn-check" name="options-base" id="option7" autocomplete="off" disabled>
+				<label class="btn" for="option7">Disabled</label>
+
+				<input type="radio" class="btn-check" name="options-base" id="option8" autocomplete="off">
+				<label class="btn" for="option8">Radio</label>
+			</div>
+
+			<div class="bs-component d-flex flex-wrap mb-3">
+				<input type="checkbox" class="btn-check" id="btn-check-outlined" autocomplete="off">
+				<label class="btn btn-outline-primary" for="btn-check-outlined">Single toggle</label><br>
+
+				<input type="checkbox" class="btn-check" id="btn-check-2-outlined" checked autocomplete="off">
+				<label class="btn btn-outline-secondary" for="btn-check-2-outlined">Checked</label><br>
+
+				<input type="radio" class="btn-check" name="options-outlined" id="success-outlined" autocomplete="off" checked>
+				<label class="btn btn-outline-success" for="success-outlined">Checked success radio</label>
+
+				<input type="radio" class="btn-check" name="options-outlined" id="danger-outlined" autocomplete="off">
+				<label class="btn btn-outline-danger" for="danger-outlined">Danger radio</label>
+			</div>
+
+			<div class="bs-component mb-3">
+				<div class="btn-group d-flex flex-wrap" role="group" aria-label="Basic radio toggle button group">
+					<input type="radio" class="btn-check" name="btnradio" id="btnradio1" autocomplete="off" checked="">
+					<label class="btn btn-outline-primary" for="btnradio1">Radio 1</label>
+					<input type="radio" class="btn-check" name="btnradio" id="btnradio2" autocomplete="off" checked="">
+					<label class="btn btn-outline-primary" for="btnradio2">Radio 2</label>
+					<input type="radio" class="btn-check" name="btnradio" id="btnradio3" autocomplete="off" checked="">
+					<label class="btn btn-outline-primary" for="btnradio3">Radio 3</label>
+				</div>
+			</div>
+
+			<div class="bs-component">
+				<div class="btn-group-vertical">
+					<button type="button" class="btn btn-primary">Button</button>
+					<button type="button" class="btn btn-primary">Button</button>
+					<button type="button" class="btn btn-primary">Button</button>
+					<button type="button" class="btn btn-primary">Button</button>
+					<button type="button" class="btn btn-primary">Button</button>
+					<button type="button" class="btn btn-primary">Button</button>
+				</div>
+			</div>
+
+			<div class="bs-component mb-3">
+				<div class="btn-group" role="group" aria-label="Basic example">
+					<button type="button" class="btn btn-secondary">Left</button>
+					<button type="button" class="btn btn-secondary">Middle</button>
+					<button type="button" class="btn btn-secondary">Right</button>
+				</div>
+			</div>
+
+			<div class="bs-component mb-3">
+				<div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups">
+					<div class="btn-group me-2" role="group" aria-label="First group">
+						<button type="button" class="btn btn-secondary">1</button>
+						<button type="button" class="btn btn-secondary">2</button>
+						<button type="button" class="btn btn-secondary">3</button>
+						<button type="button" class="btn btn-secondary">4</button>
+					</div>
+					<div class="btn-group me-2" role="group" aria-label="Second group">
+						<button type="button" class="btn btn-secondary">5</button>
+						<button type="button" class="btn btn-secondary">6</button>
+						<button type="button" class="btn btn-secondary">7</button>
+					</div>
+					<div class="btn-group" role="group" aria-label="Third group">
+						<button type="button" class="btn btn-secondary">8</button>
+					</div>
+				</div>
+			</div>
+
+			<!--Button Sizes-->
+			<div class="bs-component d-flex align-items-center gap-2 mb-3">
+				<button type="button" class="btn btn-primary btn-lg">Large button</button>
+				<button type="button" class="btn btn-primary">Default button</button>
+			</div>
+
+			<!--Button Sizes-->
+			<div class="bs-component d-flex align-items-center gap-2">
+				<button type="button" class="btn btn-primary btn-sm">Small button</button>
+				<button type="button" class="btn btn-primary btn-xs">Extra-Small button</button>
+			</div>
+
+		</div>
+	</div>
+</div>
+
+<!-- Typography
+================================================== -->
+<div class="bs-docs-section">
+	<div class="row">
+		<div class="col-lg-12">
+			<div class="page-header">
+				<h1 id="typography">Typography</h1>
+			</div>
+		</div>
+	</div>
+
+	<!-- Headings -->
+
+	<div class="row">
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<h1>Heading 1</h1>
+				<h2>Heading 2</h2>
+				<h3>Heading 3</h3>
+				<h4>Heading 4</h4>
+				<h5>Heading 5</h5>
+				<h6>Heading 6</h6>
+				<h3>
+					Heading
+					<small class="text-body-secondary">with muted text</small>
+				</h3>
+				<p class="lead">Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor.</p>
+			</div>
+			<div class="bs-component">
+				<h1 class="display-1">Display 1</h1>
+				<h2 class="display-2">Display 2</h2>
+				<h3 class="display-3">Display 3</h3>
+				<h4 class="display-4">Display 4</h4>
+				<h5 class="display-5">Display 5</h5>
+				<h6 class="display-6">DIsplay 6</h6>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<h2>Example body text</h2>
+				<p>Nullam quis risus eget <a href="#">urna mollis ornare</a> vel eu leo. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nullam id dolor id nibh ultricies vehicula.</p>
+				<p><small>This line of text is meant to be treated as fine print.</small></p>
+				<p>The following is <strong>rendered as bold text</strong>.</p>
+				<p>The following is <em>rendered as italicized text</em>.</p>
+				<p>An abbreviation of the word attribute is <abbr title="attribute">attr</abbr>.</p>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<h2>Emphasis classes</h2>
+				<p class="text-primary">.text-primary</p>
+				<p class="text-primary-emphasis">.text-primary-emphasis</p>
+				<p class="text-secondary">.text-secondary</p>
+				<p class="text-secondary-emphasis">.text-secondary-emphasis</p>
+				<p class="text-success">.text-success</p>
+				<p class="text-success-emphasis">.text-success-emphasis</p>
+				<p class="text-danger">.text-danger</p>
+				<p class="text-danger-emphasis">.text-danger-emphasis</p>
+				<p class="text-warning">.text-warning</p>
+				<p class="text-warning-emphasis">.text-warning-emphasis</p>
+				<p class="text-info">.text-info</p>
+				<p class="text-info">.text-info-emphasis</p>
+				<p class="text-light">.text-light</p>
+				<p class="text-light">.text-light-emphasis</p>
+				<p class="text-dark">.text-dark</p>
+				<p class="text-dark">.text-dark-emphasis</p>
+				<p class="text-body">.text-body</p>
+				<p class="text-body">.text-body-emphasis</p>
+				<p class="text-body-secondary">.text-body-secondary</p>
+				<p class="text-body-tertiary">.text-body-tertiary</p>
+			</div>
+		</div>
+	</div>
+
+	<!-- Blockquotes -->
+
+	<div class="row">
+		<div class="col-lg-12">
+			<h2 id="type-blockquotes">Blockquotes</h2>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<figure>
+					<blockquote class="blockquote">
+						<p class="mb-0">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante.</p>
+					</blockquote>
+					<figcaption class="blockquote-footer">
+						Someone famous in <cite title="Source Title">Source Title</cite>
+					</figcaption>
+				</figure>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<figure class="text-center">
+					<blockquote class="blockquote">
+						<p class="mb-0">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante.</p>
+					</blockquote>
+					<figcaption class="blockquote-footer">
+						Someone famous in <cite title="Source Title">Source Title</cite>
+					</figcaption>
+				</figure>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<figure class="text-end">
+					<blockquote class="blockquote">
+						<p class="mb-0">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante.</p>
+
+					</blockquote>
+					<figcaption class="blockquote-footer">
+						Someone famous in <cite title="Source Title">Source Title</cite>
+					</figcaption>
+				</figure>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Tables
+================================================== -->
+<div class="bs-docs-section">
+	<div class="row">
+		<div class="col-lg-12">
+			<div class="page-header">
+				<h1 id="tables">Tables</h1>
+			</div>
+
+			<div class="bs-component">
+				<table class="table table-hover">
+					<thead>
+						<tr>
+							<th scope="col">Type</th>
+							<th scope="col">Column heading</th>
+							<th scope="col">Column heading</th>
+							<th scope="col">Column heading</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr class="table-active">
+							<th scope="row">Active</th>
+							<td>Column content</td>
+							<td>Column content</td>
+							<td>Column content</td>
+						</tr>
+						<tr>
+							<th scope="row">Default</th>
+							<td>Column content</td>
+							<td>Column content</td>
+							<td>Column content</td>
+						</tr>
+						<tr class="table-primary">
+							<th scope="row">Primary</th>
+							<td>Column content</td>
+							<td>Column content</td>
+							<td>Column content</td>
+						</tr>
+						<tr class="table-secondary">
+							<th scope="row">Secondary</th>
+							<td>Column content</td>
+							<td>Column content</td>
+							<td>Column content</td>
+						</tr>
+						<tr class="table-success">
+							<th scope="row">Success</th>
+							<td>Column content</td>
+							<td>Column content</td>
+							<td>Column content</td>
+						</tr>
+						<tr class="table-danger">
+							<th scope="row">Danger</th>
+							<td>Column content</td>
+							<td>Column content</td>
+							<td>Column content</td>
+						</tr>
+						<tr class="table-warning">
+							<th scope="row">Warning</th>
+							<td>Column content</td>
+							<td>Column content</td>
+							<td>Column content</td>
+						</tr>
+						<tr class="table-info">
+							<th scope="row">Info</th>
+							<td>Column content</td>
+							<td>Column content</td>
+							<td>Column content</td>
+						</tr>
+						<tr class="table-light">
+							<th scope="row">Light</th>
+							<td>Column content</td>
+							<td>Column content</td>
+							<td>Column content</td>
+						</tr>
+						<tr class="table-dark">
+							<th scope="row">Dark</th>
+							<td>Column content</td>
+							<td>Column content</td>
+							<td>Column content</td>
+						</tr>
+					</tbody>
+				</table>
+			</div><!-- /example -->
+		</div>
+	</div>
+</div>
+
+<!-- Forms
+================================================== -->
+<div class="bs-docs-section">
+	<div class="row">
+		<div class="col-lg-12">
+			<div class="page-header">
+				<h1 id="forms">Forms</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col">
+			<div class="bs-component">
+				<EditForm EditContext="@MyEditContext" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit" novalidate>
+					<DataAnnotationsValidator />
+					<fieldset>
+						<legend>Legend</legend>
+						<div class="form-group row">
+							<label for="staticEmail" class="col-sm-2 col-form-label">Email</label>
+							<div class="col-sm-10">
+								<input type="text" readonly="" class="form-control-plaintext" id="staticEmail" value="email@example.com">
+							</div>
+						</div>
+						<div class="form-group">
+							<label for="exampleInputEmail1" class="form-label mt-4">Email address</label>
+							<input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" autocomplete="username" placeholder="Enter email">
+							<small id="emailHelp" class="form-text text-body-secondary">We'll never share your email with anyone else.</small>
+						</div>
+						<div class="form-group">
+							<label for="exampleInputPassword1" class="form-label mt-4">Password</label>
+							<input type="password" class="form-control" id="exampleInputPassword1" autocomplete="current-password" placeholder="Password">
+						</div>
+						<div class="form-group">
+							<label for="exampleSelect1" class="form-label mt-4">Example select</label>
+							<select class="form-select" id="exampleSelect1">
+								<option>1</option>
+								<option>2</option>
+								<option>3</option>
+								<option>4</option>
+								<option>5</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="exampleSelect2" class="form-label mt-4">Example multiple select</label>
+							<select multiple="" class="form-select" id="exampleSelect2">
+								<option>1</option>
+								<option>2</option>
+								<option>3</option>
+								<option>4</option>
+								<option>5</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="exampleTextarea" class="form-label mt-4">Example textarea</label>
+							<textarea class="form-control" id="exampleTextarea" rows="3"></textarea>
+						</div>
+						<div class="form-group">
+							<label for="formFile" class="form-label mt-4">Default file input example</label>
+							<input class="form-control" type="file" id="formFile">
+						</div>
+						<h4 class="mt-4">Switches, Checks & Radios</h4>
+						<Switch Label="Inline" @bind-Value="InlineSwitch" Inline="true" />
+						<fieldset class="form-group">
+							<legend class="mt-3">Radio Group</legend>
+							<RadioGroup @bind-Value="@RadioOptionsValue" Name="optionsRadiosGroup">
+								<Radio Id="@RadioOption1Id" Inline="@InlineSwitch" Value="@("option1")">
+									<label for="@RadioOption1Id">Option one</label>
+								</Radio>
+								<Radio Inline="@InlineSwitch" Value="@("option2")" Label="Option two" />
+								<Radio Inline="@InlineSwitch" Value="@("option3")" Label="Option three is disabled" Disabled="true" />
+							</RadioGroup>
+							<InvalidMessage For="() => RadioOptionsValue" />
+						</fieldset>
+						<fieldset class="form-group">
+							<legend class="mt-3">Radio Group (No Labels)</legend>
+							<RadioGroup @bind-Value="@RadioOptionsValue" Name="optionsRadios2">
+								<Radio Inline="@InlineSwitch" Value="@("option1")" />
+								<Radio Inline="@InlineSwitch" Value="@("option2")" />
+								<Radio Inline="@InlineSwitch" Value="@("option3")" Disabled="true" />
+							</RadioGroup>
+							<InvalidMessage For="() => RadioOptionsValue" />
+						</fieldset>
+						<fieldset class="form-group">
+							<legend class="mt-3">Checkboxes</legend>
+							<Checkbox Inline="@InlineSwitch" Label="Default checkbox" @bind-Value="@RequiredCheck" />
+							<InvalidMessage For="() => RequiredCheck" />
+							<Checkbox Inline="@InlineSwitch" Label="Checked checkbox" Value="true" />
+							<Checkbox Inline="@InlineSwitch" Label="Disabled checkbox" Disabled="true" />
+							<Checkbox Inline="@InlineSwitch" Label="Diabled Checked checkbox" Value="true" Disabled="true" />
+						</fieldset>
+						<fieldset>
+							<legend class="mt-3">Switches</legend>
+							<Switch Inline="@InlineSwitch" Label="Default switch input" @bind-Value="@RequiredSwitch" />
+							<InvalidMessage For="() => RequiredSwitch" />
+							<Switch Inline="@InlineSwitch" Label="Default switch input checked" Value="true" />
+							<Switch Inline="@InlineSwitch" Label="Unchecked + Disabled" Disabled=" true" name=" demoSwitch1" />
+							<Switch Inline="@InlineSwitch" Label="Checked + Disabled" Value="true" Disabled="true" name="demoSwitch2" />
+						</fieldset>
+						<fieldset class="form-group">
+							<legend class="mt-4">Ranges</legend>
+							<label for="customRange1" class="form-label">Example range</label>
+							<input type="range" class="form-range" id="customRange1">
+							<label for="disabledRange" class="form-label">Disabled range</label>
+							<input type="range" class="form-range" id="disabledRange" disabled="">
+							<label for="customRange3" class="form-label">Example range</label>
+							<input type="range" class="form-range" min="0" max="5" step="0.5" id="customRange3">
+						</fieldset>
+						<button type="submit" class="btn btn-primary">Submit</button>
+					</fieldset>
+				</EditForm>
+			</div>
+		</div>
+		<div class="col-lg-4 offset-lg-1">
+			<form class="bs-component">
+				<div class="form-group">
+					<fieldset disabled="">
+						<label class="form-label" for="disabledInput">Disabled input</label>
+						<input class="form-control" id="disabledInput" type="text" placeholder="Disabled input here..." disabled="">
+					</fieldset>
+				</div>
+
+				<div class="form-group">
+					<fieldset>
+						<label class="form-label mt-4" for="readOnlyplaceholder">Readonly input - placeholder</label>
+						<input class="form-control" id="readOnlyplaceholder" type="text" placeholder="Readonly input here..." readonly="">
+					</fieldset>
+				</div>
+				<div class="form-group">
+					<fieldset>
+						<label class="form-label mt-4" for="readOnlyInput">Readonly input - content</label>
+						<input class="form-control" id="readOnlyInput" type="text" readonly="" value="This is readonly input content" />
+					</fieldset>
+				</div>
+
+				<div class="form-group has-success">
+					<label class="form-label mt-4" for="inputValid">Valid input</label>
+					<input type="text" value="correct value" class="form-control is-valid" id="inputValid">
+					<div class="valid-message">Success! You've done it.</div>
+				</div>
+
+				<div class="form-group has-danger">
+					<label class="form-label mt-4" for="inputInvalid">Invalid input</label>
+					<input type="text" value="wrong value" class="form-control is-invalid" id="inputInvalid">
+					<div class="invalid-message">
+						<i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+						<span>Sorry, that username's taken. Try another?</span>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label class="col-form-label col-form-label-lg mt-4" for="inputLarge">Large input</label>
+					<input class="form-control form-control-lg" type="text" placeholder=".form-control-lg" id="inputLarge">
+				</div>
+
+				<div class="form-group">
+					<label class="col-form-label mt-4" for="inputDefault">Default input</label>
+					<input type="text" class="form-control" placeholder="Default input" id="inputDefault">
+				</div>
+
+				<div class="form-group">
+					<label class="col-form-label col-form-label-sm mt-4" for="inputSmall">Small input</label>
+					<input class="form-control form-control-sm" type="text" placeholder=".form-control-sm" id="inputSmall">
+				</div>
+
+				<div class="form-group">
+					<label class="col-form-label col-form-label-xs mt-4" for="inputExtraSmall">Extra Small input</label>
+					<input class="form-control form-control-xs" type="text" placeholder=".form-control-xs" id="inputExtraSmall">
+				</div>
+
+				<div class="form-group">
+					<label class="form-label mt-4">Input addons</label>
+					<div class="form-group">
+						<div class="input-group mb-3">
+							<span class="input-group-text">$</span>
+							<input type="text" class="form-control" aria-label="Amount (to the nearest dollar)">
+							<span class="input-group-text">.00</span>
+						</div>
+						<div class="input-group mb-3">
+							<input type="text" class="form-control" placeholder="Recipient's username" aria-label="Recipient's username" aria-describedby="button-addon2">
+							<button class="btn btn-primary" type="button" id="button-addon2">Button</button>
+						</div>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label class="form-label mt-4">Floating Lables</label>
+					<div class="form-group">
+						<div class="form-floating mb-3">
+							<input type="email" class="form-control" id="floatingInput" autocomplete="email" placeholder="name@example.com">
+							<label for="floatingInput">Email address</label>
+						</div>
+						<div class="form-floating">
+							<input type="password" class="form-control" id="floatingPassword" autocomplete="current-password" placeholder="Password">
+							<label for="floatingPassword">Password</label>
+						</div>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label class="form-label mt-4">Date & Time</label>
+					<div class="form-group">
+						<input type="date" class="form-control form-control-sm mt-1" placeholder="date">
+						<input type="datetime-local" class="form-control form-control-sm mt-1" placeholder="datetime-local">
+						<input type="datetime" class="form-control form-control-sm mt-1" placeholder="datetime">
+						<input type="time" class="form-control form-control-sm mt-1" placeholder="time">
+					</div>
+				</div>
+
+			</form>
+
+		</div>
+	</div>
+</div>
+
+<!-- Navs
+================================================== -->
+<div class="bs-docs-section">
+	<div class="row">
+		<div class="col-lg-12">
+			<div class="page-header">
+				<h1 id="navs">Navs</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row mb-5">
+		<div class="col-4">
+			<h2 id="nav-tabs">Tabs</h2>
+			<fieldset class="mb-2">
+				<DropdownButton TItemType="TabType"
+								IsDropMenu="false"
+								Text="@($"{tabType}")"
+								@bind-SelectedValue="@tabType">
+					@foreach (var type in Enum.GetValues<TabType>()) {
+						<DropdownItemButton Value="type">
+							<InteractiveTemplate Context="typeContext">
+								<div class="d-flex">
+									@type.ToString()
+									@if (typeContext.IsActive) {
+										<i class="bi bi-check ms-auto"></i>
+									}
+									@if (typeContext.IsDisabled) {
+										<i class="bi bi-ban ms-auto"></i>
+									}
+								</div>
+							</InteractiveTemplate>
+						</DropdownItemButton>
+					}
+				</DropdownButton>
+				<DropdownButton TItemType="TabPosition"
+								IsDropMenu="false"
+								Text="@($"{tabPosition}")"
+								@bind-SelectedValue="@tabPosition">
+					@foreach (var position in Enum.GetValues<TabPosition>()) {
+						<DropdownItemButton Value="position">
+							<InteractiveTemplate Context="positionContext">
+								<div class="d-flex">
+									@position.ToString()
+									@if (positionContext.IsActive) {
+										<i class="bi bi-check ms-auto"></i>
+									}
+									@if (positionContext.IsDisabled) {
+										<i class="bi bi-ban ms-auto"></i>
+									}
+								</div>
+							</InteractiveTemplate>
+						</DropdownItemButton>
+					}
+				</DropdownButton>
+				<Switch Inline="true" Label="Filled" @bind-Value="@tabsFullWidth" />
+				<Switch Inline="true" Label="Justified" @bind-Value="@tabsJustified" />
+			</fieldset>
+			<div class="bs-component">
+				<Tabs TabType="@tabType" TabPosition="@tabPosition" Filled="@tabsFullWidth" Justified="@tabsJustified" Height="300">
+					@SharedTabContent
+				</Tabs>
+			</div>
+			<div class="bs-component">
+				<Tabs TabPosition="TabPosition.Right" Height="300">
+					@SharedTabContent
+				</Tabs>
+			</div>
+			<div class="bs-component">
+				<Tabs TabPosition="TabPosition.Bottom" Height="300">
+					@SharedTabContent
+				</Tabs>
+			</div>
+			<div class="bs-component">
+				<Tabs TabPosition="TabPosition.Left" Height="300">
+					@SharedTabContent
+				</Tabs>
+			</div>
+		</div>
+		<div class="col-4">
+			<h2 id="nav-pills">Pills</h2>
+			<div class="bs-component">
+				<Tabs TabType="TabType.Pills" Height="300">
+					@SharedTabContent
+				</Tabs>
+			</div>
+			<div class="bs-component">
+				<Tabs TabType="TabType.Pills" TabPosition="TabPosition.Right" Height="300">
+					@SharedTabContent
+				</Tabs>
+			</div>
+			<div class="bs-component">
+				<Tabs TabType="TabType.Pills" TabPosition="TabPosition.Bottom" Height="300">
+					@SharedTabContent
+				</Tabs>
+			</div>
+			<div class="bs-component">
+				<Tabs TabType="TabType.Pills" TabPosition="TabPosition.Left" Height="300">
+					@SharedTabContent
+				</Tabs>
+			</div>
+		</div>
+		<div class="col-4">
+			<h2 id="nav-underline">Underlines</h2>
+			<div class="bs-component">
+				<Tabs TabType="TabType.Underlines" Height="300">
+					@SharedTabContent
+				</Tabs>
+			</div>
+			<div class="bs-component">
+				<Tabs TabType="TabType.Underlines" TabPosition="TabPosition.Right" Height="300">
+					@SharedTabContent
+				</Tabs>
+			</div>
+			<div class="bs-component">
+				<Tabs TabType="TabType.Underlines" TabPosition="TabPosition.Bottom" Height="300">
+					@SharedTabContent
+				</Tabs>
+			</div>
+			<div class="bs-component">
+				<Tabs TabType="TabType.Underlines" TabPosition="TabPosition.Left" Height="300">
+					@SharedTabContent
+				</Tabs>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col">
+			<h2 id="nav-breadcrumbs">Breadcrumbs</h2>
+			<div class="bs-component">
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item active">Home</li>
+				</ol>
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item"><a href="#">Home</a></li>
+					<li class="breadcrumb-item active">Library</li>
+				</ol>
+				<ol class="breadcrumb">
+					<li class="breadcrumb-item"><a href="#">Home</a></li>
+					<li class="breadcrumb-item"><a href="#">Library</a></li>
+					<li class="breadcrumb-item active">Data</li>
+				</ol>
+			</div>
+		</div>
+
+		<div class="col">
+			<h2 id="pagination">Pagination</h2>
+			<div class="bs-component">
+				<div>
+					<ul class="pagination">
+						<li class="page-item disabled">
+							<a class="page-link" href="#">«</a>
+						</li>
+						<li class="page-item active">
+							<a class="page-link" href="#">1</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">2</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">3</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">4</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">5</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">»</a>
+						</li>
+					</ul>
+				</div>
+
+				<div>
+					<ul class="pagination pagination-lg">
+						<li class="page-item disabled">
+							<a class="page-link" href="#">«</a>
+						</li>
+						<li class="page-item active">
+							<a class="page-link" href="#">1</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">2</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">3</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">4</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">5</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">»</a>
+						</li>
+					</ul>
+				</div>
+
+				<div>
+					<ul class="pagination pagination-sm">
+						<li class="page-item disabled">
+							<a class="page-link" href="#">«</a>
+						</li>
+						<li class="page-item active">
+							<a class="page-link" href="#">1</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">2</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">3</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">4</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">5</a>
+						</li>
+						<li class="page-item">
+							<a class="page-link" href="#">»</a>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Indicators
+================================================== -->
+<div class="bs-docs-section">
+	<div class="row">
+		<div class="col-lg-12">
+			<div class="page-header">
+				<h1 id="indicators">Indicators</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-lg-12">
+			<h2>Alerts</h2>
+			<div class="bs-component">
+				<div class="alert alert-dismissible alert-warning">
+					<button type="button" class="btn-close" name="dismiss" data-bs-dismiss="alert"></button>
+					<h4 class="alert-heading">Warning!</h4>
+					<p class="mb-0">Best check yo self, you're not looking too good. Nulla vitae elit libero, a pharetra augue. Praesent commodo cursus magna, <a href="#" class="alert-link">vel scelerisque nisl consectetur et</a>.</p>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="alert alert-dismissible alert-danger">
+					<button type="button" class="btn-close" name="dismiss" data-bs-dismiss="alert"></button>
+					<strong>Oh snap!</strong> <a href="#" class="alert-link">Change a few things up</a> and try submitting again.
+				</div>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="alert alert-dismissible alert-success">
+					<button type="button" class="btn-close" name="dismiss" data-bs-dismiss="alert"></button>
+					<strong>Well done!</strong> You successfully read <a href="#" class="alert-link">this important alert message</a>.
+				</div>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="alert alert-dismissible alert-info">
+					<button type="button" class="btn-close" name="dismiss" data-bs-dismiss="alert"></button>
+					<strong>Heads up!</strong> This <a href="#" class="alert-link">alert needs your attention</a>, but it's not super important.
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="alert alert-dismissible alert-primary">
+					<button type="button" class="btn-close" name="dismiss" data-bs-dismiss="alert"></button>
+					<strong>Oh snap!</strong> <a href="#" class="alert-link">Change a few things up</a> and try submitting again.
+				</div>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="alert alert-dismissible alert-secondary">
+					<button type="button" class="btn-close" name="dismiss" data-bs-dismiss="alert"></button>
+					<strong>Well done!</strong> You successfully read <a href="#" class="alert-link">this important alert message</a>.
+				</div>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="alert alert-dismissible alert-light">
+					<button type="button" class="btn-close" name="dismiss" data-bs-dismiss="alert"></button>
+					<strong>Heads up!</strong> This <a href="#" class="alert-link">alert needs your attention</a>, but it's not super important.
+				</div>
+			</div>
+		</div>
+	</div>
+	<div>
+		<h2>Badges</h2>
+		<div class="bs-component mb-4">
+			<span class="badge text-bg-primary">Primary</span>
+			<span class="badge text-bg-secondary">Secondary</span>
+			<span class="badge text-bg-success">Success</span>
+			<span class="badge text-bg-danger">Danger</span>
+			<span class="badge text-bg-warning">Warning</span>
+			<span class="badge text-bg-info">Info</span>
+			<span class="badge text-bg-light">Light</span>
+			<span class="badge text-bg-dark">Dark</span>
+		</div>
+		<div class="bs-component">
+			<span class="badge rounded-pill text-bg-primary">Primary</span>
+			<span class="badge rounded-pill text-bg-secondary">Secondary</span>
+			<span class="badge rounded-pill text-bg-success">Success</span>
+			<span class="badge rounded-pill text-bg-danger">Danger</span>
+			<span class="badge rounded-pill text-bg-warning">Warning</span>
+			<span class="badge rounded-pill text-bg-info">Info</span>
+			<span class="badge rounded-pill text-bg-light">Light</span>
+			<span class="badge rounded-pill text-bg-dark">Dark</span>
+		</div>
+	</div>
+</div>
+
+<!-- Progress
+================================================== -->
+<div class="bs-docs-section">
+	<div class="row">
+		<div class="col-lg-12">
+			<div class="page-header">
+				<h1 id="progress">Progress</h1>
+			</div>
+
+			<h3 id="progress-basic">Basic</h3>
+			<div class="bs-component">
+				<div class="progress">
+					<div class="progress-bar" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+				</div>
+			</div>
+
+			<h3 id="progress-alternatives">Contextual alternatives</h3>
+			<div class="bs-component">
+				<div class="progress">
+					<div class="progress-bar bg-success" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+				</div>
+				<div class="progress">
+					<div class="progress-bar bg-info" role="progressbar" style="width: 50%;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+				</div>
+				<div class="progress">
+					<div class="progress-bar bg-warning" role="progressbar" style="width: 75%;" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
+				</div>
+				<div class="progress">
+					<div class="progress-bar bg-danger" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+				</div>
+			</div>
+
+			<h3 id="progress-multiple">Multiple bars</h3>
+			<div class="bs-component">
+				<div class="progress">
+					<div class="progress-bar" role="progressbar" style="width: 15%;" aria-valuenow="15" aria-valuemin="0" aria-valuemax="100"></div>
+					<div class="progress-bar bg-success" role="progressbar" style="width: 30%;" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100"></div>
+					<div class="progress-bar bg-info" role="progressbar" style="width: 20%;" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100"></div>
+				</div>
+			</div>
+
+			<h3 id="progress-striped">Striped</h3>
+			<div class="bs-component">
+				<div class="progress">
+					<div class="progress-bar progress-bar-striped" role="progressbar" style="width: 10%;" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100"></div>
+				</div>
+				<div class="progress">
+					<div class="progress-bar progress-bar-striped bg-success" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+				</div>
+				<div class="progress">
+					<div class="progress-bar progress-bar-striped bg-info" role="progressbar" style="width: 50%;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+				</div>
+				<div class="progress">
+					<div class="progress-bar progress-bar-striped bg-warning" role="progressbar" style="width: 75%;" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
+				</div>
+				<div class="progress">
+					<div class="progress-bar progress-bar-striped bg-danger" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+				</div>
+			</div>
+
+			<h3 id="progress-animated">Animated</h3>
+			<div class="bs-component">
+				<div class="progress">
+					<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100" style="width: 75%;"></div>
+				</div>
+			</div>
+			<div class="bs-component">
+				<Progress Indeterminate="true" Color="BackgroundColor.Primary" />
+			</div>
+			<div class="bs-component">
+				<Progress Indeterminate="true" Color="BackgroundColor.Secondary" />
+			</div>
+			<div class="bs-component">
+				<Progress Indeterminate="true" Color="BackgroundColor.Info" />
+			</div>
+			<div class="bs-component">
+				<Progress Indeterminate="true" Color="BackgroundColor.Success" />
+			</div>
+			<div class="bs-component">
+				<Progress Indeterminate="true" Color="BackgroundColor.Warning" />
+			</div>
+			<div class="bs-component">
+				<Progress Indeterminate="true" Color="BackgroundColor.Danger" />
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Containers
+================================================== -->
+<div class="bs-docs-section">
+	<div class="row">
+		<div class="col-lg-12">
+			<div class="page-header">
+				<h1 id="containers">Containers</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-lg-12">
+			<h2 id="list-groups">List groups</h2>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<ul class="list-group">
+					<li class="list-group-item d-flex justify-content-between align-items-center">
+						Cras justo odio
+						<span class="badge text-bg-primary rounded-pill">14</span>
+					</li>
+					<li class="list-group-item d-flex justify-content-between align-items-center">
+						Dapibus ac facilisis in
+						<span class="badge text-bg-primary rounded-pill">2</span>
+					</li>
+					<li class="list-group-item d-flex justify-content-between align-items-center">
+						Morbi leo risus
+						<span class="badge text-bg-primary rounded-pill">1</span>
+					</li>
+				</ul>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="list-group">
+					<a href="/theme#list-groups" class="list-group-item list-group-item-action">Dapibus ac facilisis in</a>
+					<a href="/theme#list-groups" class="list-group-item list-group-item-action">Dapibus ac facilisis in</a>
+					<a href="/theme#list-groups" class="list-group-item list-group-item-action active">Cras justo odio</a>
+					<a href="/theme#list-groups" class="list-group-item list-group-item-action">Dapibus ac facilisis in</a>
+					<a href="/theme#list-groups" class="list-group-item list-group-item-action">Dapibus ac facilisis in</a>
+					<a href="/theme#list-groups" class="list-group-item list-group-item-action disabled">Morbi leo risus</a>
+					<a href="/theme#list-groups" class="list-group-item list-group-item-action">Dapibus ac facilisis in</a>
+					<a href="/theme#list-groups" class="list-group-item list-group-item-action">Dapibus ac facilisis in</a>
+				</div>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="list-group">
+					<a href="/theme#list-groups" target="_top" class="list-group-item list-group-item-action flex-column align-items-start active">
+						<div class="d-flex w-100 justify-content-between">
+							<h5 class="mb-1">List group item heading</h5>
+							<small>3 days ago</small>
+						</div>
+						<p class="mb-1">Donec id elit non mi porta gravida at eget metus. Maecenas sed diam eget risus varius blandit.</p>
+						<small>Donec id elit non mi porta.</small>
+					</a>
+					<a href="/theme#list-groups" target="_top" class="list-group-item list-group-item-action flex-column align-items-start">
+						<div class="d-flex w-100 justify-content-between">
+							<h5 class="mb-1">List group item heading</h5>
+							<small class="text-body-secondary">3 days ago</small>
+						</div>
+						<p class="mb-1">Donec id elit non mi porta gravida at eget metus. Maecenas sed diam eget risus varius blandit.</p>
+						<small class="text-body-secondary">Donec id elit non mi porta.</small>
+					</a>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-lg-12">
+			<h2>Cards</h2>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="card text-bg-primary mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Primary card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card text-bg-secondary mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Secondary card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card text-bg-success mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Success card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card text-bg-danger mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Danger card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card text-bg-warning mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Warning card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card text-bg-info mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Info card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card text-bg-light mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Light card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card text-bg-dark mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Dark card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="card border-primary mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Primary card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card border-secondary mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Secondary card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card border-success mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Success card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card border-danger mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Danger card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card border-warning mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Warning card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card border-info mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Info card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card border-light mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Light card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+				<div class="card border-dark mb-3" style="max-width: 20rem;">
+					<div class="card-header">Header</div>
+					<div class="card-body">
+						<h4 class="card-title">Dark card title</h4>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="card mb-3">
+					<h3 class="card-header">Card header</h3>
+					<div class="card-body">
+						<h5 class="card-title">Special title treatment</h5>
+						<h6 class="card-subtitle text-body-secondary">Support card subtitle</h6>
+					</div>
+					<svg xmlns="http://www.w3.org/2000/svg" class="d-block user-select-none" width="100%" height="200" aria-label="Placeholder: Image cap" focusable="false" role="img" preserveAspectRatio="xMidYMid slice" viewBox="0 0 318 180" style="font-size:1.125rem;text-anchor:middle">
+						<rect width="100%" height="100%" fill="#868e96"></rect>
+						<text x="50%" y="50%" fill="#dee2e6" dy=".3em">Image cap</text>
+					</svg>
+					<div class="card-body">
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+					</div>
+					<ul class="list-group list-group-flush">
+						<li class="list-group-item">Cras justo odio</li>
+						<li class="list-group-item">Dapibus ac facilisis in</li>
+						<li class="list-group-item">Vestibulum at eros</li>
+					</ul>
+					<div class="card-body">
+						<a href="#" class="card-link">Card link</a>
+						<a href="#" class="card-link">Another link</a>
+					</div>
+					<div class="card-footer text-body-secondary">
+						2 days ago
+					</div>
+				</div>
+				<div class="card">
+					<div class="card-body">
+						<h4 class="card-title">Card title</h4>
+						<h6 class="card-subtitle mb-2 text-body-secondary">Card subtitle</h6>
+						<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+						<a href="#" class="card-link">Card link</a>
+						<a href="#" class="card-link">Another link</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row mt-5">
+		<div class="col-lg-12">
+			<h2>Accordions</h2>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<div class="btn-toolbar my-2">
+					<div class="button-group me-2" role="group" aria-label="ExpandMode">
+						<Switch Label="Expand Mode" Inline="true" @bind-Value:get="Expandable" @bind-Value:set="SetExpandable" />
+					</div>
+					<div class="button-group me-2" role="group" aria-label="Expand/Collapse Buttons">
+						<button type="button" class="btn btn-primary btn-sm" disabled="@(!Expandable)" @onclick="(e) => accordion1.ExpandAll()">Expand All</button>
+						<button type="button" class="btn btn-primary btn-sm" disabled="@(!Expandable)" @onclick="(e) => accordion1.CollapseAll()">Collapse All</button>
+					</div>
+				</div>
+				<Accordion @ref=accordion1 ExpandMode="ExpandMode" OnAccordionItemChange="HandleAccordionItemsChanged">
+					<AccordionItem>
+						<HeaderTemplate>
+							<div class="hstack gap-2">
+								<i class="bi bi-basket text-danger" aria-hidden="true" />
+								<span>Accordion Item #1</span>
+							</div>
+						</HeaderTemplate>
+						<ChildContent>
+							<strong>This is the first item's accordion body.</strong> It is shown by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+						</ChildContent>
+					</AccordionItem>
+					<AccordionItem Header="Accordion Item #2">
+						<strong>This is the second item's accordion body.</strong> It is hidden by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+					</AccordionItem>
+					<AccordionItem Header="Accordion Item #3">
+						<strong>This is the third item's accordion body.</strong> It is hidden by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+					</AccordionItem>
+				</Accordion>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<Accordion>
+					<AccordionItem Header="Accordion Item #1" IsExpanded="true">
+						<strong>This is the first item's accordion body.</strong> It is shown by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+					</AccordionItem>
+					<AccordionItem Header="Accordion Item #2">
+						<strong>This is the second item's accordion body.</strong> It is hidden by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+					</AccordionItem>
+					<AccordionItem Header="Accordion Item #3">
+						<strong>This is the third item's accordion body.</strong> It is hidden by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+					</AccordionItem>
+				</Accordion>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="bs-component">
+				<Accordion IsFlush="true">
+					<AccordionItem Header="Accordion Item #1">
+						<strong>This is the first item's accordion body.</strong> It is shown by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+					</AccordionItem>
+					<AccordionItem Header="Accordion Item #2">
+						<strong>This is the second item's accordion body.</strong> It is hidden by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+					</AccordionItem>
+					<AccordionItem Header="Accordion Item #3">
+						<strong>This is the third item's accordion body.</strong> It is hidden by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+					</AccordionItem>
+				</Accordion>
+			</div>
+		</div>
+	</div>
+
+</div>
+
+<!-- Dialogs
+================================================== -->
+<div class="bs-docs-section">
+	<div class="row">
+		<div class="col-lg-12">
+			<div class="page-header">
+				<h1 id="dialogs">Dialogs</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col">
+			<h2>Static</h2>
+			<div class="bs-component">
+				<Dialog Title="Dialog Title"
+						TitleIcon="bi bi-person text-primary">
+					<div class="dialog-body">
+						<div class="alert alert-secondary" role="alert">
+							<span class="oi oi-pencil mr-2" aria-hidden="true"></span>
+							<span class="text-nowrap">
+								Please take our
+								<Tooltip Title="This helps us build better software">
+									<a target="_blank" class="font-weight-bold" href="https://go.microsoft.com/fwlink/?linkid=2137916">brief survey</a>
+								</Tooltip>
+							</span>
+							and tell us what you think.
+						</div>
+					</div>
+				</Dialog>
+			</div>
+			<h2>Inline</h2>
+			<div class="bs-component">
+				<div class="hstack gap-2">
+					<button type="button" class="btn btn-sm btn-secondary" @onclick="OnOpen">Show</button>
+					<Switch Label="Hidden" @bind-Value="@IsDialogVisible" Disabled="true" />
+				</div>
+				<Dialog @ref="_dialogRef"
+						@bind-Visible="@IsDialogVisible"
+						Title="Dialog Title"
+						TitleIcon="bi bi-person text-primary"
+						Options="@DialogOptions.Default">
+					<div class="dialog-body">
+						<div class="alert alert-secondary" role="alert">
+							<span class="oi oi-pencil mr-2" aria-hidden="true"></span>
+							<span class="text-nowrap">
+								Please take our
+								<Tooltip Title="This helps us build better software">
+									<a target="_blank" class="font-weight-bold" href="https://go.microsoft.com/fwlink/?linkid=2137916">brief survey</a>
+								</Tooltip>
+							</span>
+							and tell us what you think.
+						</div>
+					</div>
+					<div class="dialog-buttons">
+						<button type="button" class="btn btn-primary" @onclick="OnClose">OK</button>
+						<button type="button" class="btn btn-secondary" @onclick="OnClose">Cancel</button>
+					</div>
+				</Dialog>
+			</div>
+			<h2>Offcanvas</h2>
+			<div class="bs-component">
+				<div class="hstack gap-2">
+					<Switch Label="Offcanvas End?" @bind-Value="@offcanvasEnd" />
+					<button class="btn btn-secondary" type="button" @onclick="ToggleOffcanvasShow" aria-controls="offcanvasExample">
+						Button with @@onclick
+					</button>
+				</div>
+				<div class="@OffCanvasCss" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel">
+					<div class="offcanvas-header">
+						<h5 class="offcanvas-title" id="offcanvasExampleLabel">Offcanvas</h5>
+						<button type="button" class="btn-close text-dark" @onclick="ToggleOffcanvasShow"
+								aria-label="Close"></button>
+					</div>
+					<div class="offcanvas-body">
+						<div>
+							Some text as placeholder. In real life you can have the elements you have chosen. Like, text, images, lists, etc.
+						</div>
+						<DropdownButton TItemType="string"
+										Text="Dropdown Menu"
+										SelectedValueChanged="@HandleActionMenuItemSelected"
+										ButtonColor="ButtonColor.Secondary">
+							@DropDownButtonsTemplate
+						</DropdownButton>
+					</div>
+				</div>
+			</div>
+			<div class="@OffCanvasBackdropCss" @onclick="ToggleOffcanvasShow"></div>
+		</div>
+		<div class="col">
+			<h2>Popovers</h2>
+			<div class="bs-component mb-5">
+
+				<button @ref=@PopoverLeftElement type="button" class="btn btn-secondary"
+						@onclick="() => TogglePopover(PopoverLeft)" aria-label="Open Popover Left">
+					Left
+				</button>
+				<Popover @ref="PopoverLeft"
+						 Placement="Placement.Left"
+						 ShowArrow=true
+						 TriggerElement="@PopoverLeftElement">
+					<PopoverHeader>
+						Popover Title
+					</PopoverHeader>
+					<PopoverBody>
+						<div class="p-3">
+							Vivamus sagittis lacus vel augue laoreet rutrum faucibus.
+						</div>
+					</PopoverBody>
+				</Popover>
+
+				<button @ref=@PopoverTopElement type="button" class="btn btn-secondary"
+						@onclick="() => TogglePopover(PopoverTop)" aria-label="Open Popover Top">
+					Top
+				</button>
+				<Popover @ref="PopoverTop"
+						 Placement="Placement.Top"
+						 ShowArrow=true
+						 TriggerElement="@PopoverTopElement">
+					<PopoverHeader>
+						Popover Title
+					</PopoverHeader>
+					<PopoverBody>
+						<div class="p-3">
+							Vivamus sagittis lacus vel augue laoreet rutrum faucibus.
+						</div>
+					</PopoverBody>
+				</Popover>
+
+				<button @ref=@PopoverBottomElement type="button" class="btn btn-secondary"
+						@onclick="() => TogglePopover(PopoverBottom)" aria-label="Open Popover Bottom">
+					Bottom
+				</button>
+				<Popover @ref="PopoverBottom"
+						 Placement="Placement.Bottom"
+						 ShowArrow=true
+						 TriggerElement="@PopoverBottomElement">
+					<PopoverHeader>
+						Popover Title
+					</PopoverHeader>
+					<PopoverBody>
+						<div class="p-3">
+							Vivamus sagittis lacus vel augue laoreet rutrum faucibus.
+						</div>
+					</PopoverBody>
+				</Popover>
+
+				<button @ref=@PopoverRightElement type="button" class="btn btn-secondary"
+						@onclick="() => TogglePopover(PopoverRight)" aria-label="Open Popover Right">
+					Right
+				</button>
+				<Popover @ref="PopoverRight"
+						 Placement="Placement.Right"
+						 ShowArrow=true
+						 TriggerElement="@PopoverRightElement">
+					<PopoverHeader>
+						Popover Title
+					</PopoverHeader>
+					<PopoverBody>
+						<div class="p-3">
+							Vivamus sagittis lacus vel augue laoreet rutrum faucibus.
+						</div>
+					</PopoverBody>
+				</Popover>
+
+			</div>
+			<h2>Tooltips</h2>
+			<div class="bs-component mb-5">
+
+				<Tooltip Title="Tooltip on left" Placement="Placement.Left" TooltipSectionName="optional-tooltip-section">
+					<button type="button" class="btn btn-secondary">Left</button>
+				</Tooltip>
+
+				<Tooltip Title="Tooltip on top" Placement="Placement.Top">
+					<button type="button" class="btn btn-secondary">Top</button>
+				</Tooltip>
+
+				<Tooltip Title="Tooltip on bottom" Placement="Placement.Bottom">
+					<button type="button" class="btn btn-secondary">Bottom</button>
+				</Tooltip>
+
+				<Tooltip Title="Tooltip on right" Placement="Placement.Right">
+					<button type="button" class="btn btn-secondary">Right</button>
+				</Tooltip>
+
+			</div>
+			<h2>More Tooltips</h2>
+			<div class="bs-component mb-5 d-flex flex-wrap gap-2">
+
+				<Tooltip Title="<em>Tooltip</em> <u>with</u> <b>HTML</b>" Placement="Placement.Left">
+					<button type="button" class="btn btn-secondary">Tooltip with HTML</button>
+				</Tooltip>
+
+				<Tooltip Title="On Focus" Placement="Placement.Bottom" ShowOnFocus="true">
+					<button type="button" class="btn btn-secondary">Tooltip OnFocus</button>
+				</Tooltip>
+
+				<Tooltip Placement="Placement.Left"
+						 Style="font-size:.75rem;box-shadow: 0 6.4px 14.4px 0 rgba(0,0,0,.132),0 1.2px 3.6px 0 rgba(0,0,0,.108);drop-shadow(1px 1px 3px rgba(0, 0, 0, 0.25));opacity:1;background:var(--bs-light-bg-subtle);--bs-tooltip-opacity:1;--bs-tooltip-bg: var(--bs-light-bg-subtle);border-radius:0.25rem;">
+					<TitleTemplate>
+						<div style="margin: 0 10px; max-width: 400px;">
+							<h5 style='margin-top: 6px;'>Championship Off-Road Racing</h5>
+							<hr style="margin: 0 10px;border-color: grey;">
+							<div style="padding-top: 4px;">
+								<div style='float: left; width: 58%'>
+									Known and commonly referred to as <a href='https://corracing.com' target='blank' style="color: #2FA1E3;">CORR</a>,
+									recognize that the youth are the future of racing, and so offers classes and competition for all
+									ages and skill levels, including classes for the seasoned professional.
+								</div>
+								<div style='float: right; padding: 4px;'>
+									<img src='https://corracing.com/wp-content/uploads/2022/10/CORR-Logo-SM-no-background-Final.png'
+										 height='125' />
+								</div>
+							</div>
+						</div>
+					</TitleTemplate>
+					<ChildContent>
+						<button type="button" class="btn btn-secondary"><em>Content Template</em></button>
+					</ChildContent>
+				</Tooltip>
+
+			</div>
+			<h2>Toasts</h2>
+			<div class="bs-component">
+				<ToastElement Options="@ToastrOptions"
+							  Title="Bootstrap"
+							  Subtitle="11 mins ago">
+					<Message>
+						Hello, world! This is a toast message.
+					</Message>
+				</ToastElement>
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+
+	RenderFragment DropDownButtonsTemplate => __builder => {
+		<DropdownItemButton TItemType="string" Value="@("action")">Action</DropdownItemButton>
+		<DropdownItemButton TItemType="string" Value="@("another-action")">Another action</DropdownItemButton>
+		<DropdownItemButton TItemType="string" Value="@("something-else-here")">Something else here</DropdownItemButton>
+		<DropdownItemDivider />
+		<DropdownItemButton TItemType="string" Value="@("separated-link")">Separated link</DropdownItemButton>
+	};
+
+	RenderFragment SharedTabContent => __builder => {
+		<Tab Name="Home">
+			<LabelTemplate>
+				<i class="bi bi-table" aria-hidden="true" />
+				<span>Home</span>
+			</LabelTemplate>
+			<PanelContent>
+				<p>Raw denim you probably haven't heard of them jean shorts Austin. Nesciunt tofu stumptown aliqua, retro synth master cleanse. Mustache cliche tempor, williamsburg carles vegan helvetica. Reprehenderit butcher retro keffiyeh dreamcatcher synth. Cosby sweater eu banh mi, qui irure terry richardson ex squid. Aliquip placeat salvia cillum iphone. Seitan aliquip quis cardigan american apparel, butcher voluptate nisi qui.</p>
+			</PanelContent>
+		</Tab>
+		<Tab Name="Profile" InitiallyActive="true">
+			<LabelTemplate>
+				<i class="bi bi-basket text-danger" aria-hidden="true" />
+				<span>Profile</span>
+			</LabelTemplate>
+			<PanelContent>
+				<p>Food truck fixie locavore, accusamus mcsweeney's marfa nulla single-origin coffee squid. Exercitation +1 labore velit, blog sartorial PBR leggings next level wes anderson artisan four loko farm-to-table craft beer twee. Qui photo booth letterpress, commodo enim craft beer mlkshk aliquip jean shorts ullamco ad vinyl cillum PBR. Homo nostrud organic, assumenda labore aesthetic magna delectus mollit.</p>
+			</PanelContent>
+		</Tab>
+		<Tab Name="Disabled" Disabled="true">
+			<LabelTemplate>
+				<i class="bi bi-archive text-warning disabled" disabled aria-hidden="true" />
+				<span>Disabled</span>
+			</LabelTemplate>
+			<PanelContent>
+				<p>Etsy mixtape wayfarers, ethical wes anderson tofu before they sold out mcsweeney's organic lomo retro fanny pack lo-fi farm-to-table readymade. Messenger bag gentrify pitchfork tattooed craft beer, iphone skateboard locavore carles etsy salvia banksy hoodie helvetica. DIY synth PBR banksy irony. Leggings gentrify squid 8-bit cred pitchfork.</p>
+			</PanelContent>
+		</Tab>
+		<Tab Name="Contact">
+			<LabelTemplate>
+				<i class="bi bi-bank text-info" aria-hidden="true" />
+				<span>Contact</span>
+			</LabelTemplate>
+			<PanelContent>
+				<p>Trust fund seitan letterpress, keytar raw denim keffiyeh etsy art party before they sold out master cleanse gluten-free squid scenester freegan cosby sweater. Fanny pack portland seitan DIY, art party locavore wolf cliche high life echo park Austin. Cred vinyl keffiyeh DIY salvia PBR, banh mi before they sold out farm-to-table VHS viral locavore cosby sweater.</p>
+			</PanelContent>
+		</Tab>
+	};
+}

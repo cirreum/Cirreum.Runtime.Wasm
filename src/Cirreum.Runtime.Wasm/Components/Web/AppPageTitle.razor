@@ -1,0 +1,33 @@
+@namespace Cirreum.Components.Web
+@inject IPageState DisplayState
+@using Microsoft.AspNetCore.Components.Rendering
+
+<PageTitle>@FinalContent</PageTitle>
+
+@code {
+
+	[Parameter, EditorRequired]
+	public RenderFragment ChildContent { get; set; } = default!;
+
+	RenderFragment FinalContent = default!;
+
+	protected override void OnInitialized() {
+		base.OnInitialized();
+		if (DisplayState.IsStandAlone) {
+			FinalContent = ChildContent;
+		} else {
+			FinalContent = __builder => {
+				if (DisplayState.PageTitlePrefix.HasValue()){
+					__builder.AddContent(0, DisplayState.PageTitlePrefix);
+					__builder.AddContent(1, $" {DisplayState.PageTitleSeparator} ");
+				}
+				__builder.AddContent(2, ChildContent);
+				if (DisplayState.PageTitleSuffix.HasValue()) {
+					__builder.AddContent(3, $" {DisplayState.PageTitleSeparator} ");
+					__builder.AddContent(4, DisplayState.PageTitleSuffix);
+				}
+			};
+		}
+	}
+
+}

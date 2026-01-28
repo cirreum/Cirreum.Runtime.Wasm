@@ -1,0 +1,50 @@
+@namespace Cirreum.Components.Theme
+@inject IThemeState ThemeState
+@inject IThemeStateManager ThemeManager
+@inject IThemeModeIconProvider ThemeIcons
+
+<NavListDropdownButton TItemType="string"
+					   IsDropMenu="false"
+					   DropdownMinWidth="8"
+					   SelectedValue="@ThemeState.Theme"
+					   SelectedValueChanged="@OnThemeChanged"
+					   ResponsiveAlignment="@Alignment"
+					   AriaLabel="Theme Name Selector">
+	<TextTemplate>
+		<i class="bi @ColorSchemes.GetOrDefault(ThemeState.Theme).IconCssClass" aria-hidden="true"></i> @Label
+	</TextTemplate>
+	<ChildContent>
+		@foreach (var theme in ColorSchemes.All) {
+			<DropdownItemButton Value="@theme.Id">
+				<InteractiveTemplate>
+					<div class="d-flex">
+						<i class="bi @theme.IconCssClass"></i>
+						<span class="ms-2">@theme.DisplayName</span>
+						@if (context.IsActive) {
+							<i class="bi bi-check ms-auto"></i>
+						}
+					</div>
+				</InteractiveTemplate>
+			</DropdownItemButton>
+		}
+	</ChildContent>
+</NavListDropdownButton>
+
+@code {
+	/// <summary>
+	/// Optional label for the theme palette selector, displayed next to the icon.
+	/// </summary>
+	[Parameter]
+	public string? Label { get; set; }
+
+	/// <summary>
+	/// Defaults to <see cref="DropdownAlignment.End"/> for use with the NavBar
+	/// Menu in the top right corner.
+	/// </summary>
+	[Parameter]
+	public DropdownAlignment Alignment { get; set; } = DropdownAlignment.End;
+
+	private void OnThemeChanged(string schemeId) {
+		this.ThemeManager.SetScheme(ColorSchemes.GetOrDefault(schemeId));
+	}
+}

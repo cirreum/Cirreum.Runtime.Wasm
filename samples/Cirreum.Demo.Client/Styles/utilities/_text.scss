@@ -1,0 +1,23 @@
+
+// utilities/_text.scss
+@use '../abstracts' as *;
+
+.text-marketing {
+	color: $purple !important;
+}
+
+.text-marketing-emphasis {
+	color: $purple-text-emphasis !important;
+}
+
+// Dark Theme Overrides using data-bs-theme attribute
+[data-bs-theme="dark"] {
+
+	.text-marketing {
+		color: $purple-dark !important;
+	}
+
+	.text-marketing-emphasis {
+		color: $purple-text-emphasis !important;
+	}
+}

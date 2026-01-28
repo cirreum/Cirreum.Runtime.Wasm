@@ -1,0 +1,34 @@
+﻿@inherits StateComponentBase<IInitializationState>
+
+@if (isVisible) {
+	<div class="splash-backdrop"></div>
+	<div class="splash-screen">
+		<div class="splash-screen-content">
+			<div class="splash-body">
+				<div class="splash-contents">
+					@if (!string.IsNullOrWhiteSpace(AppSplashTitle)) {
+						<span class="splash-title">
+							@AppSplashTitle
+						</span>
+					}
+					@if (!string.IsNullOrWhiteSpace(AppSplashSubtitle)) {
+						<div class="splash-subtitle">
+							@AppSplashSubtitle
+						</div>
+					}
+					@if (DisplayProgress) {
+						<Progress Indeterminate="@IsIndeterminate"
+								  Color="BackgroundColor.Info" />
+					}
+					<p class="splash-busy-text">@activityMessage</p>
+					<p class="splash-extra-text">@AppSplashMessage</p>
+					@if (!string.IsNullOrWhiteSpace(AppSplashLogoUrl)) {
+						<p>
+							<img src="@AppSplashLogoUrl" width="100" style="width:100px;" />
+						</p>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+}

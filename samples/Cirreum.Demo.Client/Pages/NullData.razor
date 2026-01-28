@@ -1,0 +1,90 @@
+﻿@page "/null-data"
+
+@inject IToastService Toaster;
+
+<AppPageTitle>Null Data</AppPageTitle>
+
+<p>The <span class="text-danger">DataGrid</span> will display the below text when the data source is <i>null</i>.</p>
+<DataGrid Data="data" Title="Data Is Null">
+	<DataGridColumn Field="id" Sortable="true" Filterable="true" Width="100" DefaultSortColumn="true" />
+	<DataGridColumn Header="Full Name" Field="full_name" Sortable="true" Filterable="true" />
+</DataGrid>
+
+<div class="bn-group">
+	<button @onclick="ShowAmbientDefaultToast" type="button" class="btn btn-outline-info btn-xs m-2">
+		Show Ambient Default Toast
+	</button>
+	<button @onclick="ShowDefaultToast" type="button" class="btn btn-info btn-xs m-2">
+		Show App Default Toast
+	</button>
+	<button @onclick="ShowPrimaryToast" type="button" class="btn btn-primary btn-xs m-2">
+		Show Primary Toast
+	</button>
+	<button @onclick="ShowInfoToast" type="button" class="btn btn-info btn-xs m-2">
+		Show Info Toast
+	</button>
+	<button @onclick="ShowWarningToast" type="button" class="btn btn-warning btn-xs m-2">
+		Show Warning Toast
+	</button>
+	<button @onclick="ShowDangerToast" type="button" class="btn btn-danger btn-xs m-2">
+		Show Danger Toast
+	</button>
+	<button @onclick="ShowDisableTimeoutToast" type="button" class="btn btn-primary btn-xs m-2">
+		Show No-Timeout Toast
+	</button>
+	<button @onclick="ShowDisableProgressToast" type="button" class="btn btn-primary btn-xs m-2">
+		Show No-Progress Toast
+	</button>
+	<button @onclick="ShowDisableProgressAndTimeoutToast" type="button" class="btn btn-info btn-xs m-2">
+		Show No-Progress Toast
+	</button>	
+</div>
+
+@code
+{
+	private SampleData[] data = default!;
+
+	public class SampleData {
+		public int? id { get; set; }
+		public string full_name { get; set; } = "";
+	}
+
+	void ShowAmbientDefaultToast() {
+		this.Toaster.Show("Try triggering MouseEnter", "Ambient", "Default", o => {
+			o.StyleType = ToastStyleType.Default;
+		});
+	}
+	void ShowDefaultToast() {
+		this.Toaster.Show("Try triggering MouseEnter", "App", "Default");
+	}
+	void ShowPrimaryToast() {
+		this.Toaster.ShowPrimary("Try triggering MouseEnter", "Primary", "Test");
+	}
+	void ShowInfoToast() {
+		this.Toaster.ShowInfo("Try triggering MouseEnter", "Info", "Test");
+	}
+	void ShowWarningToast() {
+		this.Toaster.ShowWarning("Try triggering MouseEnter", "Warning", "Test");
+	}
+	void ShowDangerToast() {
+		this.Toaster.ShowDanger("Try triggering MouseEnter", "Danger", "Test");
+	}
+	void ShowDisableTimeoutToast() {
+		this.Toaster.ShowPrimary("Try triggering MouseEnter", "No Timeout", "Test", o => {
+			o.DisableTimeout = true;
+		});
+	}
+	void ShowDisableProgressToast() {
+		this.Toaster.ShowPrimary("Try triggering MouseEnter", "No Progress", "Test", o => {
+			o.ShowProgressBar = false;
+		});
+	}
+	void ShowDisableProgressAndTimeoutToast() {
+		this.Toaster.ShowPrimary("Try triggering MouseEnter", "No Timeout or Progress", "Test", o => {
+			o.StyleType = ToastStyleType.Info;
+			o.DisableTimeout = true;
+			o.ShowProgressBar = false;
+		});
+	}
+
+}

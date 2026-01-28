@@ -1,0 +1,26 @@
+.user-presence-badge {
+	position: relative;
+	display: inline-block;
+	--user-presence-badge-border-size: 2px;
+
+	::deep {
+		*:first-child {
+			display: block;
+		}
+
+		> img {
+			border-radius: 999px;
+			aspect-ratio: 1 / 1;
+		}
+
+		.status {
+			display: block;
+			position: absolute;
+			background-color: var(--bs-tertiary-bg);
+			bottom: calc(-1 * var(--user-presence-badge-border-size));
+			right: calc(-1 * var(--user-presence-badge-border-size));
+			border-radius: 999px;
+			border: var(--user-presence-badge-border-size) solid var(--bs-tertiary-bg);
+		}
+	}
+}

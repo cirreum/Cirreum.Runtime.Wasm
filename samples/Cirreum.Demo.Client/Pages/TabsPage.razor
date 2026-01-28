@@ -1,0 +1,594 @@
+﻿@page "/tabs"
+@inherits StatePageBase
+@inject ITabRenderModeState TabRenderModeState
+
+<AppPageTitle>Tabs Demo</AppPageTitle>
+
+<div class="fluid-container">
+
+	<div class="bs-docs-section clearfix">
+
+		<div class="row">
+			<div class="col-lg-12">
+				<div class="page-header">
+					<h3 id="tabsDefault">Rendering Mode: <code>@($"{TabRenderModeState.TabsRenderMode.ToString()}")</code></h3>
+					<DropdownButton TItemType="TabsRenderMode"
+									IsDropMenu="false"
+									@bind-SelectedValue:get="@TabRenderModeState.TabsRenderMode"
+									@bind-SelectedValue:set="@TabRenderModeState.SetTabsRenderMode"
+									AriaLabel="Tab Rendering Modes"
+									ButtonColor="ButtonColor.Primary"
+									ButtonSize="ButtonSize.Small">
+						<TextTemplate>
+							<i class="bi bi-folder2" title="Tab Rendering Mode..." aria-hidden="true"></i>
+						</TextTemplate>
+						<ChildContent>
+							<DropdownItemButton Value="TabsRenderMode.Default">
+								<InteractiveTemplate Context="modeDefault">
+									<div class="d-flex">
+										<span class="ms-2">@TabsRenderMode.Default.ToString()</span>
+										@if (modeDefault.IsActive) {
+											<i class="bi bi-check ms-auto"></i>
+										}
+									</div>
+								</InteractiveTemplate>
+							</DropdownItemButton>
+							<DropdownItemButton Value="TabsRenderMode.LazyLoad">
+								<InteractiveTemplate Context="modeLazyLoad">
+									<div class="d-flex">
+										<span class="ms-2">@TabsRenderMode.LazyLoad.ToString()</span>
+										@if (modeLazyLoad.IsActive) {
+											<i class="bi bi-check ms-auto"></i>
+										}
+									</div>
+								</InteractiveTemplate>
+							</DropdownItemButton>
+							<DropdownItemButton Value="TabsRenderMode.LazyReload">
+								<InteractiveTemplate Context="modeLazyReload">
+									<div class="d-flex">
+										<span class="ms-2">@TabsRenderMode.LazyReload.ToString()</span>
+										@if (modeLazyReload.IsActive) {
+											<i class="bi bi-check ms-auto"></i>
+										}
+									</div>
+								</InteractiveTemplate>
+							</DropdownItemButton>
+						</ChildContent>
+					</DropdownButton>
+				</div>
+				<div class="bs-component">
+					<Tabs RenderMode="@TabRenderModeState.TabsRenderMode" OverflowMode="@SelectedOverflowMode">
+						<Tab Name="Detail">
+							<div class="p-3">
+								<Detail />
+							</div>
+						</Tab>
+						<Tab Name="ShowCase">
+							<div class="p-3">
+								<SimpleGrid />
+							</div>
+						</Tab>
+					</Tabs>
+				</div>
+			</div>
+		</div>
+
+		<div class="page-header mt-2">
+			<h2 id="tabLayouts">Layouts</h2>
+		</div>
+
+		<div class="row mt-2">
+			<div class="col-4">
+				<h4 id="nav-tabs">Tabs</h4>
+				<fieldset class="mb-2">
+					<DropdownButton TItemType="TabsOverflowMode"
+									IsDropMenu="false"
+									Text="@($"{SelectedOverflowMode}")"
+									@bind-SelectedValue="@SelectedOverflowMode">
+						@foreach (var mode in Enum.GetValues<TabsOverflowMode>()) {
+							<DropdownItemButton Value="mode">
+								<InteractiveTemplate Context="modeContext">
+									<div class="d-flex">
+										@mode.ToString()
+										@if (modeContext.IsActive) {
+											<i class="bi bi-check ms-auto"></i>
+										}
+										@if (modeContext.IsDisabled) {
+											<i class="bi bi-ban ms-auto"></i>
+										}
+									</div>
+								</InteractiveTemplate>
+							</DropdownItemButton>
+						}
+					</DropdownButton>
+				</fieldset>
+				<div class="bs-component">
+					<Tabs TabPosition="TabPosition.Top" TabType="TabType.Tabs" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+				</div>
+				<div class="bs-component">
+					<Tabs TabPosition="TabPosition.Right" TabType="TabType.Tabs" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+				</div>
+				<div class="bs-component">
+					<Tabs TabPosition="TabPosition.Bottom" TabType="TabType.Tabs" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+				</div>
+				<div class="bs-component">
+					<Tabs TabPosition="TabPosition.Left" TabType="TabType.Tabs" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+				</div>
+			</div>
+			<div class="col-4">
+				<h4 id="nav-pills">Pills</h4>
+				<Switch Name="Filled" Inline="true" @bind-Value="@Filled" />
+				<div class="bs-component">
+					<Tabs TabPosition="TabPosition.Top" TabType="TabType.Pills" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+				</div>
+				<div class="bs-component">
+					<Tabs TabPosition="TabPosition.Right" TabType="TabType.Pills" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+				</div>
+				<div class="bs-component">
+					<Tabs TabPosition="TabPosition.Bottom" TabType="TabType.Pills" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+				</div>
+				<div class="bs-component">
+					<Tabs TabPosition="TabPosition.Left" TabType="TabType.Pills" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+				</div>
+			</div>
+			<div class="col-4">
+				<h4 id="nav-underlines">Underlines</h4>
+				<Switch Name="Filled" Inline="true" @bind-Value="@Filled" />
+				<div class="bs-component">
+					<Tabs TabPosition="TabPosition.Top" TabType="TabType.Underlines" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+				</div>
+				<div class="bs-component">
+					<Tabs TabPosition="TabPosition.Right" TabType="TabType.Underlines" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+				</div>
+				<div class="bs-component">
+					<Tabs TabPosition="TabPosition.Bottom" TabType="TabType.Underlines" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+				</div>
+				<div class="bs-component">
+					<Tabs TabPosition="TabPosition.Left" TabType="TabType.Underlines" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+				</div>
+			</div>
+		</div>
+
+		@* Justified + Tabs + (Large) *@
+		<div class="row mt-2">
+			<div class="col-lg-6">
+				<div class="page-header">
+					<h4 id="tabsJustifiedTabs">Justified + Tabs</h4>
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs Justified="true" Height="300" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+			<div class="col-lg-6">
+				<div class="page-header">
+					<h4 id="tabsFilledTabs">Filled + Tabs</h4>
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs Filled="true" Height="300" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		@* Justified + Pills (Large) *@
+		<div class="row mt-2">
+			<div class="col-lg-6">
+				<div class="page-header">
+					<h4 id="tabsJustifiedPills">Justified + Pills</h4>
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs Justified="true" TabType="TabType.Pills" Height="300" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+			<div class="col-lg-6">
+				<div class="page-header">
+					<h4 id="tabsFilledPills">Filled + Pills</h4>
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs Filled="true" TabType="TabType.Pills" Height="300" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		@* Justified + Underlines (Large) *@
+		<div class="row mt-2">
+			<div class="col-lg-6">
+				<div class="page-header">
+					<h4 id="tabsJustifiedUnderlines">Justified + Underlines</h4>
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs Justified="true" TabType="TabType.Underlines" Height="300" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+			<div class="col-lg-6">
+				<div class="page-header">
+					<h4 id="tabsFilledUnderlines">Filled + Underlines</h4>
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs Filled="true" TabType="TabType.Underlines" Height="300" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		@* Justified + Tabs + (Small) *@
+		<div class="row mt-2">
+			<div class="col-lg-6">
+				<div class="page-header">
+					<h4 id="tabsJustifiedTabs">Justified + Tabs (small)</h4>
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs Justified="true" Height="300" OverflowMode="@SelectedOverflowMode">
+						@SmallSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+			<div class="col-lg-6">
+				<div class="page-header">
+					<h4 id="tabsFilledTabs">Filled + Tabs (small)</h4>
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs Filled="true" Height="300" OverflowMode="@SelectedOverflowMode">
+						@SmallSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		@* Justified + Pills (Small) *@
+		<div class="row mt-2">
+			<div class="col-lg-6">
+				<div class="page-header">
+					<h4 id="tabsJustifiedPills">Justified + Pills (small)</h4>
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs Justified="true" TabType="TabType.Pills" Height="300" OverflowMode="@SelectedOverflowMode">
+						@SmallSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+			<div class="col-lg-6">
+				<div class="page-header">
+					<h4 id="tabsFilledPills">Filled + Pills (small)</h4>
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs Filled="true" TabType="TabType.Pills" Height="300" OverflowMode="@SelectedOverflowMode">
+						@SmallSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		@* Justified + Underlines (Small) *@
+		<div class="row mt-2">
+			<div class="col-lg-6">
+				<div class="page-header">
+					<h4 id="tabsJustifiedUnderlines">Justified + Underlines (small)</h4>
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs Justified="true" TabType="TabType.Underlines" Height="300" OverflowMode="@SelectedOverflowMode">
+						@SmallSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+			<div class="col-lg-6">
+				<div class="page-header">
+					<h4 id="tabsFilledUnderlines">Filled + Underlines (small)</h4>
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs Filled="true" TabType="TabType.Underlines" Height="300" OverflowMode="@SelectedOverflowMode">
+						@SmallSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		<div class="row mt-2">
+			<div class="col-lg-12">
+				<div class="page-header">
+					<h4 id="tabsTabPositionBottomTabs">TabPosition.Bottom + Tabs</h4>
+					<Switch Name="Filled" Inline="true" @bind-Value="@Filled" />
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs TabPosition="TabPosition.Bottom" TabType="TabType.Tabs" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		<div class="row mt-2">
+			<div class="col-lg-12">
+				<div class="page-header">
+					<h4 id="tabsTabPositionBottomPills">TabPosition.Bottom + Pills</h4>
+					<Switch Name="Filled" Inline="true" @bind-Value="@Filled" />
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs TabPosition="TabPosition.Bottom" TabType="TabType.Pills" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		<div class="row mt-2">
+			<div class="col-lg-12">
+				<div class="page-header">
+					<h4 id="tabsTabPositionBottomUnderlines">TabPosition.Bottom + Underlines</h4>
+					<Switch Name="Filled" Inline="true" @bind-Value="@Filled" />
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs TabPosition="TabPosition.Bottom" TabType="TabType.Underlines" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		<div class="row mt-2">
+			<div class="col-lg-12">
+				<div class="page-header">
+					<h4 id="tabsTabPositionBottomUnderlines">TabPosition.Top + Underlines</h4>
+					<Switch Name="Filled" Inline="true" @bind-Value="@Filled" />
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs TabPosition="TabPosition.Top" TabType="TabType.Underlines" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		<div class="row mt-2">
+			<div class="col-lg-12">
+				<div class="page-header">
+					<h4 id="tabsTabPositionStart">TabPosition.Left + Pills</h4>
+					<Switch Name="Filled" Inline="true" @bind-Value="@Filled" />
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs TabPosition="TabPosition.Left" TabType="TabType.Pills" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		<div class="row mt-2">
+			<div class="col-lg-12">
+				<div class="page-header">
+					<h4 id="tabsTabPositionEnd">TabPosition.Right + Pills</h4>
+					<Switch Name="Filled" Inline="true" @bind-Value="@Filled" />
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs TabPosition="TabPosition.Right" TabType="TabType.Pills" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		<div class="row mt-2">
+			<div class="col-lg-12">
+				<div class="page-header">
+					<h4 id="tabsTabPositionStart">TabPosition.Left + Underline</h4>
+					<Switch Name="Filled" Inline="true" @bind-Value="@Filled" />
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs TabPosition="TabPosition.Left" TabType="TabType.Underlines" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		<div class="row mt-2">
+			<div class="col-lg-12">
+				<div class="page-header">
+					<h4 id="tabsTabPositionEnd">TabPosition.Right + Underline</h4>
+					<Switch Name="Filled" Inline="true" @bind-Value="@Filled" />
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs TabPosition="TabPosition.Right" TabType="TabType.Underlines" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		<div class="row mt-2">
+			<div class="col-lg-12">
+				<div class="page-header">
+					<h4 id="tabsTabPositionStart">TabPosition.Left + Tabs</h4>
+					<Switch Name="Filled" Inline="true" @bind-Value="@Filled" />
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs TabPosition="TabPosition.Left" TabType="TabType.Tabs" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+		<div class="row mt-2">
+			<div class="col-lg-12">
+				<div class="page-header">
+					<h4 id="tabsTabPositionEnd">TabPosition.Right + Tabs</h4>
+					<Switch Name="Filled" Inline="true" @bind-Value="@Filled" />
+				</div>
+
+				<div class="bs-component">
+
+					<Tabs TabPosition="TabPosition.Right" TabType="TabType.Tabs" Height="300" Filled="@Filled" OverflowMode="@SelectedOverflowMode">
+						@LargeSharedTabContent
+					</Tabs>
+
+				</div>
+			</div>
+		</div>
+
+	</div>
+</div>
+
+@code {
+
+	protected override void OnInitialized() {
+		this.SubscribeToStateChanges<ITabRenderModeState>();
+	}
+
+	public bool Filled { get; set; }
+	public TabsOverflowMode SelectedOverflowMode { get; set; } = TabsOverflowMode.Scrollable;
+
+	string lorum1 = LorumIpsum.Generate(15, 20, 2, 4, 10);
+	string lorum2 = LorumIpsum.Generate(15, 20, 2, 4, 10);
+	string lorum3 = LorumIpsum.Generate(15, 20, 2, 4, 10);
+	string lorum4 = LorumIpsum.Generate(15, 20, 2, 4, 10);
+
+	RenderFragment LargeSharedTabContent => __builder => {
+		<Tab Name="Active">
+			<p>@lorum1</p>
+		</Tab>
+		<Tab Name="Link with Text">
+			<p>@lorum2</p>
+		</Tab>
+		<Tab Name="Message">
+			<p>@lorum3</p>
+		</Tab>
+		<Tab Name="Settings">
+			<p>@lorum4</p>
+		</Tab>
+		<Tab Name="Home">
+			<p>Raw denim you probably haven't heard of them jean shorts Austin. Nesciunt tofu stumptown aliqua, retro synth master cleanse. Mustache cliche tempor, williamsburg carles vegan helvetica. Reprehenderit butcher retro keffiyeh dreamcatcher synth. Cosby sweater eu banh mi, qui irure terry richardson ex squid. Aliquip placeat salvia cillum iphone. Seitan aliquip quis cardigan american apparel, butcher voluptate nisi qui.</p>
+		</Tab>
+		<Tab Name="Profile" InitiallyActive="true">
+			<p>Food truck fixie locavore, accusamus mcsweeney's marfa nulla single-origin coffee squid. Exercitation +1 labore velit, blog sartorial PBR leggings next level wes anderson artisan four loko farm-to-table craft beer twee. Qui photo booth letterpress, commodo enim craft beer mlkshk aliquip jean shorts ullamco ad vinyl cillum PBR. Homo nostrud organic, assumenda labore aesthetic magna delectus mollit.</p>
+		</Tab>
+		<Tab Name="Disabled" Disabled="true">
+			<p>Etsy mixtape wayfarers, ethical wes anderson tofu before they sold out mcsweeney's organic lomo retro fanny pack lo-fi farm-to-table readymade. Messenger bag gentrify pitchfork tattooed craft beer, iphone skateboard locavore carles etsy salvia banksy hoodie helvetica. DIY synth PBR banksy irony. Leggings gentrify squid 8-bit cred pitchfork.</p>
+		</Tab>
+		<Tab Name="Contact">
+			<p>Trust fund seitan letterpress, keytar raw denim keffiyeh etsy art party before they sold out master cleanse gluten-free squid scenester freegan cosby sweater. Fanny pack portland seitan DIY, art party locavore wolf cliche high life echo park Austin. Cred vinyl keffiyeh DIY salvia PBR, banh mi before they sold out farm-to-table VHS viral locavore cosby sweater.</p>
+		</Tab>
+		<Tab Name="Documents">
+			<p>@lorum1</p>
+		</Tab>
+		<Tab Name="Pictures">
+			<p>@lorum2</p>
+		</Tab>
+		<Tab Name="Videos">
+			<p>@lorum3</p>
+		</Tab>
+		<Tab Name="Calls">
+			<p>@lorum4</p>
+		</Tab>
+	};
+
+	RenderFragment SmallSharedTabContent => __builder => {
+		<Tab Name="Active">
+			<p>@lorum1</p>
+		</Tab>
+		<Tab Name="Link with Text">
+			<p>@lorum2</p>
+		</Tab>
+		<Tab Name="Message">
+			<p>@lorum3</p>
+		</Tab>
+	};
+
+}

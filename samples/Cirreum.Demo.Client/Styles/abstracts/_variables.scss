@@ -1,0 +1,24 @@
+// abstracts/_variables.scss
+@use 'sass:color';
+@use 'sass:math';
+
+// Light theme purple colors
+$purple: #6f42c1;
+$purple-bg-subtle: rgba($purple, 0.1);
+$purple-border-subtle: rgba($purple, 0.2);
+$darker-purple: color.scale($purple, $lightness: -10%);
+$purple-text-emphasis: rgb(
+  math.round(color.channel($darker-purple, "red", $space: rgb)),
+  math.round(color.channel($darker-purple, "green", $space: rgb)),
+  math.round(color.channel($darker-purple, "blue", $space: rgb))
+);
+
+// Dark theme purple colors
+$purple-dark: #9d71e8; // Lighter purple for dark mode
+$purple-bg-subtle-dark: rgba($purple-dark, 0.15);
+$purple-border-subtle-dark: rgba($purple-dark, 0.3);
+$purple-text-emphasis-dark: rgb(
+  math.round(color.channel($purple-dark, "red", $space: rgb)),
+  math.round(color.channel($purple-dark, "green", $space: rgb)),
+  math.round(color.channel($purple-dark, "blue", $space: rgb))
+);

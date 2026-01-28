@@ -1,0 +1,99 @@
+@namespace Cirreum.Components.Profile
+
+<div class="user-profile">
+	@if (HasProfileUrl) {
+		<div style="display:inline;">
+			<a href="@ProfileUrl" target="_blank" title="your account page..." class="btn btn-link btn-sm float-end">
+				<i class="bi bi-gear-fill"></i>
+			</a>
+		</div>
+	}
+	<div class="user-profile__container">
+		<div class="pic">
+			<div class="profile-pic" aria-hidden="true" role="presentation" style="@ProfilePicStyle"></div>
+		</div>
+		<div class="user-profile__content">
+			<span class="name">@Name</span>
+			@if (Company.HasValue()) {
+				<span class="company">
+					@Company @(JobTitle.HasValue() ? $"({JobTitle})" : "")
+				</span>
+			}
+			@if (Email.HasValue()) {
+				<span class="email">@Email</span>
+			}
+			@if (Status is not null) {
+				<div class="presence">
+					<span class="@PresenceClass">
+						<i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+						@(StatusTitle ?? Status.ToString())
+					</span>
+				</div>
+			}
+		</div>
+	</div>
+</div>
+
+@code {
+
+	/// <summary>
+	/// The user's Human name.
+	/// </summary>
+	[Parameter]
+	public string Name { get; set; } = "";
+
+	[Parameter]
+	public string Email { get; set; } = "";
+
+	[Parameter]
+	public string? Company { get; set; }
+
+	[Parameter]
+	public string? JobTitle { get; set; }
+
+	[Parameter]
+	public PresenceStatus? Status { get; set; }
+
+	[Parameter]
+	public string? StatusTitle { get; set; }
+
+	/// <summary>
+	/// The url or path to the users profile picture to be displayed
+	/// </summary>
+	[Parameter]
+	public string? ProfilePicUrl { get; set; }
+
+	/// <summary>
+	/// The url to navigate to the user's profile page
+	/// </summary>
+	/// <remarks>
+	/// When provided, a Gear icon will be included to navigate to the Url value provided.
+	/// Otherwise, the gear icon will be excluded.
+	/// </remarks>
+	[Parameter]
+	public string? ProfileUrl { get; set; }
+
+
+	private bool HasProfileUrl => string.IsNullOrWhiteSpace(this.ProfileUrl) is false;
+
+	private string ProfilePicStyle {
+		get {
+			if (string.IsNullOrWhiteSpace(ProfilePicUrl)) {
+				return "";
+			}
+			// Use double quotes to avoid conflicts with single quotes in SVG
+			return $"background-image:url(\"{ProfilePicUrl}\");";
+		}
+	}
+
+	private string PresenceClass => this.Status switch {
+		PresenceStatus.Available => "presence--available",
+		PresenceStatus.Away => "presence--away",
+		PresenceStatus.Busy => "presence--busy",
+		PresenceStatus.DoNotDisturb => "presence--dnd",
+		PresenceStatus.Offline => "presence--offline",
+		PresenceStatus.OutOfOffice => "presence--oof",
+		_ => "presence--unknown"
+	};
+
+}

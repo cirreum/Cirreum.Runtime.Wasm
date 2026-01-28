@@ -1,0 +1,143 @@
+﻿@using System.Linq;
+
+@page "/simple-grid"
+
+@inject IHttpClientFactory HttpClientFactory;
+@inject IWasmFileSystem WasmFileSystem;
+@inject ICsvFileBuilder CsvBuilder;
+@inject IToastService Toaster;
+
+<AppPageTitle>Basic Usage</AppPageTitle>
+
+<p>Show casing Initial Page Size, Page Sizing, Paging, Column Filtering, Searching, Sorting, Refreshing and Exporting.</p>
+<div class="form">
+	<div class="row gy-2 gx-3">
+		<label for="recordsToShowInput" class="col-sm-auto col-form-label col-form-label-sm">Records:</label>
+		<div class="col-sm-auto">
+			<input type="number" min="0" max="500" step="1" class="form-control form-control-sm" @bind-value="@RecordsToShow" id="recordsToShowInput" aria-describedby="recordsToShowInput" />
+		</div>
+	</div>
+	<div class="row mb-3">
+		<div class="col-sm-auto">
+			<small class="text-body-secondary">
+				Enter the number of records to load, then click the DataGrid's Refresh button
+			</small>
+		</div>
+	</div>
+	<div class="row gy-2 gx-3">
+		<label id="selectionTypeSelectorLabel" for="selectionTypeSelector" class="col-sm-auto col-form-label col-form-label-sm">Row Selection Type:</label>
+		<div id="selectionTypeSelector" class="col-sm-auto">
+			<select class="form-select form-select-sm" @bind="@SelectionType">
+				<option value="@SelectionType.None">@($"{SelectionType.None}")</option>
+				<option value="@SelectionType.Single">@($"{SelectionType.Single}")</option>
+				<option value="@SelectionType.Multiple">@($"{SelectionType.Multiple}")</option>
+			</select>
+		</div>
+	</div>
+	<div class="row mb-3">
+		<div class="col-sm-auto">
+			<small class="text-body-secondary">
+				Choose the Row Selection Type to change how the DataGrid handles Row Clicks.
+			</small>
+		</div>
+	</div>
+</div>
+
+<DataGrid Data="GridData"
+		  Bordered="false"
+		  IsLoading="isLoading"
+		  InitialPageSize="5"
+		  SelectionType="SelectionType"
+		  OnRefreshData="RefreshGridDataAsync"
+		  OnExportData="ExportDataGrid"
+		  ShowFooter="true">
+	<DataGridTitleTemplate>
+		<div class="fs-5">Basic Usage</div>
+		<div class="text-body-secondary">Explore the toolbar buttons for additional features</div>
+	</DataGridTitleTemplate>
+	<DataGridColumn Field="@nameof(PersonData.Id)" DefaultSortColumn="true" VisibleInColumnChooser="false" />
+	<DataGridColumn Field="@nameof(PersonData.FullName)" Header="Full Name" />
+	<DataGridColumn Filterable="false" Sortable="false" Header="LastName">
+		@context.Name.Last
+	</DataGridColumn>
+	<DataGridColumn Field="@nameof(PersonData.Email)" Visible="false" Header="Email (hidden by default)">
+		<a href="mailto:@(context.Email)">@(context.Email)</a>
+	</DataGridColumn>
+	<DataGridColumn Field="@nameof(PersonData.Paid)" Visible="false" />
+	<DataGridColumn Field="@nameof(PersonData.Balance)" Format="C" Align="TextAlign.End" Aggregate="AggregateType.Sum">
+		<HeaderTemplate>
+			<i class="bi bi-house me-2" inert aria-hidden="true"></i> Balance
+		</HeaderTemplate>
+	</DataGridColumn>
+	<DataGridColumn Field="@nameof(PersonData.Registered)" />
+	<DataGridColumn Field="@nameof(PersonData.ActiveDataOffset)" Header="DateOffset (searchable=false)" Searchable="false" Filterable="false" />
+	<DataGridColumn Field="@nameof(PersonData.CreditCardType)" Header="Enum" />
+	<DataGridLoadingDataTemplate>
+		<span class="text-body-emphasis">Show Case - Custom Loading Template...</span>
+		<br />
+		<Progress Indeterminate="true"
+				  Color="BackgroundColor.Primary"
+				  AriaLabel="loading..."
+				  Width="240px" />
+	</DataGridLoadingDataTemplate>
+</DataGrid>
+
+@code {
+
+	private IEnumerable<PersonData>? GridData;
+	private List<PersonData> selectedData = [];
+	private bool isLoading = true;
+
+	private SelectionType SelectionType { get; set; } = SelectionType.Multiple;
+
+	private int RecordsToShow { get; set; } = 122;
+
+	private async Task ExportDataGrid() {
+		if (this.GridData is not null) {
+			var csvBytes = CsvBuilder.BuildFile<PersonData>(this.GridData);
+			await WasmFileSystem.DownloadFileAsync(csvBytes, "TestFile.csv", "text/csv");
+		}
+	}
+
+	private async Task RefreshGridDataAsync() {
+		if (RecordsToShow > 500) {
+			RecordsToShow = 500;
+		}
+		if (RecordsToShow < 0) {
+			RecordsToShow = 22;
+		}
+		var client = HttpClientFactory.CreateClient("FakeData");
+		try {
+			var result = await client.GetFromJsonAsync<IEnumerable<PersonData>>("FXImuy6I7yBj/data");
+			if (result is not null) {
+				while (result.Count() < RecordsToShow) {
+					await Task.Delay(250);
+					var nextResult = await client.GetFromJsonAsync<IEnumerable<PersonData>>("FXImuy6I7yBj/data");
+					if (nextResult is not null) {
+						result = result.Concat(nextResult);
+					}
+				}
+				var index = 0;
+				foreach (var item in result) {
+					item.Id = ++index;
+				}
+				GridData = result.OrderBy(p => p.Id).Take(RecordsToShow).ToArray();
+			}
+		} catch (Exception e) {
+			Console.Write(e);
+			Toaster.Show(e.Message, "Error Fetching Data", e.Source, o => {
+				o.Timeout = "25s";
+			});
+			GridData = Array.Empty<PersonData>();
+		}
+	}
+
+	protected override async Task OnInitializedAsync() {
+		try {
+			await RefreshGridDataAsync();
+		} finally {
+			isLoading = false;
+		}
+	}
+
+}

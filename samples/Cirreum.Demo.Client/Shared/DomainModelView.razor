@@ -1,0 +1,168 @@
+@using Cirreum.Authorization.Modeling.Export
+
+<div class="container-fluid">
+    @if (ResourceCatalog != null) {
+        <!-- Domain Overview Cards -->
+        <div class="d-flex justify-content-between align-items-center mt-3 mb-4">
+            <span class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Domain Architecture</span>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary">@ResourceCatalog.Metrics.TotalDomains Domain Areas</span>
+                <span class="badge bg-secondary">@ResourceCatalog.Metrics.TotalResources Resources</span>
+                <span class="badge bg-@GetCoverageColorClass(ResourceCatalog.Metrics.OverallCoveragePercentage)">
+                    @ResourceCatalog.Metrics.OverallCoveragePercentage% Coverage
+                </span>
+            </div>
+        </div>
+
+        @foreach (var domain in ResourceCatalog.Domains.OrderBy(d => d.Key)) {
+            @RenderDomainGroup(domain)
+        }
+    } else {
+        <div class="alert alert-info">
+            Run analysis to see domain architecture...
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public DomainCatalog? ResourceCatalog { get; set; }
+
+    private readonly HashSet<string> _expandedSections = new();
+
+    private bool IsCollapsed(string key) => !_expandedSections.Contains(key);
+
+    private void Toggle(string key) {
+        if (!_expandedSections.Remove(key))
+            _expandedSections.Add(key);
+    }
+
+    private static string DomainKey(string domain) => $"domain:{domain}";
+    private static string KindKey(string domain, string kind) => $"kind:{domain}:{kind}";
+
+    private RenderFragment RenderDomainGroup(KeyValuePair<string, DomainBoundary> domainPair) => __builder => {
+        var domain = domainPair.Key;
+        var domainData = domainPair.Value;
+        var domainKey = DomainKey(domain);
+
+        <div class="resource-group mb-4">
+            <h5 class="resource-group-header mb-3"
+                @onclick="() => Toggle(domainKey)"
+                role="button">
+                <i class="bi bi-folder me-2"></i>@domain Domain
+                <span class="badge bg-@GetCoverageColorClass(domainData.CoveragePercentage) ms-2">
+                    @domainData.CoveragePercentage% Coverage
+                </span>
+                <span class="badge bg-secondary ms-2">@domainData.TotalCount resources</span>
+                <i class="bi @(IsCollapsed(domainKey) ? "bi-chevron-right" : "bi-chevron-down") ms-2"></i>
+            </h5>
+
+            <Collapse IsCollapsed="@IsCollapsed(domainKey)">
+                <div class="ms-3 mb-3">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-shield-check text-success me-2"></i>
+                                <span><strong>Protected:</strong> @domainData.ProtectedCount</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+                                <span><strong>Anonymous:</strong> @domainData.AnonymousCount</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-collection text-info me-2"></i>
+                                <span><strong>Resource Kinds:</strong> @domainData.Kinds.Count</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    @foreach (var resourceKind in domainData.Kinds.OrderBy(rk => rk.Key)) {
+                        @RenderResourceKindGroup(domain, resourceKind)
+                    }
+                </div>
+            </Collapse>
+        </div>
+    };
+
+    private RenderFragment RenderResourceKindGroup(string domain, KeyValuePair<string, ResourceKind> kindPair) => __builder => {
+        var kind = kindPair.Key;
+        var kindData = kindPair.Value;
+        var kindKey = KindKey(domain, kind);
+
+        var kindIcon = kind == "Commands" ? "bi-send" : "bi-search";
+        var kindHeaderClass = kind == "Commands" ? "text-warning" : "text-success";
+
+        var protectedResources = kindData.Resources.Where(r => r.IsProtected).ToList();
+        var anonymousResources = kindData.Resources.Where(r => r.IsAnonymous).ToList();
+
+        <div class="resource-kind-group mb-3">
+            <h6 class="resource-kind-header mb-2 @kindHeaderClass"
+                @onclick="() => Toggle(kindKey)"
+                role="button">
+                <i class="bi @kindIcon me-2"></i>@kind
+                <span class="badge bg-secondary ms-2">@kindData.TotalCount</span>
+                @if (kindData.AnonymousCount > 0) {
+                    <span class="badge bg-warning ms-1">@kindData.AnonymousCount anonymous</span>
+                }
+                <i class="bi @(IsCollapsed(kindKey) ? "bi-chevron-right" : "bi-chevron-down") ms-2"></i>
+            </h6>
+            <Collapse IsCollapsed="@IsCollapsed(kindKey)">
+                <div class="ms-3">
+                    @if (protectedResources.Count > 0) {
+                        <div class="mb-2">
+                            <strong class="text-success">Protected Resources:</strong>
+                            <div class="small text-success mt-1">
+                                @foreach (var resource in protectedResources.Take(10)) {
+                                    <div>✓ @resource.ResourceName</div>
+                                }
+                                @if (protectedResources.Count > 10) {
+                                    <div class="text-muted">... and @(protectedResources.Count - 10) more</div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (anonymousResources.Count > 0) {
+                        <div>
+                            <strong class="text-warning">Anonymous Resources:</strong>
+                            <div class="small text-warning mt-1">
+                                @foreach (var resource in anonymousResources.Take(10)) {
+                                    <div>⚠️ @resource.ResourceKind</div>
+                                }
+                                @if (anonymousResources.Count > 10) {
+                                    <div class="text-muted">... and @(anonymousResources.Count - 10) more</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </Collapse>
+        </div>
+    };
+
+    private static string GetCoverageColorClass(int percentage) => percentage switch {
+        >= 90 => "success",
+        >= 70 => "warning", 
+        _ => "danger"
+    };
+}
+
+<style>
+    .resource-group-header, .resource-kind-header {
+        cursor: pointer;
+        user-select: none;
+        transition: color 0.2s;
+    }
+    
+    .resource-group-header:hover, .resource-kind-header:hover {
+        color: var(--bs-primary) !important;
+    }
+    
+    .resource-kind-group {
+        padding-left: 1rem;
+        border-left: 2px solid var(--bs-border-color);
+    }
+</style>

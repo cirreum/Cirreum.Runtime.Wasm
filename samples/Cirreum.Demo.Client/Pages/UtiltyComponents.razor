@@ -1,0 +1,700 @@
+﻿@page "/utility-components"
+
+@inject IToastService Toastr
+
+<AppPageTitle>Misc</AppPageTitle>
+
+<p>* Framework: @RuntimeInformation.FrameworkDescription</p>
+<p>* OS: @RuntimeInformation.OSDescription</p>
+<p>* OS Architecture: @RuntimeInformation.OSArchitecture</p>
+<p>* Runtime Identifier: @RuntimeInformation.RuntimeIdentifier</p>
+<p>* Process Architecture: @RuntimeInformation.ProcessArchitecture</p>
+
+<div class="row">
+	<div class="col">
+		<fieldset>
+			<Switch @bind-Value="IsCollapsable" Label="Collapsable"></Switch>
+			<Switch @bind-Value="ShowClipboard" Label="Include Clipboard"></Switch>
+			<Switch @bind-Value="ShowFooter" Label="Show Footer"></Switch>
+			<Switch @bind-Value="ShowFooterWhenCollapsed" Label="Show Footer When Collapsed" Disabled=@(!IsCollapsable)></Switch>
+		</fieldset>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col">
+		<CollapseCard Title="Legal Description"
+					  Collapsable="IsCollapsable"
+					  ShowCopyButton="ShowClipboard"
+					  ClipboardText="@clipboardText"
+					  ShowFooter="ShowFooter"
+					  ShowFooterWhenCollapsed="ShowFooterWhenCollapsed">
+			<TitleTemplate>
+				<div class="hstack gap-1">
+					<i class="bi bi-list-ol"></i>
+					<span>Legal Description 2</span>
+					<CounterBadge Count="12" VerticalPosition="40" Class="text-body bg-secondary-subtle border border-secondary-subtle" />
+				</div>
+			</TitleTemplate>
+			<ChildContent>
+				<div class="d-flex mb-3">
+					<span class="flex-fill fs-5">Found on Page: 1</span>
+					<div class="align-self-end">
+						<a class="btn btn-link btn-sm" @onclick="@(() => { })" @onclick:stopPropagation @onclick:preventDefault>
+							<i class="bi bi-file-earmark-text" aria-hidden="true"></i> Hide Trace
+						</a>
+					</div>
+				</div>
+				<pre>@testMessage</pre>
+				<pre class="language-json"><code class="language-json">@("{ sample: \"sample trace text\" }")</code></pre>
+			</ChildContent>
+			<FooterContent>
+				<span>Hey, I'm inside a footer!</span>
+			</FooterContent>
+		</CollapseCard>
+	</div>
+</div>
+
+<div class="row mt-3">
+	<div class="col-12"><h4>File Selection</h4></div>
+</div>
+<div class="row">
+	<div class="col-12">
+		<div class="hstack gap-3">
+			<Switch Label="Drop Zone?" Inline="true" @bind-Value="@UseDropZone" />
+		</div>
+		<FileSelector @ref="fileSelectorRef"
+					  Id="my-file-uploader"
+					  AnchorId="file-upload-anchor"
+					  Multiple="true"
+					  DragDropZoneVisible="@UseDropZone"
+					  MaximumFileCount="4"
+					  MaximumFileSize="@(10*1024*1024)"
+					  Accept="image/*"
+					  OnSelected="@HandleFileSelection"
+					  OnSelectionFailed="@HandleFileSelectedFailed"
+					  OnCanceled="@HandleFileCanceled"
+					  Style="height: 300px;border: 1px dashed var(--bs-primary);">
+			<label for="my-file-uploader">
+				<i class="bi bi-upload" aria-hidden="true"></i>
+			</label>
+
+			<div>
+				Drag files here you wish to upload,
+				or <label for="my-file-uploader">browse</label>
+				for them<span style="color: red;">*</span>.
+				<br />
+				<em>Maximum of 4 files allowed.</em>
+			</div>
+
+			<div>
+				<br />
+				<a href="#">Read more about our supported file formats.</a>
+			</div>
+		</FileSelector>
+		<div class="hstack gap-3 mt-3">
+			<button class="btn btn-sm btn-primary" type="button" id="file-upload-anchor">Select File(s)</button>
+			<button class="btn btn-sm btn-info" type="button" disabled="@(selectedFiles.Count == 0)" @onclick="Clear">Upload</button>
+			<button class="btn btn-sm btn-secondary" type="button" @onclick="Clear">Clear</button>
+		</div>
+	</div>
+</div>
+<div class="row mt-3">
+	<div class="col-12">
+		<h6>File(s) selected:</h6>
+		<ul>
+			@if (selectedFiles.Any()) {
+				@foreach (var file in selectedFiles) {
+					<li>
+						<b>@file.Name</b> 🔹
+						@($"{Decimal.Divide(file.Size, 1024):N} KB") 🔹
+						@file.ContentType 🔹
+						@file.LastModified.Humanize()
+					</li>
+				}
+			} else {
+				<li>No files selected...</li>
+			}
+		</ul>
+	</div>
+</div>
+
+
+<div class="row mt-3">
+	<div class="col-12"><h4>Multi-Selector</h4></div>
+</div>
+<div class="row">
+	<div class="col-12">
+		<MultipleSelector SourceItems="@sourceItems" Selected="@selectedItems" SelectedChanged="@OnSelectionChanged" />
+	</div>
+</div>
+
+<div class="row mt-3">
+	<div class="col-12"><h4>Counter Badges</h4></div>
+</div>
+<div class="row">
+	<div class="col-12">
+		<div class="hstack gap-3 align-items-baseline">
+			<CounterBadge Count="100"
+						  BackgroundColor="BackgroundColor.Danger"
+						  Color="TextColor.White">
+				<button type="button" class="btn" title="">
+					<i class="bi bi-bell" aria-hidden="true"></i>
+				</button>
+			</CounterBadge>
+			<div class="me-3"></div>
+			<CounterBadge Count="5"
+						  BackgroundColor="BackgroundColor.Danger"
+						  Color="TextColor.White"
+						  HorizontalPosition="-25"
+						  VerticalPosition="-25">
+				<button type="button" class="btn btn-primary" title="">
+					<i class="bi bi-bell" aria-hidden="true"></i>
+				</button>
+			</CounterBadge>
+			<div class="me-3"></div>
+			<CounterBadge Count="9"
+						  BackgroundColor="BackgroundColor.Danger"
+						  Color="TextColor.White">
+				<button type="button" class="btn btn-outline" title="">
+					<i class="bi bi-bell" aria-hidden="true"></i>
+				</button>
+			</CounterBadge>
+			<div class="me-3"></div>
+			<InputNumber min="0" max="200" style="width:80px;" title="Counter Badge Value" class="form-control" TValue="int" @bind-Value="_counterBadgeValue" DisplayName="Counter Badge Count" />
+			<CounterBadge Count="_counterBadgeValue"
+						  BackgroundColor="BackgroundColor.Danger"
+						  Color="TextColor.White">
+				<button type="button" class="btn btn-outline" title="">
+					<i class="bi bi-bell" aria-hidden="true"></i>
+				</button>
+			</CounterBadge>
+		</div>
+	</div>
+</div>
+
+<div class="row mt-3">
+	<div class="col-12">
+		<h4>Counter Badge DOT</h4>
+		<p>
+			When the Dot parameter is set to 'true', the Count will be ignored. Just a dot will be displayed.
+		</p>
+	</div>
+</div>
+<div class="row">
+	<div class="col-12">
+		<div class="vstack gap-2 align-items-start">
+			<Switch @bind-Value="_showBadgeDot" Label="Show dot" />
+			<CounterBadge Count="100"
+						  Dot="_showBadgeDot"
+						  Color="TextColor.White"
+						  BackgroundColor="BackgroundColor.Danger">
+				<button type="button" class="btn btn-primary">
+					<i class="bi bi-bell" aria-hidden="true"></i>
+				</button>
+			</CounterBadge>
+		</div>
+	</div>
+</div>
+
+<style>
+	.face {
+		width: 32px;
+		height: 32px;
+	}
+</style>
+<div class="row mt-3">
+	<div class="col-12"><h4>Presence Badges</h4></div>
+</div>
+<div class="row mt-3">
+	<div class="col-12"><h6>Sizes</h6></div>
+</div>
+<div class="row">
+	<div class="col-12">
+		<div class="hstack gap-3 align-items-baseline">
+			<UserPresenceBadge Status="PresenceStatus.Available" Size="PresenceBadgeSize.Tiny">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" style="width:24px;" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.Available" Size="PresenceBadgeSize.ExtraSmall">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" style="width:32px;" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.Available" Size="PresenceBadgeSize.Small">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" style="width:36px;" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.Available" Size="PresenceBadgeSize.Medium">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" style="width:48px;" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.Available" Size="PresenceBadgeSize.Large">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" style="width:64px;" />
+			</UserPresenceBadge>
+		</div>
+	</div>
+</div>
+<div class="row mt-3">
+	<div class="col-12"><h6>Status</h6></div>
+</div>
+<div class="row">
+	<div class="col-12">
+		<div class="hstack gap-3">
+			<UserPresenceBadge Status="PresenceStatus.Available">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.Away">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.Busy">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.DoNotDisturb">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.Offline">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.OutOfOffice">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.Unknown">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Title="No presence status set">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+		</div>
+	</div>
+</div>
+<div class="row mt-3">
+	<div class="col-12"><h6>Out of Office</h6></div>
+</div>
+<div class="row">
+	<div class="col-12">
+		<div class="hstack gap-3">
+			<UserPresenceBadge Status="PresenceStatus.Available" OutOfOffice="true">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.Away" OutOfOffice="true">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.Busy" OutOfOffice="true">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.DoNotDisturb" OutOfOffice="true">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.Offline" OutOfOffice="true">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.OutOfOffice" OutOfOffice="true">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+			<UserPresenceBadge Status="PresenceStatus.Unknown" OutOfOffice="true">
+				<img src="_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg" class="face" />
+			</UserPresenceBadge>
+		</div>
+	</div>
+</div>
+
+<div class="row mt-4">
+	<div class="col-12"><h4>Focus Trap</h4></div>
+</div>
+<div class="row">
+	<div class="col-12">
+		<fieldset>
+			<div class="d-flex mb-4 gap-3">
+
+				<div class="form-check form-switch">
+					<input class="form-check-input"
+						   type="checkbox"
+						   value=""
+						   id="activeFocus"
+						   @bind="isFocusTrapActive" />
+					<label class="form-check-label" for="activeFocus">Active</label>
+				</div>
+				<DropdownButton TItemType="DefaultFocusType"
+								Text="@($"{ActiveFocusType}")"
+								SelectedValueChanged="@OnFocusTypeChanged"
+								ButtonSize="ButtonSize.Small"
+								ButtonColor="ButtonColor.Primary"
+								ButtonOutlined="true">
+					<DropdownItemButton Value="@DefaultFocusType.Default">@nameof(DefaultFocusType.Default)</DropdownItemButton>
+					<DropdownItemButton Value="@DefaultFocusType.First">@nameof(DefaultFocusType.First)</DropdownItemButton>
+					<DropdownItemButton Value="@DefaultFocusType.Last">@nameof(DefaultFocusType.Last)</DropdownItemButton>
+				</DropdownButton>
+
+			</div>
+		</fieldset>
+
+		<div class="d-flex flex-column">
+			<input type="text" class="form-control" />
+
+			<div class="d-flex p-2 gap-2">
+				<FocusTrap IsActive="@isFocusTrapActive" FocusType="@ActiveFocusType">
+					<input type="text" class="form-control" />
+					<input type="text" class="form-control" />
+					<input type="text" class="form-control" />
+				</FocusTrap>
+			</div>
+
+			<input type="text" class="form-control" />
+		</div>
+
+	</div>
+</div>
+
+<div class="row mt-5">
+	<div class="col-lg-12">
+		<div class="page-header">
+			<h2 id="contextMenu">Context Menus</h2>
+		</div>
+	</div>
+</div>
+<div class="row row-cols-1 row-cols-md-2 g-4">
+	<div class="col">
+
+		<fieldset>
+			<legend class="mt-4">Context Menu</legend>
+		</fieldset>
+
+		<div class="d-flex flex-column mb-3">
+			<div class="mb-3">
+				<button role="button"
+						type="button"
+						id="@btnId"
+						class="btn btn-primary"
+						title="left click to active...">
+					My button with menu!
+				</button>
+				<Menu @ref=MenuRef Trigger="@btnId" TriggerButton="MouseButton.Left" OnMenuItemSelected="OnContextMenuMenuItemSelected">
+					<MenuHeader Text="Header" />
+					<MenuItem Label="Button 1" Value="btn-1" OnClick="OnContextMenuItemClicked">
+						<MenuItems>
+							<MenuItem Value="btn-1.1" OnClick="OnContextMenuItemClicked">Button 1.1</MenuItem>
+							<MenuDivider />
+							<MenuItem Value="btn-1.2" OnClick="OnContextMenuItemClicked" Label="Button 1.2">
+								<MenuItems>
+									<MenuItem Value="btn-1.2.1" OnClick="OnContextMenuItemClicked">Button 1.2.1</MenuItem>
+									<MenuItem Value="btn-1.2.2" OnClick="OnContextMenuItemClicked">Button 1.2.2</MenuItem>
+									<MenuDivider />
+									<MenuItem Value="btn-1.2.3" OnClick="OnContextMenuItemClicked">Button 1.2.3</MenuItem>
+								</MenuItems>
+							</MenuItem>
+							<MenuItem Value="btn-1.3" OnClick="OnContextMenuItemClicked">Button 1.3</MenuItem>
+						</MenuItems>
+					</MenuItem>
+					<MenuItem Label="Button 2" Value="btn-2" OnClick="OnContextMenuItemClicked">
+						<MenuItems>
+							<MenuItem Value="btn-2.1" OnClick="OnContextMenuItemClicked">Button 2.1</MenuItem>
+							<MenuDivider />
+							<MenuItem Value="btn-2.2" OnClick="OnContextMenuItemClicked" Label="Button 2.2">
+								<MenuItems>
+									<MenuItem Value="btn-2.2.1" OnClick="OnContextMenuItemClicked">Button 2.2.1</MenuItem>
+									<MenuItem Value="btn-2.2.2" OnClick="OnContextMenuItemClicked">Button 2.2.2</MenuItem>
+									<MenuDivider />
+									<MenuItem Label="Button 2.2.3" Value="btn-2.2.3" Disabled="true" />
+									<MenuItem Label="Button 2.2.4" Value="btn-2.2.4" OnClick="OnContextMenuItemClicked" />
+								</MenuItems>
+							</MenuItem>
+							<MenuItem Value="btn-2.3" OnClick="OnContextMenuItemClicked">Button 2.3</MenuItem>
+						</MenuItems>
+					</MenuItem>
+					<MenuItem Label="Button 3" Value="btn-3" Disabled="true" OnClick="OnContextMenuItemClicked" />
+					<MenuDivider />
+					<MenuItem Label="Alpha" Value="btn-alpha" OnClick="OnContextMenuItemClicked" />
+					<MenuItem Value="btn-alpha-beta" OnClick="OnContextMenuItemClicked"><span>AlphaBeta</span></MenuItem>
+					<MenuItem Label="Apples" Value="btn-apples" OnClick="OnContextMenuItemClicked" />
+					<MenuItem Label="Omega" Value="btn-omega" OnClick="OnContextMenuItemClicked" />
+					<MenuItem Label="Wind" Value="btn-wind" OnClick="OnContextMenuItemClicked" />
+					<MenuItem Label="Dirt" Value="btn-dirt" OnClick="OnContextMenuItemClicked" />
+					<MenuDivider />
+					<MenuText Text="Text" />
+					<MenuItem Label="Button 4" Value="btn-4" OnClick="OnContextMenuItemClicked" />
+				</Menu>
+			</div>
+			<div>
+				<ContextMenuButton Content="My Context Menu Button"
+								   ButtonColor="ButtonColor.Secondary"
+								   OnClicked="OnContextMenuClicked"
+								   OnItemSelected="OnContextMenuMenuItemSelected">
+					<MenuHeader Text="Header" />
+					<MenuItem Label="Button 1" Value="btn-1" OnClick="OnContextMenuItemClicked">
+						<MenuItems>
+							<MenuItem Value="btn-1.1" OnClick="OnContextMenuItemClicked">Button 1.1</MenuItem>
+							<MenuDivider />
+							<MenuItem Value="btn-1.2" OnClick="OnContextMenuItemClicked" Label="Button 1.2">
+								<MenuItems>
+									<MenuItem Value="btn-1.2.1" OnClick="OnContextMenuItemClicked">Button 1.2.1</MenuItem>
+									<MenuItem Value="btn-1.2.2" OnClick="OnContextMenuItemClicked">Button 1.2.2</MenuItem>
+									<MenuDivider />
+									<MenuItem Value="btn-1.2.3" OnClick="OnContextMenuItemClicked">Button 1.2.3</MenuItem>
+								</MenuItems>
+							</MenuItem>
+							<MenuItem Value="btn-1.3" OnClick="OnContextMenuItemClicked">Button 1.3</MenuItem>
+						</MenuItems>
+					</MenuItem>
+					<MenuItem Label="Button 2" Value="btn-2" OnClick="OnContextMenuItemClicked">
+						<MenuItems>
+							<MenuItem Value="btn-2.1" OnClick="OnContextMenuItemClicked">Button 2.1</MenuItem>
+							<MenuDivider />
+							<MenuItem Value="btn-2.2" OnClick="OnContextMenuItemClicked" Label="Button 2.2">
+								<MenuItems>
+									<MenuItem Value="btn-2.2.1" OnClick="OnContextMenuItemClicked">Button 2.2.1</MenuItem>
+									<MenuItem Value="btn-2.2.2" OnClick="OnContextMenuItemClicked">Button 2.2.2</MenuItem>
+									<MenuDivider />
+									<MenuItem Label="Button 2.2.3" Value="btn-2.2.3" Disabled="true" />
+									<MenuItem Label="Button 2.2.4" Value="btn-2.2.4" OnClick="OnContextMenuItemClicked" />
+								</MenuItems>
+							</MenuItem>
+							<MenuItem Value="btn-2.3" OnClick="OnContextMenuItemClicked">Button 2.3</MenuItem>
+						</MenuItems>
+					</MenuItem>
+					<MenuItem Label="Button 3" Value="btn-3" Disabled="true" OnClick="OnContextMenuItemClicked" />
+					<MenuDivider />
+					<MenuText Text="Text" />
+					<MenuItem Label="Button 4" Value="btn-4" OnClick="OnContextMenuItemClicked" />
+				</ContextMenuButton>
+			</div>
+		</div>
+		<div class="d-flex flex-column mb-3 p-3 border border-1 border-primary rounded">
+			<ContextMenuLink Content="My Context Menu Link" AnchorCss="btn-link">
+				<MenuHeader>Header</MenuHeader>
+				<MenuItem Value="x">Button X</MenuItem>
+				<MenuItem Disabled="true">Disabled</MenuItem>
+				<MenuItem Value="y">Button Y</MenuItem>
+				<MenuDivider />
+				<MenuText>Text</MenuText>
+			</ContextMenuLink>
+		</div>
+		<style>
+			.contextmenu-control {
+				margin: 5% 25%;
+				width: auto;
+				-webkit-touch-callout: none;
+				/* iOS Safari */
+				-webkit-user-select: none;
+				/* Safari */
+			}
+
+			#contextmenutarget {
+				border: 1px dashed;
+				height: 250px;
+				padding: 10px;
+				position: relative;
+				text-align: center;
+				line-height: 17;
+				font-size: 14px;
+				min-width: max-content;
+				overflow: hidden;
+			}
+
+			@@media only screen and (max-width: 700px) {
+				.contextmenu-control {
+					margin: 5% 10%;
+					width: auto;
+				}
+
+				#contextmenutarget {
+					line-height: 19;
+					font-size: 12px;
+				}
+			}
+		</style>
+		<div class="mb-3">
+			<DropdownButton @bind-SelectedValue="mouseButton" Text="@($"{mouseButton}")">
+				@foreach (var item in Enum.GetValues<MouseButton>()) {
+					<DropdownItemButton Value="@item">@item</DropdownItemButton>
+				}
+			</DropdownButton>
+		</div>
+		<div class="contextmenu-control">
+			<div @ref="dropZoneTriggerRef" id="contextmenutarget" tabindex="0">Right click or touch hold to open the context menu.</div>
+			<Menu Trigger="#contextmenutarget" TriggerButton="@mouseButton">
+				<MenuItem Label="Cut"></MenuItem>
+				<MenuItem Label="Copy"></MenuItem>
+				<MenuItem Label="Paste">
+					<MenuItems>
+						<MenuItem Label="Paste Text"></MenuItem>
+						<MenuItem Label="Paste Special"></MenuItem>
+					</MenuItems>
+				</MenuItem>
+				<MenuDivider />
+				<MenuItem Label="Link"></MenuItem>
+				<MenuItem Label="New Comment"></MenuItem>
+			</Menu>
+		</div>
+	</div>
+</div>
+
+<div class="container-fluid">
+	<div class="row mt-5">
+		<div class="col-lg-12">
+			<div class="page-header">
+				<h2 id="spinners">Progressbars / Spinners</h2>
+			</div>
+		</div>
+	</div>
+	<div class="row mb-3">
+		<div class="d-flex flex-column align-items-center gap-4 w-50 p-3 border rounded radious-2">
+			<span>Loading...</span>
+			<Progress Indeterminate="true" Color="selectedSpinnerColor" />
+		</div>
+	</div>
+	<div class="row d-flex flex-column">
+		<div class="d-flex flex-column align-items-center gap-4 w-50 p-3 border rounded radious-2">
+			<div class="text-center text@(selectedSpinnerColor.ToShortName())">@($"{determinateProgressValue}%")</div>
+			<Progress Color="selectedSpinnerColor" Percentage="@determinateProgressValue" />
+		</div>
+		<input type="range"
+			   @bind-value="@determinateProgressValue"
+			   @bind-value:event="oninput"
+			   min="0"
+			   max="100"
+			   class="form-range w-50"
+			   name="customRange1"
+			   id="customRange1">
+	</div>
+	<div class="row mb-3">
+		<div class="col-auto">
+			<fieldset>
+				<legend class="mt-4">Spinner Options</legend>
+				<div class="d-flex justify-content-start align-items-center gap-3">
+					<div>
+						<DropdownButton TItemType="BackgroundColor"
+										SelectedValue="BackgroundColor.Primary"
+										ButtonColor="ButtonColor.None"
+										ButtonStyle="@($"color: {@SpinnerColor}")"
+										ButtonOutlined="true"
+										SelectedValueChanged="@OnSpinnerColorSelected">
+							<TextTemplate>
+								<i class="bi bi-palette me-1" style="color: @SpinnerColor" aria-hidden="true" />
+								<span>@SpinnerColorName</span>
+							</TextTemplate>
+							<ChildContent>
+								@foreach (var c in Enum.GetValues<BackgroundColor>()) {
+									<DropdownItemButton Value="c">
+										<InteractiveTemplate Context="colorContext">
+											<div class="d-flex">
+												@c.ToString()
+												@if (colorContext.IsActive) {
+													<i class="bi bi-check ms-auto"></i>
+												}
+												@if (colorContext.IsDisabled) {
+													<i class="bi bi-ban ms-auto"></i>
+												}
+											</div>
+										</InteractiveTemplate>
+									</DropdownItemButton>
+								}
+							</ChildContent>
+						</DropdownButton>
+					</div>
+					<div>
+						<Switch Label="Centered" @bind-Value="CenterSpinner" />
+					</div>
+				</div>
+			</fieldset>
+		</div>
+	</div>
+	<div class="row">
+		<div class="d-flex flex-wrap gap-4" style="--sk-color: @SpinnerColor;">
+			@foreach (var spinnerName in Enum.GetNames<SpinnerType>()) {
+				<div>
+					<SpinnerChooser Spinner="Enum.Parse<SpinnerType>(spinnerName)" Center="@CenterSpinner" />
+					<span>@spinnerName Spinner</span>
+				</div>
+			}
+		</div>
+	</div>
+</div>
+
+@code {
+
+	int determinateProgressValue { get; set; } = 75;
+
+	ElementReference dropZoneTriggerRef;
+
+
+	Menu MenuRef = default!;
+	MouseButton mouseButton = MouseButton.Right;
+	string btnId = IdGenerator.Next;
+	async Task ToggleMenuAsync(MouseEventArgs e) {
+		if (MenuRef.IsShowing) {
+			await MenuRef.CloseAsync();
+			return;
+		}
+		await MenuRef.ShowAsync(e.PageY, e.PageX);
+	}
+
+	bool isFocusTrapActive = false;
+	DefaultFocusType ActiveFocusType = DefaultFocusType.Default;
+	void OnFocusTypeChanged(DefaultFocusType value) {
+		ActiveFocusType = value;
+	}
+
+	string testMessage = "this is the test menu text";
+	string? clipboardText => ShowClipboard ? testMessage : null;
+
+	List<MultipleSelectorModel> sourceItems { get; } = new();
+	List<MultipleSelectorModel> selectedItems { get; } = new();
+
+	protected override void OnInitialized() {
+		sourceItems.Add(new MultipleSelectorModel("1", "Glen"));
+		sourceItems.Add(new MultipleSelectorModel("2", "Jen"));
+		sourceItems.Add(new MultipleSelectorModel("3", "Jason"));
+		sourceItems.Add(new MultipleSelectorModel("4", "Jayden"));
+
+		base.OnInitialized();
+	}
+
+	void OnSelectionChanged(List<MultipleSelectorModel> eventargs) {
+		Toastr.Show("Selection changed...", "Demo", $"{eventargs.Count}");
+	}
+
+	BackgroundColor selectedSpinnerColor = BackgroundColor.Primary;
+	bool CenterSpinner;
+	string SpinnerColorName { get; set; } = "Primary";
+	string SpinnerColor { get; set; } = "var(--bs-primary)";
+	void OnSpinnerColorSelected(BackgroundColor color) {
+		selectedSpinnerColor = color;
+		SpinnerColorName = $"{color}".Humanize();
+		SpinnerColor = $"var(--bs{color.ToShortName()})";
+	}
+
+	bool IsCollapsable { get; set; }
+	bool ShowFooter { get; set; }
+	bool ShowFooterWhenCollapsed { get; set; }
+	bool ShowClipboard { get; set; }
+
+	void OnContextMenuClicked(MouseEventArgs args) {
+		Toastr.Show("Menu Clicked", "Demo", "Menu");
+	}
+	void OnContextMenuMenuItemSelected(IMenuItem menuItem) {
+		Toastr.Show($"Menu Item Value {menuItem.Value}", "Demo", "Menu");
+	}
+	void OnContextMenuItemClicked(MouseEventArgs args) {
+		Toastr.Show("Menu Item Clicked", "Demo", "MenuItem");
+	}
+
+	FileSelector fileSelectorRef = default!;
+	bool UseDropZone { get; set; }
+	List<IBrowserFile> selectedFiles = [];
+	void Clear() {
+		fileSelectorRef.Reset();
+		selectedFiles.Clear();
+	}
+	void HandleFileCanceled() {
+		StateHasChanged();
+	}
+	void HandleFileSelectedFailed(string message) {
+		Toastr.ShowWarning(message, "File Selection", "Failed");
+	}
+	void HandleFileSelection(List<IBrowserFile> files) {
+		if (files.Count > 0) {
+			selectedFiles.AddRange(files);
+			StateHasChanged();
+		}
+	}
+
+	bool _showBadgeDot = true;
+	int _counterBadgeValue = 100;
+
+}

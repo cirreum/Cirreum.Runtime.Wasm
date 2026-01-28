@@ -1,0 +1,47 @@
+﻿@page "/empty-data"
+
+<AppPageTitle>Empty Data</AppPageTitle>
+
+<p>The <span class="text-danger">EmptyDataTemplate</span> can be used to display custom text when there are no rows to display.</p>
+<div class="btn-toolbar mb-2" role="toolbar" aria-label="loading and busy buttons">
+	<div class="btn-group btn-group-xs me-2" role="group" aria-label="loading buttons">
+		<button type="button" class="btn btn-primary" @onclick="@(()=> isLoading = !isLoading)">Toggle IsLoading</button>
+	</div>
+	<div class="btn-group btn-group-xs" role="group" aria-label="busy buttons">
+		<button type="button" class="btn btn-primary" @onclick="@(()=> isBusy = !isBusy)">Toggle IsBusy</button>
+	</div>
+</div>
+<DataGrid Data="data" Title="Empty DataTemplate" IsLoading="isLoading" IsRefreshing="isBusy">
+	<DataGridColumn Field="id" Width="100" DefaultSortColumn="true" />
+	<DataGridColumn Header="Full Name" Field="full_name" />
+	<DataGridEmptyDataTemplate>
+		<div class="m-0">
+			<div class="text-center text-warning">
+				Hey, no data found!
+			</div>
+		</div>
+	</DataGridEmptyDataTemplate>
+</DataGrid>
+
+@code {
+
+	private SampleData[] data = default!;
+
+	private bool isLoading = true;
+	private bool isBusy = false;
+
+	protected override async Task OnInitializedAsync() {
+		try {
+			await Task.Delay(5000);
+			data = Array.Empty<SampleData>();
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	public class SampleData {
+		public int? id { get; set; }
+		public string full_name { get; set; } = "";
+	}
+
+}

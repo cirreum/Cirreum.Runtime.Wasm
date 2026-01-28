@@ -1,0 +1,4 @@
+#exclude generated .css files
+*.css
+*.min.css
+*.css.map

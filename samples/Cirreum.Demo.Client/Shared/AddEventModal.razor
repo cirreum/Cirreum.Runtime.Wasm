@@ -1,0 +1,112 @@
+﻿@using System.ComponentModel.DataAnnotations;
+@inject IToastService toastr;
+
+<EditForm Model=@model OnValidSubmit="@OnSubmit">
+	<div class="dialog-body">
+		<DataAnnotationsValidator />
+		<fieldset class="container-fluid" disabled=@IsAdding>
+			<div class="row g-3">
+				<div class="col-6">
+					<label for="name">Name</label>
+					<InputText DisplayName="Event Name" @bind-Value="model.Name" class="form-control" id="name" placeholder="name of the event" />
+				</div>
+				<div class="col-6">
+					<label for="track">Track</label>
+					<InputText DisplayName="Track Name" @bind-Value="model.Track" class="form-control" id="track" placeholder="name of the track" />
+				</div>
+				<div class="col-12">
+					<label for="location">Location</label>
+					<InputText DisplayName="Track Location" @bind-Value="model.Location" class="form-control" id="location" placeholder="location of the track" />
+				</div>
+				<div class="col-6">
+					<label for="startDate">Start Date</label>
+					<InputDate DisplayName="Start Date" @bind-Value="model.StartDate" id="startDate" class="form-control" />
+				</div>
+				<div class="col-6">
+					<label for="endDate">End Date</label>
+					<InputDate Type="InputDateType.Date" DisplayName="End Date" TValue="DateOnly" @bind-Value:get="model.EndDate" @bind-Value:set="model.SetEndDate" id="endDate" class="form-control" />
+				</div>
+			</div>
+		</fieldset>
+		<ValidationSummary />
+	</div>
+	<div class="dialog-buttons">
+		<button type="submit" class="btn btn-primary" disabled="@IsAdding">
+			<i class="bi bi-arrow-clockwise@(IsAdding ? " bi-rotate" : " d-none")" aria-hidden="true" />
+			<i class="bi bi-calendar2-plus@(IsAdding ? " d-none" : "")" aria-hidden="true" />
+			Add
+		</button>
+		<button type="button" @onclick="Cancel" disabled="@IsAdding" class="btn btn-secondary">Cancel</button>
+	</div>
+</EditForm>
+
+@code {
+
+	private EventModel model = default!;
+	private bool IsAdding { get; set; }
+
+	[CascadingParameter]
+	Dialog Instance { get; set; } = default!;
+
+	protected override void OnInitialized() {
+		base.OnInitialized();
+		model = new(Instance);
+	}
+
+	private async Task OnSubmit() {
+		IsAdding = true;
+		try {
+
+			// save to the database...
+			// await mediatr.Send(new AddEventCommand(
+			// 			model.Name,
+			// 			model.Track,
+			// 			model.Location,
+			// 			model.StartDate,
+			// 			model.EndDate
+			// 		));
+			await Task.Delay(2000);
+
+			await Instance.CloseAsync(DialogResult.Ok(model.Name));
+
+		} catch (ApiException e) {
+			toastr.Show(e.Message, e.Title, "Add Event");
+
+		} catch (Exception ex) {
+			toastr.Show(ex.Message, "Unknown", "Add Event");
+
+		} finally {
+			IsAdding = false;
+		}
+	}
+
+	async Task Cancel() {
+		await Instance.CancelAsync();
+	}
+
+
+	class EventModel {
+		string seasonFormat = "Add Event: {Year} Season";
+		Dialog modal;
+		public EventModel(Dialog modalInstance) {
+			modal = modalInstance;
+			modal.SetTitle(Smart.Format(seasonFormat, DateTime.Now));
+		}
+
+		[Required(ErrorMessage = "Name is required.")]
+		public string Name { get; set; } = "";
+		[Required(ErrorMessage = "Track is required.")]
+		public string Track { get; set; } = "";
+		[Required(ErrorMessage = "Location is required.")]
+		public string Location { get; set; } = "";
+		[Required]
+		public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Now);
+		[Required]
+		public DateOnly EndDate { get; private set; } = DateOnly.FromDateTime(DateTime.Now.AddDays(1));
+		public void SetEndDate(DateOnly value) {
+			EndDate = value;
+			modal.SetTitle(Smart.Format(seasonFormat, value));
+		}
+	}
+
+}

@@ -1,0 +1,232 @@
+﻿@inject IDomainEnvironment DomainEnvironment
+@using System.Text
+@using Cirreum.Authorization.Analysis
+@using Cirreum.Authorization.Modeling
+@using Cirreum.Authorization.Modeling.Types
+@using Microsoft.Extensions.DependencyInjection
+
+<div class="policy-execution-section">
+	<div class="d-flex justify-content-between align-items-center mb-3">
+		<h3>Policy Execution Order</h3>
+		<div class="d-flex gap-2">
+			<button class="btn btn-outline-primary btn-sm" @onclick="RefreshDiagram">
+				<i class="bi bi-arrow-clockwise me-1"></i>
+				Refresh
+			</button>
+			<div class="form-check form-switch">
+				<input class="form-check-input" type="checkbox" id="showOnlyCurrentRuntime"
+					   @bind="ShowOnlyCurrentRuntime" @bind:after="UpdateDiagram">
+				<label class="form-check-label" for="showOnlyCurrentRuntime">
+					Current Runtime Only
+				</label>
+			</div>
+		</div>
+	</div>
+
+	@if (PolicyRules.Any()) {
+		<!-- Policy Summary -->
+		<div class="policy-summary mb-3">
+			<div class="d-flex gap-2 flex-wrap">
+				<span class="badge bg-success">@AttributePolicyCount Attribute-Based</span>
+				<span class="badge bg-primary">@GlobalPolicyCount Global</span>
+				<span class="badge bg-secondary">@FilteredPolicyCount Shown</span>
+				@if (ShowOnlyCurrentRuntime) {
+					<span class="badge bg-info">Runtime: @CurrentRuntimeType</span>
+				}
+			</div>
+		</div>
+
+		<!-- Mermaid Diagram -->
+		<MermaidDiagram DiagramDefinition="@diagramDefinition" />
+
+		@if (!string.IsNullOrEmpty(errorMessage)) {
+			<div class="alert alert-warning mt-3">
+				<strong>Diagram Error:</strong> @errorMessage
+			</div>
+		}
+
+		<!-- Policy Details Table -->
+		<div class="mt-4">
+			<h4>Policy Details</h4>
+			<div class="table-responsive">
+				<table class="table table-sm table-striped">
+					<thead>
+						<tr>
+							<th>Order</th>
+							<th>Policy Name</th>
+							<th>Type</th>
+							<th>Supported Runtimes</th>
+							<th>Target Attribute</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach (var policy in FilteredPolicies.Take(20)) {
+							<tr class="@(policy.IsAttributeBased ? "table-success" : "table-primary")">
+								<td>
+									<span class="badge bg-secondary">@policy.Order</span>
+								</td>
+								<td>
+									<strong>@policy.PolicyName</strong>
+								</td>
+								<td>
+									<span class="badge @(policy.IsAttributeBased ? "bg-success" : "bg-primary")">
+										@(policy.IsAttributeBased ? "Attribute" : "Global")
+									</span>
+								</td>
+								<td>
+									<small class="text-muted">
+										@string.Join(", ", policy.SupportedRuntimeTypes)
+									</small>
+								</td>
+								<td>
+									@if (policy.IsAttributeBased) {
+										<code class="small">@policy.TargetAttributeType?.Name</code>
+									} else {
+										<span class="text-muted">N/A</span>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	} else {
+		<div class="alert alert-info">
+			<i class="bi bi-info-circle me-2"></i>
+			<strong>No Policy Validators Found</strong><br>
+			Consider adding policy validators for cross-cutting authorization concerns.
+		</div>
+	}
+</div>
+
+<style>
+	.policy-execution-diagram {
+		min-height: 400px;
+		border: 1px solid #dee2e6;
+		border-radius: 6px;
+		padding: 1rem;
+		background-color: #f8f9fa;
+	}
+
+	.policy-summary .badge {
+		font-size: 0.9em;
+	}
+
+	.table td code {
+		background-color: #f8f9fa;
+		padding: 2px 4px;
+		border-radius: 3px;
+	}
+</style>
+
+@code {
+
+	[Parameter] public bool ShowOnlyCurrentRuntime { get; set; } = true;
+	[Parameter] public int MaxPoliciesInDiagram { get; set; } = 10;
+	[Parameter] public EventCallback<string> OnError { get; set; }
+
+	[Inject] private IServiceProvider Services { get; set; } = default!;
+
+	private string diagramDefinition = string.Empty;
+	private string errorMessage = string.Empty;
+	private List<PolicyRuleTypeInfo> PolicyRules = new();
+	private DomainRuntimeType CurrentRuntimeType;
+
+	private List<PolicyRuleTypeInfo> FilteredPolicies => ShowOnlyCurrentRuntime
+		? PolicyRules.Where(p => PolicySupportsCurrentRuntime(p)).OrderBy(p => p.Order).ToList()
+		: PolicyRules.OrderBy(p => p.Order).ToList();
+
+	private int AttributePolicyCount => FilteredPolicies.Count(p => p.IsAttributeBased);
+	private int GlobalPolicyCount => FilteredPolicies.Count(p => !p.IsAttributeBased);
+	private int FilteredPolicyCount => FilteredPolicies.Count;
+
+	protected override async Task OnInitializedAsync() {
+		CurrentRuntimeType = DomainEnvironment.RuntimeType;
+		await LoadPolicyData();
+		UpdateDiagram();
+	}
+
+	private async Task LoadPolicyData() {
+		try {
+			// Initialize the provider if needed
+			AuthorizationModel.Instance.Initialize(Services);
+
+			// Get policy rules
+			var rules = AuthorizationModel.Instance.GetPolicyRules();
+			PolicyRules = rules.ToList();
+		} catch (Exception ex) {
+			errorMessage = $"Failed to load policy data: {ex.Message}";
+			await OnError.InvokeAsync(errorMessage);
+		}
+	}
+
+	private void UpdateDiagram() {
+		try {
+			diagramDefinition = GeneratePolicyExecutionDiagram();
+			errorMessage = string.Empty;
+		} catch (Exception ex) {
+			errorMessage = $"Failed to generate diagram: {ex.Message}";
+		}
+	}
+
+	private async Task RefreshDiagram() {
+		await LoadPolicyData();
+		UpdateDiagram();
+		StateHasChanged();
+	}
+
+	private void OnDiagramError(string error) {
+		errorMessage = error;
+		StateHasChanged();
+	}
+
+	private bool PolicySupportsCurrentRuntime(PolicyRuleTypeInfo policy) {
+		if (policy.SupportedRuntimeTypes.Length == 0)
+			return false;
+
+		// Check for bitwise flag support
+		return policy.SupportedRuntimeTypes.Any(rt => (rt & CurrentRuntimeType) == CurrentRuntimeType);
+	}
+
+	private string GeneratePolicyExecutionDiagram() {
+		var filteredPolicies = FilteredPolicies.Take(MaxPoliciesInDiagram).ToList();
+
+		if (!filteredPolicies.Any()) {
+			return ShowOnlyCurrentRuntime
+				? $"graph LR\n    Start[No policies support '{CurrentRuntimeType}' runtime]"
+				: "graph LR\n    Start[No policy validators configured]";
+		}
+
+		var diagram = new StringBuilder();
+		diagram.AppendLine("flowchart TD");
+		diagram.AppendLine("    Start[Policy Validation Starts] --> Filter[Filter Applicable Policies]");
+
+		// Generate nodes and connections
+		for (var i = 0; i < filteredPolicies.Count; i++) {
+			var policy = filteredPolicies[i];
+			var nodeId = $"P{i}";
+			var policyType = policy.IsAttributeBased ? "ATTR" : "GLOBAL";
+
+			// Create the node definition with proper escaping
+			var policyName = policy.PolicyName.Replace("\"", "'");
+			diagram.AppendLine($"    {nodeId}[\"{policyType}: {policyName} (Order: {policy.Order})\"]");
+
+			// Create connections
+			if (i == 0) {
+				diagram.AppendLine($"    Filter --> {nodeId}");
+			}
+
+			// Connect to next node or end
+			if (i == filteredPolicies.Count - 1) {
+				diagram.AppendLine($"    {nodeId} --> End[All Policies Complete]");
+			} else {
+				diagram.AppendLine($"    {nodeId} --> P{i + 1}");
+			}
+		}
+
+		return diagram.ToString();
+
+	}
+
+}

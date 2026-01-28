@@ -1,0 +1,85 @@
+﻿@inherits StateComponentBase
+
+<header class="d-flex flex-column fixed-top">
+	<nav class="navbar navbar-expand bg-body" style="--bs-navbar-padding-x: 0;--bs-navbar-padding-y: 0;">
+		<div class="mx-auto w-100 d-flex align-items-center justify-content-between">
+			@if (IsNavMenuVisible) {
+				<button @onclick="EventUtil.AsNonRenderingEventHandler(navState.ToggleMinimalModeAsync)" @onclick:preventDefault @onclick:stopPropagation
+						type="button"
+						class="navbar-toggler p-2 d-none d-lg-block"
+						aria-controls="@NavMenuSelectors.NavMenuOffCanvasId"
+						aria-label="toggle minimal menu mode">
+					<svg viewBox="0 0 16 16" width="16" height="16" class="navbar-icon" xmlns="http://www.w3.org/2000/svg">
+						<g>
+							<path d="M1 4.5v-1h14v1zm0 4v-1h14v1zm0 4v-1h14v1z"></path>
+						</g>
+					</svg>
+				</button>
+				<button @onclick="EventUtil.AsNonRenderingEventHandler(navState.ToggleNavMenu)" @onclick:preventDefault @onclick:stopPropagation
+						type="button"
+						class="navbar-toggler p-2 d-block d-lg-none"
+						aria-controls="@NavMenuSelectors.NavMenuOffCanvasId"
+						aria-label="Toggle off-page navigation menu">
+					<svg viewBox="0 0 16 16" width="16" height="16" class="navbar-icon" xmlns="http://www.w3.org/2000/svg">
+						<g>
+							<path d="M1 4.5v-1h14v1zm0 4v-1h14v1zm0 4v-1h14v1z"></path>
+						</g>
+					</svg>
+				</button>
+			} else {
+				<div class="navbar-toggler p-2 d-block d-lg-none"></div>
+			}
+
+			<a href="/" class="navbar-brand-link fs-6 px-3 ms-2 me-auto d-none d-lg-flex flex-row align-items-center align-self-stretch gap-2">
+				@displayState.AppName
+			</a>
+
+			<NavList Css="navbar-nav">
+				<ThemeModeSelector />
+				<ThemeNameSelector />
+				<NavListItemContent LiCss="nav-item py-2 col-auto">
+					<div class="vr d-flex h-100 mx-2 text-white"></div>
+				</NavListItemContent>
+				<NavListDropdownButton TItemType="string"
+									   IsDropMenu="true"
+									   AriaLabel="launcher..."
+									   SelectedValueChanged="OnLauncherUrlClicked"
+									   ResponsiveAlignment="DropdownAlignment.End">
+					<TextTemplate>
+						<i class="bi bi-card-checklist"></i>
+						<span class="d-lg-none" title="External Links...">Links</span>
+					</TextTemplate>
+					<ChildContent>
+						<DropdownItemButton Value="@LauncherUrls.CorporateSite">
+							<div class="launcher-img-wrapper align-self-center">
+								<img src="/assets/launcher/favicon-32x32.png" class="launcher-img" alt="corr-logo" />
+							</div>
+							CORR Web Site
+							<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+						</DropdownItemButton>
+						<DropdownItemButton Value="@LauncherUrls.Registration">
+							<div class="launcher-img-wrapper align-self-center">
+								<img src="/assets/launcher/favicon-32x32.png" class="launcher-img" alt="corr-logo" />
+							</div>
+							CORR Racing Results
+							<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+						</DropdownItemButton>
+					</ChildContent>
+				</NavListDropdownButton>
+			</NavList>
+
+		</div>
+	</nav>
+</header>
+
+<div class="@NotificationsOffCanvasCss" tabindex="-1" id="@NotificationsId" aria-labelledby="@NotificationsLabelId">
+	<div class="offcanvas-header">
+		<h5 class="offcanvas-title" id="@NotificationsLabelId">Notifications</h5>
+		<button type="button" class="btn-close text-dark" @onclick="HideNotifications"
+				aria-label="hide notifications panel"></button>
+	</div>
+	<div class="offcanvas-body p-0">
+		<NotificationsList />
+	</div>
+</div>
+<div class="@NotificationsOffCanvasBackdropCss" @onclick="HideNotifications"></div>

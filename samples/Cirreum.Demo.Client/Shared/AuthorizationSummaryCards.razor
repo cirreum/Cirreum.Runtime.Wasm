@@ -1,0 +1,63 @@
+@using Cirreum.Authorization.Analysis
+@using Cirreum.Authorization.Modeling.Export
+
+<div class="row g-3 mb-4 mt-2">
+
+	@MetricCard("Issues", Summary.TotalIssues, GetIssueIcon(Summary), GetIssueColor(Summary))
+	@MetricCard("Severity", Summary.HighestSeverity?.ToShortName() ?? "", "gear", "primary")
+	@MetricCard("Roles", TotalRoles, "people", "warning")
+
+	@if (ShowDomainMetrics && Catalog != null) {
+		@MetricCard("Domains", Catalog.Metrics.TotalDomains, "folder", "secondary")
+		@MetricCard("Resources", Catalog.Metrics.TotalResources, "box", "success")
+		@MetricCard("Resource Kinds", Catalog.Metrics.TotalKinds, "box", "success")
+		@MetricCard("Anonymous Resources", Catalog.Metrics.AnonymousResources, "box", "success")
+		@MetricCard("Protected Resources", Catalog.Metrics.ProtectedResources, "box", "success")
+		@MetricCard("Coverage %", $"{Catalog.Metrics.OverallCoveragePercentage}%", "shield-check", GetCoverageColor(Catalog.Metrics.OverallCoveragePercentage))
+	}
+
+	@MetricCard("Metrics", Summary.MetricCount, "speedometer2", "info")
+	@MetricCard("Analyzers", Summary.AnalyzerCount, "gear", "primary")
+	@MetricCard("Error", Summary.ErrorCount, "exclamation-circle", "danger")
+	@MetricCard("Warning", Summary.WarningCount, "exclamation-triangle", "warning")
+	@MetricCard("Infos", Summary.InfoCount, "info-circle", "info")
+
+</div>
+
+@code {
+	[Parameter] public AnalysisSummary Summary { get; set; } = default!;
+	[Parameter] public int TotalRoles { get; set; }
+	[Parameter] public DomainCatalog? Catalog { get; set; }
+	[Parameter] public bool ShowDomainMetrics { get; set; } = true;
+
+	private RenderFragment MetricCard(string label, object value, string icon, string color) => __builder => {
+		<div class="col-md-4 col-lg-2">
+			<div class="card lift lift-sm h-100 border-@(color)-subtle">
+				<div class="card-body text-center">
+					<i class="bi bi-@icon fs-2 text-@(color)-emphasis mb-2 d-block"></i>
+					<h3 class="mb-1">@value</h3>
+					<small class="text-secondary">@label</small>
+				</div>
+			</div>
+		</div>
+	};
+
+	private static string GetIssueIcon(AnalysisSummary summary) {
+		if (summary.ErrorCount > 0) return "exclamation-triangle-fill";
+		if (summary.WarningCount > 0) return "exclamation-triangle";
+		return "check-circle";
+	}
+
+	private static string GetIssueColor(AnalysisSummary summary) {
+		if (summary.ErrorCount > 0) return "danger";
+		if (summary.WarningCount > 0) return "warning";
+		return "success";
+	}
+
+	private static string GetCoverageColor(int percentage) => percentage switch {
+		>= 90 => "success",
+		>= 70 => "warning", 
+		_ => "danger"
+	};
+
+}

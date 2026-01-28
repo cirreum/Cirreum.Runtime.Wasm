@@ -1,0 +1,16 @@
+﻿@inherits LayoutComponentBase
+
+<Header IsNavMenuVisible="false" />
+<div class="main-container">
+	<main class="app-main">
+		<ErrorBoundary>
+			<ChildContent>
+				@Body
+			</ChildContent>
+			<ErrorContent Context="exception">
+				<RedirectToError Exception="@exception" />
+			</ErrorContent>
+		</ErrorBoundary>
+	</main>
+</div>
+<Footer />

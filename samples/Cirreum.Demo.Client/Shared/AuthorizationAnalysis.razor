@@ -1,0 +1,480 @@
+@using System.Text
+@using Cirreum.Authorization
+@using Cirreum.Authorization.Analysis
+@using Cirreum.Authorization.Documentation
+@using Cirreum.Authorization.Modeling.Export
+@inject IAuthorizationRoleRegistry RoleRegistry
+@inject IMermaidService MermaidService
+@inject IWasmFileSystem FileSystem
+@inject IServiceProvider ServiceProvider
+@inject IAuthorizationDocumenter StaticDocumenter
+
+@*
+	Shared Authorization Analysis Component
+	Displays authorization analysis results from an AuthorizationSnapshot.
+	Can display snapshots captured locally or fetched from a remote API.
+*@
+
+<div class="authorization-visualization">
+	<div class="my-3 mx-2 d-flex justify-content-between align-items-center">
+		<div class="d-flex align-items-center gap-2">
+			@if (!IsExternalSnapshot) {
+				<button class="btn btn-sm btn-outline-primary" @onclick="RefreshSnapshot" disabled="@IsLoading">
+					<i class="fas fa-refresh @(IsLoading ? "fa-spin" : "")"></i> Refresh
+				</button>
+			}
+			@if (Snapshot != null) {
+				<span class="badge bg-secondary">
+					@Snapshot.CapturedAtUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC
+				</span>
+			}
+		</div>
+
+		@if (ShowExportButtons) {
+			<div class="btn-group" role="group">
+				<button class="btn btn-sm btn-outline-info" @onclick="ExportMarkdown" disabled="@(Snapshot == null)">
+					<i class="fas fa-file-alt"></i> Export MD
+				</button>
+				<button class="btn btn-sm btn-outline-info" @onclick="ExportHtml" disabled="@(Snapshot == null)">
+					<i class="fas fa-file-code"></i> Export HTML
+				</button>
+				<button class="btn btn-sm btn-outline-info" @onclick="ExportCsv" disabled="@(Snapshot == null)">
+					<i class="fas fa-file-csv"></i> Export CSV
+				</button>
+			</div>
+		}
+	</div>
+
+	@if (ShowAnalysisOptions && !IsExternalSnapshot) {
+		<div class="analysis-options mb-3 p-3 bg-light rounded">
+			<div class="row align-items-center">
+				<div class="col-md-3">
+					<label class="form-label">Max Hierarchy Depth</label>
+					<input type="number" class="form-control form-control-sm" @bind="MaxHierarchyDepth" min="1" max="20" />
+				</div>
+				<div class="col-md-2">
+					<button class="btn btn-sm btn-primary w-100" @onclick="RefreshSnapshot" disabled="@IsLoading">
+						<i class="fas fa-play"></i> Apply & Run
+					</button>
+				</div>
+				<div class="col-md-4">
+					@if (Snapshot != null) {
+						<div class="alert @(Snapshot.AnalysisSummary.Passed ? "alert-success" : "alert-danger") mb-0 p-2">
+							<strong>Status:</strong> @(Snapshot.AnalysisSummary.Passed ? "PASSED" : "FAILED")
+							| <strong>Issues:</strong> @Snapshot.AnalysisSummary.TotalIssues
+							(@Snapshot.AnalysisSummary.ErrorCount errors, @Snapshot.AnalysisSummary.WarningCount warnings, @Snapshot.AnalysisSummary.InfoCount info)
+						</div>
+					}
+				</div>
+			</div>
+		</div>
+	}
+
+	<ContentLoader IsLoading="@IsLoading">
+		<LoadingTemplate>
+			<div class="alert alert-info">
+				<i class="fas fa-spinner fa-spin me-2"></i>@LoadingMessage
+			</div>
+		</LoadingTemplate>
+		<ContentTemplate>
+			@if (Snapshot != null) {
+				<Tabs>
+					<Tab Name="Summary">
+						<div class="container-fluid">
+							<AuthorizationSummaryCards Summary="@Snapshot.AnalysisSummary"
+													   TotalRoles="@Snapshot.TotalRoles"
+													   Catalog="@Snapshot.Catalog" />
+
+							<div class="row mb-4">
+								<div class="col-md-12">
+									<div class="alert @(Snapshot.AnalysisSummary.Passed ? "alert-success" : "alert-danger") d-flex align-items-center">
+										<i class="bi @(Snapshot.AnalysisSummary.Passed ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill") me-2 fs-4"></i>
+										<div>
+											<h5 class="alert-heading mb-1">@(Snapshot.AnalysisSummary.Passed ? "Analysis Passed" : "Issues Found")</h5>
+											<p class="mb-0">
+												@if (Snapshot.AnalysisSummary.Passed) {
+													<span>Your authorization system appears to be properly configured.</span>
+												} else {
+													<span>Found @Snapshot.AnalysisSummary.TotalIssues issues (@Snapshot.AnalysisSummary.ErrorCount errors, @Snapshot.AnalysisSummary.WarningCount warnings, @Snapshot.AnalysisSummary.InfoCount info).</span>
+												}
+											</p>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div class="row">
+								<div class="col-md-6">
+									<h4>Metrics by Category</h4>
+									@if (MetricsByCategory != null) {
+										@foreach (var category in MetricsByCategory) {
+											<div class="metric-category mb-3">
+												<h6 class="text-primary">@category.Key</h6>
+												<ul class="list-group list-group-flush">
+													@foreach (var metric in category) {
+														var metricName = MetricCategories.GetMetricName(metric.Key);
+														<li class="list-group-item d-flex justify-content-between align-items-center">
+															@metricName
+															<span class="badge text-bg-primary rounded-pill">@metric.Value</span>
+														</li>
+													}
+												</ul>
+											</div>
+										}
+									}
+								</div>
+								<div class="col-md-6">
+									<h4>Authorization Flow</h4>
+									<MermaidDiagram DiagramDefinition="@Snapshot.AuthorizationFlowDiagram" />
+								</div>
+							</div>
+						</div>
+					</Tab>
+
+					<Tab Name="Domain">
+						<DomainModelView ResourceCatalog="@Snapshot.Catalog" />
+					</Tab>
+
+					<Tab Name="Roles">
+						<div class="container-fluid">
+							<div class="row">
+								<div class="col-md-6">
+									<h4>Role Hierarchy Visualization</h4>
+									<MermaidDiagram DiagramDefinition="@Snapshot.RoleHierarchyDiagram" />
+								</div>
+								<div class="col-md-6">
+									<h4>Role Details</h4>
+									<div class="mb-3">
+										<input type="text" class="form-control" placeholder="Filter roles..."
+										       @bind="RoleFilter" @bind:event="oninput" />
+									</div>
+
+									@{
+										var filteredRoles = GetFilteredRoles();
+									}
+
+									<div class="role-list" style="max-height: 600px; overflow-y: auto;">
+										@foreach (var roleInfo in filteredRoles) {
+											var borderClass = roleInfo.IsApplicationRole ? "border-start border-primary border-3" : "border-start border-warning border-3";
+
+											<div class="list-group-item @borderClass mb-3 px-3 py-2">
+												<div class="d-flex justify-content-between align-items-start mb-2">
+													<h5 class="mb-1 font-monospace">@roleInfo.RoleString</h5>
+													@if (roleInfo.IsApplicationRole) {
+														<span class="badge bg-primary rounded-pill">
+															<i class="bi bi-shield-lock me-1" />App Role
+														</span>
+													} else {
+														<span class="badge bg-warning rounded-pill">
+															<i class="bi bi-person-gear me-1" />Custom Role
+														</span>
+													}
+												</div>
+
+												<div class="role-metrics text-muted small mb-2">
+													<span class="me-3">Depth: @roleInfo.HierarchyDepth</span>
+													<span class="me-3">Inherits: @roleInfo.InheritsFromCount</span>
+													<span>Inherited by: @roleInfo.InheritedByCount</span>
+												</div>
+
+												@if (roleInfo.ChildRoleStrings.Count > 0) {
+													<div class="mb-1">
+														<small class="text-muted"><strong>Inherits from:</strong></small>
+														<div class="mt-1">
+															@foreach (var childRole in roleInfo.ChildRoleStrings) {
+																<span class="badge bg-light text-dark border me-1 mb-1">@childRole</span>
+															}
+														</div>
+													</div>
+												}
+
+												@if (roleInfo.ParentRoleStrings.Count > 0) {
+													<div class="mb-1">
+														<small class="text-muted"><strong>Inherited by:</strong></small>
+														<div class="mt-1">
+															@foreach (var parentRole in roleInfo.ParentRoleStrings) {
+																<span class="badge bg-light text-dark border me-1 mb-1">@parentRole</span>
+															}
+														</div>
+													</div>
+												}
+											</div>
+										}
+									</div>
+								</div>
+							</div>
+						</div>
+					</Tab>
+
+					<Tab Name="Policies">
+						<PolicyExecutionDiagram ShowOnlyCurrentRuntime="true"
+												MaxPoliciesInDiagram="50" />
+					</Tab>
+
+					<Tab Name="Security Analysis">
+						<div class="mb-4">
+							<h4>Analysis Summary</h4>
+							<div class="row g-3">
+								@foreach (var analyzer in AnalyzerSummaries.OrderByDescending(a => a.IssueCount)) {
+									<div class="col-md-6 col-lg-4">
+										<div class="card @(analyzer.IssueCount == 0 ? "border-success" : "border-warning")">
+											<div class="card-body">
+												<h6 class="card-title">@analyzer.Category</h6>
+												<div class="d-flex justify-content-between">
+													<span>Issues: @analyzer.IssueCount</span>
+													<span class="@(analyzer.IssueCount == 0 ? "text-success" : "text-warning")">
+														@(analyzer.IssueCount == 0 ? "Clean" : "Issues")
+													</span>
+												</div>
+												@if (analyzer.IssueCount > 0) {
+													<div class="mt-2 small">
+														<span class="text-danger">E: @analyzer.ErrorCount</span>
+														<span class="text-warning ms-2">W: @analyzer.WarningCount</span>
+														<span class="text-info ms-2">I: @analyzer.InfoCount</span>
+													</div>
+												}
+											</div>
+										</div>
+									</div>
+								}
+							</div>
+						</div>
+
+						<SecurityIssuesAccordion AnalysisReport="@Snapshot.AnalysisReport" />
+					</Tab>
+				</Tabs>
+			}
+		</ContentTemplate>
+	</ContentLoader>
+</div>
+
+<style>
+	.authorization-visualization .summary-cards .card {
+		transition: transform 0.2s;
+	}
+
+	.authorization-visualization .summary-cards .card:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+	}
+
+	.authorization-visualization .metric-category {
+		padding: 1rem;
+		background: #f8f9fa;
+		border-radius: 0.5rem;
+	}
+
+	.authorization-visualization .role-metrics {
+		font-size: 0.875rem;
+	}
+
+	.authorization-visualization .analysis-options {
+		border: 1px solid #dee2e6;
+	}
+
+	.authorization-visualization .raw-report-section pre {
+		font-size: 0.875rem;
+		line-height: 1.4;
+	}
+</style>
+
+@code {
+	// Configuration parameters
+	[Parameter] public bool ShowExportButtons { get; set; } = true;
+	[Parameter] public bool ShowAnalysisOptions { get; set; } = true;
+	[Parameter] public EventCallback<Exception> OnError { get; set; }
+
+	/// <summary>
+	/// Optional: Provide an externally-loaded snapshot (e.g., fetched from an API).
+	/// If null, the component will capture a local snapshot.
+	/// </summary>
+	[Parameter] public AuthorizationSnapshot? ExternalSnapshot { get; set; }
+
+	/// <summary>
+	/// Indicates whether the current snapshot was provided externally.
+	/// </summary>
+	protected bool IsExternalSnapshot => ExternalSnapshot != null;
+
+	// The current snapshot being displayed
+	protected AuthorizationSnapshot? Snapshot;
+
+	// Analysis options
+	protected int MaxHierarchyDepth = 10;
+
+	// Grouped data (derived from snapshot)
+	protected IEnumerable<IGrouping<string, KeyValuePair<string, int>>>? MetricsByCategory;
+	protected List<AnalyzerSummaryInfo> AnalyzerSummaries = [];
+
+	// UI state
+	protected string RoleFilter = "";
+	protected string _lastRoleFilter = "";
+	protected bool IsLoading = true;
+	protected string LoadingMessage = "Initializing...";
+
+	// Cached filtered roles
+	protected List<RoleHierarchyInfo>? _cachedFilteredRoles;
+
+	protected record AnalyzerSummaryInfo(
+		string Category,
+		int IssueCount,
+		int ErrorCount,
+		int WarningCount,
+		int InfoCount
+	);
+
+	protected override async Task OnAfterRenderAsync(bool firstRender) {
+		if (firstRender) {
+			await InitializeAsync();
+		}
+	}
+
+	private async Task InitializeAsync() {
+		try {
+			LoadingMessage = "Initializing Mermaid service...";
+			StateHasChanged();
+
+			await MermaidService.InitializeAsync();
+
+			await CaptureSnapshotAsync();
+		} catch (Exception ex) {
+			await OnError.InvokeAsync(ex);
+		} finally {
+			IsLoading = false;
+			StateHasChanged();
+		}
+	}
+
+	/// <summary>
+	/// Captures a new authorization snapshot.
+	/// </summary>
+	protected async Task CaptureSnapshotAsync() {
+		try {
+			// Use external snapshot if provided, otherwise capture locally
+			if (ExternalSnapshot != null) {
+				LoadingMessage = "Loading external snapshot...";
+				StateHasChanged();
+				Snapshot = ExternalSnapshot;
+			} else {
+				LoadingMessage = "Capturing authorization snapshot...";
+				StateHasChanged();
+
+				var options = new AnalysisOptions {
+					MaxHierarchyDepth = MaxHierarchyDepth,
+					ExcludedCategories = []
+				};
+
+				Snapshot = AuthorizationSnapshot.Capture(
+					RoleRegistry,
+					ServiceProvider,
+					options);
+			}
+
+			ProcessSnapshot();
+			InvalidateRoleCache();
+
+		} catch (Exception ex) {
+			await OnError.InvokeAsync(ex);
+		}
+	}
+
+	private void ProcessSnapshot() {
+		if (Snapshot == null) return;
+
+		MetricsByCategory = Snapshot.AnalysisReport.Metrics
+			.GroupBy(m => MetricCategories.GetMetricCategoryDisplayName(m.Key))
+			.OrderBy(g => g.Key);
+
+		var issuesByCategory = Snapshot.AnalysisReport.Issues
+			.GroupBy(i => i.Category)
+			.ToDictionary(g => g.Key, g => g.ToList());
+
+		AnalyzerSummaries = Snapshot.AnalysisReport.AnalyzerCategories
+			.Select(cat => {
+				var issues = issuesByCategory.GetValueOrDefault(cat, []);
+				return new AnalyzerSummaryInfo(
+					cat,
+					issues.Count,
+					issues.Count(i => i.Severity == IssueSeverity.Error),
+					issues.Count(i => i.Severity == IssueSeverity.Warning),
+					issues.Count(i => i.Severity == IssueSeverity.Info)
+				);
+			})
+			.ToList();
+	}
+
+	protected async Task RefreshSnapshot() {
+		IsLoading = true;
+		LoadingMessage = "Refreshing...";
+		StateHasChanged();
+
+		try {
+			// Clear external snapshot to force local capture
+			ExternalSnapshot = null;
+			await CaptureSnapshotAsync();
+		} finally {
+			IsLoading = false;
+			StateHasChanged();
+		}
+	}
+
+	// Export functions
+	protected async Task ExportMarkdown() {
+		if (Snapshot == null) return;
+
+		var markdown = StaticDocumenter.GenerateMarkdown();
+		await DownloadFile("authorization-documentation.md", markdown, "text/markdown");
+	}
+
+	protected async Task ExportHtml() {
+		if (Snapshot == null) return;
+
+		var html = StaticDocumenter.RenderHtmlPage();
+		await DownloadFile("authorization-documentation.html", html, "text/html");
+	}
+
+	protected async Task ExportCsv() {
+		if (Snapshot == null) return;
+
+		var csv = StaticDocumenter.GenerateCsv();
+		await DownloadFile("authorization-documentation.csv", csv, "text/csv");
+	}
+
+	protected async Task DownloadFile(string filename, string content, string contentType) {
+		try {
+			await FileSystem.DownloadFileAsync(Encoding.UTF8.GetBytes(content), filename, contentType);
+		} catch (Exception ex) {
+			await OnError.InvokeAsync(ex);
+		}
+	}
+
+	// Helper methods
+
+	protected void InvalidateRoleCache() {
+		_cachedFilteredRoles = null;
+		_lastRoleFilter = "";
+	}
+
+	protected IEnumerable<RoleHierarchyInfo> GetFilteredRoles() {
+		if (Snapshot == null) return [];
+
+		// Return cached filtered results if filter hasn't changed
+		if (_cachedFilteredRoles != null && _lastRoleFilter == RoleFilter) {
+			return _cachedFilteredRoles;
+		}
+
+		_lastRoleFilter = RoleFilter;
+
+		var allRoles = Snapshot.RoleHierarchy;
+
+		if (string.IsNullOrWhiteSpace(RoleFilter)) {
+			_cachedFilteredRoles = [.. allRoles];
+		} else {
+			_cachedFilteredRoles = allRoles
+				.Where(r => r.RoleString.Contains(RoleFilter, StringComparison.OrdinalIgnoreCase))
+				.ToList();
+		}
+
+		return _cachedFilteredRoles;
+	}
+
+}

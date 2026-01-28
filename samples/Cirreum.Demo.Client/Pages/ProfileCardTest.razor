@@ -1,0 +1,111 @@
+@page "/profile-card-test"
+
+<PageTitle>Profile Card Test</PageTitle>
+
+<div class="container mt-4">
+	<h3>Profile Card Text Overflow Tests</h3>
+
+	<div class="row g-4 mt-2">
+		<div class="col-lg-4">
+			<div class="card">
+				<div class="card-header">Normal Length Text</div>
+				<div class="dropdown-menu show position-static">
+					<UserProfileCard Name="John Doe"
+									 Email="john.doe@example.com"
+									 Company="Acme Corp"
+									 JobTitle="Developer"
+									 Status="@PresenceStatus.Available"
+									 StatusTitle="Available"
+									 ProfilePicUrl="@GlenBantaAvatar" />
+				</div>
+			</div>
+		</div>
+
+		<div class="col-lg-4">
+			<div class="card">
+				<div class="card-header">Long Text (All Fields)</div>
+				<div class="dropdown-menu show position-static">
+					<UserProfileCard Name="Johnathan Maximilian Bartholomew Doe III"
+									 Email="johnathan.maximilian.bartholomew.doe@verylongcompanyname.example.com"
+									 Company="Acme International Corporation of Technology Solutions"
+									 JobTitle="Senior Principal Staff Software Development Engineer"
+									 Status="@PresenceStatus.Busy"
+									 StatusTitle="In a very important meeting with stakeholders"
+									 ProfilePicUrl="@SampleAvatar2" />
+				</div>
+			</div>
+		</div>
+
+		<div class="col-lg-4">
+			<div class="card">
+				<div class="card-header">No Profile Picture</div>
+				<div class="dropdown-menu show position-static">
+					<UserProfileCard Name="Jane Smith with a moderately long name"
+									 Email="jane.smith@longdomainname.organization"
+									 Company="Tech Innovations Ltd"
+									 JobTitle="CTO"
+									 Status="@PresenceStatus.Away"
+									 StatusTitle="Away - Back in 15 minutes for the next call"
+									 ProfileUrl="/profile/edit" />
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row g-4 mt-2">
+		<div class="col-lg-4">
+			<div class="card">
+				<div class="card-header">Dark Theme</div>
+				<div class="dropdown-menu show position-static" data-bs-theme="dark">
+					<UserProfileCard Name="Dark Theme User with Long Name Test"
+									 Email="darktheme@verylongemaildomain.test"
+									 Company="Night Mode Industries International"
+									 JobTitle="UI/UX Designer"
+									 Status="@PresenceStatus.DoNotDisturb"
+									 StatusTitle="Do not disturb - Working on important deadline"
+									 ProfilePicUrl="@SampleAvatar4" />
+				</div>
+			</div>
+		</div>
+
+		<div class="col-lg-4">
+			<div class="card">
+				<div class="card-header">Guest Icon (Explicit)</div>
+				<div class="dropdown-menu show position-static">
+					<UserProfileCard Name="Guest User"
+									 Email="guest@example.com"
+									 Company="Visitor"
+									 JobTitle="External"
+									 Status="@PresenceStatus.Unknown"
+									 StatusTitle="Guest"
+									 ProfilePicUrl="@GuestIconUrl" />
+				</div>
+			</div>
+		</div>
+
+		<div class="col-lg-4">
+			<div class="card">
+				<div class="card-header">Guest Icon Dark (Explicit)</div>
+				<div class="dropdown-menu show position-static" data-bs-theme="dark">
+					<UserProfileCard Name="Another Guest"
+									 Email="another.guest@example.com"
+									 Status="@PresenceStatus.Unknown"
+									 ProfilePicUrl="@GuestIconUrl" />
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+
+	// Sample avatar data URLs for testing
+	private const string SampleAvatar1 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%234A90E2'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='white' font-family='Arial' font-size='60'%3EJD%3C/text%3E%3C/svg%3E";
+	private const string SampleAvatar2 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%23E74C3C'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='white' font-family='Arial' font-size='60'%3EJB%3C/text%3E%3C/svg%3E";
+	private const string GuestIconUrl = "_content/Cirreum.Runtime.Wasm/assets/images/guest-user-icon.svg";
+	private const string SampleAvatar4 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Crect width='150' height='150' fill='%239B59B6'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='white' font-family='Arial' font-size='60'%3EDT%3C/text%3E%3C/svg%3E";
+
+
+	private const string GlenBantaAvatar = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEA8ADwAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCABgAGADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD8y/GV03/CWa2Ael9OP/IjVieczcZOK1/GKqPF2uZOP9On/wDRjVa8NfDrxT4yI/sHw1q2sKQx3WVlJKuACSSwGAAASc0Ac4dxHOTRsNdRovgS91TVrSxur7S9CS4kEZu9WvUihhB/ifG5go74U/SvTNC+C/wxijV/EfxltRKoO+18PaNLdZPoJZWiX8aTaQ0mzw4DgjAp0Ns91MkUSl5GOAoFe4eJvCHwYs9KuF8Pav4j1XUY33RvetCqyjYQE8uNTtJfB3FzgZ4rmvBmhxac2Soa46s2M4PoKE+YGrHNJ8PtQWAPJAyjGSSQAKmvfhV4i0/Tk1CfRNVttPk+7eS2cghP0crg/nX6CfsL/DfQ9dHinxZrCW82p2FzZ6PoQvLf7RFbXt0H2XBhwQ7BlUDIIUb27V63pN7qHxE+InimQeK9Uj8O6VbjSbTfcvOt/fIjqouYpMoQ3lySOu3btyR2w5+4l5nZh8M66k72SPx9u9KubAgSxnB9sVb8NeGNQ8Xapb6dpaRT3880dvDbPMsbyyO21VUMRnkjPp3r3z4lXGhp461+ztdPjsrRboqlkQCsJIBaMewYsB7YFePeOfDi6dfpdWo8uCVjjb/yzb0zR0ucko8knF9Durf9kvx7L8Sm8DztoVhrESlp7i61aIWcACbzuuASmQCBgEnJxiuz+G37FfjXV4NP8RDXPCdpHBdLMmn3Wrql3PGjg7lTHG7B2hiCeOBmua+CMA+I102k6nqWttqcDqVhsJ1DTRHgbV2nJB4P1FfSd38H28IXWn3Nm/i+0tN67nv5yVLZHGQo4PNYzqKLsy4wurny74y+PUmjeMNRPhDwX4W8Iy21zLGLuHTxfXTsHOXMt0ZcMTz8oGO1cV4w+Nfj7x+VXxB4v1jU4UUqkEt24iVT1AjUhQPoK9a+Ln7KV/4Dj1XXte8R2MU02sG1j020jaSRy4MpbecAKqleccluOlei/s5fsy+B/GPgmw1G80aXxRq17fXtjNFeX72sUAjVdvl7By+1gwJ3Nk4EbAVM6sIR59y405yly7HxcVVRnAHvW9oPgPxN4heJtJ8Panf+YrSRyW9o7Kyr95g2MYHc17V+1R8P9M+CPxG0fSfDWhWGjwz6bHcMksw1EtI0rpuLyg4+6MrgdPur0r7Ft/2Ymu9Pso9V+IfiLVbpLcbjPDbPECQD+7TadqDpgEqcfM6VtCXMrozkuV2PgXRvB/jco8eoWl0kCgbYp3QDPqAD2ro7HQdQ0yGNnsJw+fnYj/Oa6T4ieMI/A/xB1rw3b3EHiO206Y2/25F+ztIwA3YALLwcjg446mq2n/EvR2VRcJeWZ9ZIw6/mp/pW3JNK9ieSW6R7X+zn8YNN+Fy3B/tDUtOvb7MF9FNALiwuIP4copWWOVMnDoxPP4V6tr/x3i8E/DbULfwbpumvot/dsZNRS+jmmSeRTkNGwWZeC/G0A5b5iDg/LB13w7rKI9vd2pYjvMIn/I4NVr/QVuVMlu5kI5XpnHsw4/Ss5JTav0OqliqtCDhHZnPeIbDS576S4kcyXckpleQk7mPUk+5NcR4rdbmMWe4B5ZVILHpzXX/2U813J9p3qqcEOuCPoehrgtZ059Q8UtBHLlIVzg5GDkZH1qjhbu7s6T9n3WIvDPx08PfbPD6+JlnnbTjpLTCLz3kUrHhzwpD7Tk+lfbnx0+EUsWu3HiyLWNO0SwW1t5U0FZSryzKypJ5ShthXvuTIJGMZNfn34oQ2mr2epWryW995iMHRiMSKRhwRyD0/Krt1411LxD4/0drrVLm/le/gMs08rOzkyLnLEkmp5eYtNrY/UfxP8MrfxZc3kepDR9SsJLx75bfUdO+0LGzKq7xmRQCQoBYbc/8APWX7tWvCnw/g8KXtubRdNtrWEzMLLTNOFtGHlADnaCBzsHy7VBxnyW+9XA/DL4o6z4++I+g2bX8hs4vDt1canZoqKz38d4YDI20Fg21c4HTdkhc5r2gKuYwGDAKcZI5XnoemD9SvuTxWH1aF7o1liJ2sfnz/AMFGB/xerw05YsW0SAAvyQBM4A6n8uMeg6V+gy5eOPaxJMSYYdjt4fPOSPXnH99K/Pn/AIKPxeR8VvCcmc79DTGTkjE7+vP8voK/QiwYTQ2jspZWgjcAE5YhQc98n88f3lrqW+hi9kfmF+2Ne2n/AA0T4vfTdyFZ0WcPggziNd7LjsT6knOeT1PkE+qytahXTc55yDiuw+IKXvjbx14g1e7uN15c38805mf5gS5wDn0AA/CuUudMkh+RtrA/dZGBDUq02nZM9CEWkJbGC5UErLFIP+enKH8atQ29zNMkNurySucKlvklj2wBXsHwT/ZG8X/Fm0/tASw6XowOPPuX5bHXb6/ka+o/CfwU8N/Bq3iOn6Ylzq68SX1wN0hf/Z7AelfO4rMKdF2vdnrUMFOrZy0R8zaN+xz4w17wJeeINZuho7rH5lrp0oMs0g6kuAfk46Dk1yngfwHovh64/tbxzqerxWKyC2Sy0pEa7eTAO1i2So7dCc+lfojpLzXWhXE92oP7ttsZbvg4JNfPWo/By18RavN4lt5T4dv7ea1vLTVJrhWikLHbMkkec7mC7lI5znivOw+ZVJuSm7Hpzy2jeLSueD/G3wh4TvPBg8U+CIdZ0+00+/XTdS03XT+/hldNyODgHBwcg+teM+EkH/CW6Jxz9ug5/wC2i19F/tmeJQ2vPpUE0gkvXhuNQVj96SKPZGG9whGfc+1fOnhFh/wl+iDOT9tg/wDRi19jg3KWFU5dT5vHwp06zjTWx+v+hfC7wt4S8T6rrmjaLBp+r6tmO8mhdyJjvEhUxncu7PzEBCR2ijA3V0odWbzAS2W3ZXncefmzuOcd23N7uPu08wKJ598ZYZWLBXOeeEIK/iI9vuIP4qryTxg5BZmc/KFYuzFBz/eyR9WK9zF21Z4tz8/v+ClcJ/4WN4Pl243aM3B9BO/+fSv0B0m5UWGmN8vNvbtyMEHy1I/H68+gFfA//BSxi/jHwNOFwkukT7COdw8887ujdeoLD/aNfaWm6so8PaRg5YafbH0K7oVxkEKVByRghc9lkqL2NOh+ZHxotItC+MfjCwvX+yvHqt18+CQuZGKjA5wQaxba00R7aeSbVC8oQmPyDwD2JBGcV9B/Gr4O638Q/wBpfXI/C2kLfSSQ213dyXLpFFbztHyCT0JwDggHJOQK95+Hvwn8Q+H/AAjNpXijwxZaWCmJmjdJhcLjn5hnII968nGY2NLc+jwmGnWinsjxz9kzxz4gm0HUrNpZJNHtl3W07NhS38aqD9c175qvigXVraNckCUKBjPU1594e8Mw+BrrVUtLeG00pp2kiiQYVc44UdhWBq/i8atqrulxEluvyxvJxGpB5dsc7V9Byxwo65HymIisRVc0tD3aHNBKG7Pb7zX47fwxdEZKQWz3MxXsoUlV+rEfkDXyd4X/AGodU1zxrpVh4UsY9Bn1GQRTSyqJxDkHJRW6Y6g9q9e8ReJ10nwsHvrh9K0m4jZY/tQzfahIy7TIIx0BHQYOBgDAHPjPgXTf+Ea06dtG8MWOlzlvkvtcu47aUpyOPMO7n0Ap4Z0qUZOSu/wPpI5Piazj7R8kX9/3Hhfxgv7+XxP9l1GK6t7yGPfOt6d0zSudzOx7k5BzXM+DmP8Awl+hj/p+g/8ARi16j+0d4R1601O18R6jFYrazxx2n+hSF9jqvG7IHXBwe+K5X4JeGH8TePtM2oWW2njkwo6tvG0H8ifwr7LC1vaUYyjsfm+aYV4TFzou+j69V3P111HVPKuJPlBGBCy7emedm3aMZ/ubRnr5Mn3qx77XWlyjRhg5Cj5eW2jIHRslR2w+3rsg6jEv7mQ3c2SURPk2nKgDn5cYGM/3cKD/AM8n61RL+aSBJnIAbdz6bQc5Bx6EHb2SPrXbe54VkfI//BQ6ZrzV/A1w+3D2N3tYfxfvQc553Zz97fJn++eg+pPCd2ZPBvhyRGEWNItTyoQIHgTHGE2bvpHu9J6+Xf8AgoBBsTwNO0gkaRb1C+dxY5jOSTkk89SWP+12H0R8Krt734VeDLiFlXbodsckgBMxKCeduM4wfuBuhMvSpL6HJ/E7TfFngnWdT8e+EpoLxGgiTUtHkhYS5iUr5kRAAyFAzHtRgAT5YArg1/bS1nU7SKK6solh2EtKshbPHvX1Fc+CPGOoaWJLC4svDAfAF/rFpJcPBAephsYl8yY9NqsscWeTH3Pjuq/sueG5wkfgPwl8Q/iD4sEzTX+reItDksLKSRmByqzqkaJyegJGBivFxVOhKV5K7PZw2Iqxhy3sjxH/AIWr4j+JM7x2rLZadGp8+7RGeGFfqBlm9FXn6VasfE8GkSw2+i6Brni/UtwCXVxZyRQI3QbcrhQM9Tk/nX2Xov7BvijW9Ihl8TfEJfC92V3mx8OabHIluuPuiaUjJHcqgHpXjPxy/wCCenxd8BaZceIfh98RNV8bWcIMkti07QXiAckqm8pIB6Lz7Vwuhh6r5W9Ox6+HzWrhI81KK5u71+7odV8Ifht4v8eatu19bf4beZbs93rlrockt5PghVhjuLkYUnOflXAA4rzXxT4g8AfAHxv42it4dT8U6jbQxrpjasrNJdXe7lC6JuCldxyCBnA7079nL9oPUbT4YavqvjO9nTU9DufskLhmWe+3LwGTgMy5Izj0zXK+MPi54r+LssdvrmrXTaFau0sNkqKpAz8u/YBvfHAPQVdLL/3lnFchlW4hzCo+adV3Ob+Kvi6x+I+galo+qaZAJjcQXlrqGmvJBHCRuDxTJIWMgKtgFSpBHcV0v7Hnw4iuPFKX5t1Szgc3DFRgNgfL+g/U1wz+AvE3jG5eDS9EuWgkbaAU2hV9B3JI/nX2r+z54U8P/DmxsdH8UzQR+IdTIWDQ/tSxSzkKSEJzuCgDsOcV7ChChT5Ka0PAq4iriqnta8rs+HtY+MHiSHWr+E61dKq3L7cMvBDHB5HUdj2om+OXiV/JB1ySLys7fKhRDk9WOF5Y9z1Peuz+APwDtPjH4q8Ya3r8eqT+GPD12scthoaqb7U7qZpDDbRs3ywptjd3mfCoq9RnI+iPij+x/wCEri5t7Sx8CWugan9h/sjRtA8P31zK19rEsfmST3d7IMNbWce13kAClmZcnAU9jkk7HKknufHyfGbxDtCtrkgUDCDyIjtHoMpwPYVKnxW8UXALJrVyVIA+5CvA6D7vavQdR/YD+JWm6Pq+uC+0PU/DenW8sy6vazybb0xopIt4ym9wWLRh8BSUc52jcd79iX4dfDnxbp/irXfH3h6DV7XSLmzjFzqv2mSyhWYkJHHBbrumuHZT99gqrg4PNHMrXBxseQv8ZfGFqzuPE99as4+aQXKAt7EqMmprr43+J7l03eML+PaMbA7MCfXJHNfRfx7/AGRNc8eahqGoeHfAmgfDWDw1YSC4hgQxv4gn8weX9ltIWlEedyQqXcFm3ZAwQvMaB/wTn8W6XqNvJ8QdbtfDmkIDLdpolvNqd6V3RosUaom3zXkk8tRycoxwQM0rw3aKs+54y3x28UqhH/CVahI3UEY/qKsJ+0L4zcbl8R3K7QBtSOMD6424roPjZ+yJ4o+C/hrT9bvLyyu4NTv5rWGwhZjPaIpITz5SBFvb7u1WI3AgE4rw+ytSozJuBU48thgj2PpQlF6pC1XU9aX9ojxXLIrNrSghAm1LKAg4GCTlDyep96ZN+0L4sCsY9ZUScEH7BbY/9F15spSNJEWCJhIAN7AlowDn5fTPQ+1Sz2cKQIdvzHvTtHsK522p/tEePL2zMMnizUhEx2+XZultx6fu1U1R+HXiW6uPH+kX0csovkvYJDcSuWfO8AHceScnvXECyEE7yNjPsOlX/Bt3JH4r08pwnnx/mGBH6iiy6Af/2Q==";
+
+}

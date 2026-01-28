@@ -1,0 +1,10 @@
+{
+	"Arguments": "--error-css --style=expanded --source-map",
+	"GenerateScopedCss": true,
+	"ScopedCssFolders": [ "Layout", "Pages", "Shared" ],
+	"Configurations": {
+		"Release": {
+			"Arguments": "--no-error-css --style=compressed --no-source-map"
+		}
+	}
+}
