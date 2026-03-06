@@ -1,4 +1,4 @@
-﻿namespace Cirreum.Runtime.Components;
+﻿namespace Cirreum.Components;
 
 using Cirreum.Components.ViewModels;
 using System.Runtime.CompilerServices;

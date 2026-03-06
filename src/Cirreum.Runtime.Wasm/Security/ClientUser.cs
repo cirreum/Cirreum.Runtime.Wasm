@@ -2,7 +2,7 @@
 
 using System.Security.Claims;
 
-internal sealed class ClientUser : UserStateBase {
+internal sealed class ClientUser : UserStateBase, IClientUserState {
 
 	internal void SetEnrichmentCompleted() {
 		this.EnrichmentComplete();
@@ -20,11 +20,15 @@ internal sealed class ClientUser : UserStateBase {
 		this._isAuthenticated = this._identity.IsAuthenticated;
 		if (!this._isAuthenticated) {
 			throw new InvalidOperationException("Cannot initialize from an unauthenticated user. Use SetAnonymous method.");
+
 		}
+
 		this._profile = new UserProfile(this._principal, TimeZoneInfo.Local.Id);
+
 		if (!this.SessionStartTime.HasValue) {
 			this.StartSession();
 		}
+
 	}
 
 	internal void SetAnonymous() {

@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 public static partial class HostingExtensions {
 
-	static bool _registered;
+	private sealed class DefaultAuthorizationRegistrationMarker;
 
 	/// <summary>
 	/// Adds authorization services and registers the default application policies.
@@ -48,10 +48,10 @@ public static partial class HostingExtensions {
 	public static void AddDefaultAuthorization(this IClientDomainApplicationBuilder builder,
 		Action<AuthorizationOptions>? authorization = null) {
 
-		if (_registered) {
+		if (builder.Services.Any(d => d.ServiceType == typeof(DefaultAuthorizationRegistrationMarker))) {
 			return;
 		}
-		_registered = true;
+		builder.Services.AddSingleton<DefaultAuthorizationRegistrationMarker>();
 
 		if (!builder.Services.Any(d => d.ServiceType == typeof(AuthenticationStateProvider))) {
 			// allow all users when no-auth is configured

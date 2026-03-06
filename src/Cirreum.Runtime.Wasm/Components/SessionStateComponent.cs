@@ -1,6 +1,5 @@
 ﻿namespace Cirreum.Components;
 
-using Cirreum.Components.Pages;
 using Microsoft.AspNetCore.Components;
 
 /// <summary>
@@ -20,7 +19,7 @@ using Microsoft.AspNetCore.Components;
 ///     </item>
 /// </list>
 /// </remarks>
-public abstract class SessionStateComponent : ContainerStatePage<ISessionState> {
+public abstract class SessionStateComponent : ContainerStateComponent<ISessionState> {
 
 	/// <summary>
 	/// The injected session state service that implements <see cref="ISessionState"/>.

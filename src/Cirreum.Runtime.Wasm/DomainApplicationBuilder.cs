@@ -199,12 +199,13 @@ public sealed class DomainApplicationBuilder : IClientDomainApplicationBuilder {
 
 
 		// ******************************************************************************
-		// IUserState
+		// IUserState / IClientUserState
 		//
-		var clientUser = new ClientUser(); // enforce no dependencies
+		var clientUser = new ClientUser();
 		this.Services
 			.AddSingleton(clientUser)
-			.AddSingleton<IUserState>(clientUser);
+			.AddSingleton<IUserState>(clientUser)
+			.AddSingleton<IClientUserState>(clientUser);
 
 		// ******************************************************************************
 		// Themeing Components

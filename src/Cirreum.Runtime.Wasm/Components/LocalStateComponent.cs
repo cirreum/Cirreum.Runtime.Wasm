@@ -19,7 +19,7 @@ using Microsoft.AspNetCore.Components;
 ///     </item>
 /// </list>
 /// </remarks>
-public abstract class LocalStateComponent : ContainerStatePage<ILocalState> {
+public abstract class LocalStateComponent : ContainerStateComponent<ILocalState> {
 
 	/// <summary>
 	/// The injected local state service that implements <see cref="ILocalState"/>.

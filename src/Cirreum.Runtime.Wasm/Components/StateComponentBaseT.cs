@@ -3,88 +3,102 @@
 using Microsoft.AspNetCore.Components;
 
 /// <summary>
-/// A base component that provides strongly-typed state management integration. Extends <see cref="StateComponentBase"/>
-/// with automatic injection of a specific <typeparamref name="TState"/> state type.
+/// A base component that provides strongly-typed sync state management integration.
+/// Extends <see cref="StateComponentBase"/> with automatic injection of a specific
+/// <typeparamref name="TState"/> sync state type.
 /// </summary>
-/// <typeparam name="TState">The type of state to inject. Must implement <see cref="IApplicationState"/>.</typeparam>
+/// <typeparam name="TState">
+/// The type of state to inject. Must implement <see cref="IApplicationState"/>.
+/// For async state types implementing <see cref="IAsyncApplicationState"/>, use
+/// <see cref="AsyncStateComponentBase{TState}"/> instead.
+/// </typeparam>
 /// <remarks>
 /// <para>This generic base class provides:</para>
 /// <list type="bullet">
 ///     <item>
-///         <description>Automatic injection of <typeparamref name="TState"/> as the <see cref="State"/> property</description>
+///         <description>
+///         Automatic injection of <typeparamref name="TState"/> as the <see cref="State"/> property.
+///         </description>
 ///     </item>
 ///     <item>
-///         <description>Virtual <see cref="OnStateChanged"/> method for handling external state changes</description>
+///         <description>
+///         Virtual <see cref="OnStateChanged"/> called when the injected state changes
+///         via <c>NotifySubscribers</c>.
+///         </description>
 ///     </item>
 ///     <item>
-///         <description>All services from <see cref="StateComponentBase"/> (Logger, CurrentUser, JSApp, Mediatr, Dialogr, Toastr)</description>
+///         <description>
+///         All services from <see cref="StateComponentBase"/> (Logger, state subscriptions).
+///         </description>
 ///     </item>
 /// </list>
 /// <para>
-/// Use this base class when you want strongly-typed access to a specific state interface.
-/// For basic state management with built-in state types, consider using <see cref="SessionStateComponent"/>, 
-/// <see cref="LocalStateComponent"/>, or <see cref="MemoryStateComponent"/> instead.
+/// Use this base class when you want strongly-typed access to a specific sync state interface.
+/// For async state types, use <see cref="AsyncStateComponentBase{TState}"/> instead.
+/// For built-in state types, consider <see cref="SessionStateComponent"/>,
+/// <see cref="LocalStateComponent"/>, or <see cref="MemoryStateComponent"/>.
 /// </para>
 /// </remarks>
 public abstract class StateComponentBase<TState> : StateComponentBase
 	where TState : IApplicationState {
 
 	/// <summary>
-	/// The injected state service of type <typeparamref name="TState"/>.
+	/// The injected state instance of type <typeparamref name="TState"/>.
 	/// </summary>
-	/// <value>
-	/// An instance of <typeparamref name="TState"/> provided by Blazor's dependency injection system.
-	/// </value>
 	[Inject]
 	protected TState State { get; set; } = default!;
 
+	private bool _stateSubscribed;
+
+	// -------------------------------------------------------------------------
+	// Override Hook
+	// -------------------------------------------------------------------------
+
 	/// <summary>
-	/// Called when the injected state has changed.
+	/// Called when the injected state has changed via <c>NotifySubscribers</c>.
 	/// </summary>
 	/// <remarks>
 	/// <para>
-	/// Override this method in derived classes to handle state changes that occur outside 
-	/// of the current component (e.g., from other components, background services, or external events).
+	/// Override in derived classes to react to external state changes — from other
+	/// components, background services, or external events.
 	/// </para>
 	/// <para>
-	/// Note: This method is only called for external state changes. Component UI State changes triggered by 
-	/// user interactions within this component will automatically trigger re-rendering without 
-	/// calling this method.
+	/// Note: This is only called for external state changes. UI interactions within
+	/// this component trigger re-rendering directly without calling this method.
 	/// </para>
 	/// </remarks>
 	protected virtual void OnStateChanged() { }
 
-	private bool stateInitialized = false;
+	// -------------------------------------------------------------------------
+	// Lifecycle
+	// -------------------------------------------------------------------------
 
 	/// <inheritdoc/>
 	/// <remarks>
 	/// <para>
-	/// Automatically subscribes to state changes for <typeparamref name="TState"/> during component initialization.
-	/// This ensures that <see cref="OnStateChanged"/> is called when external modifications occur to the state.
+	/// Automatically subscribes to sync state changes for <typeparamref name="TState"/>
+	/// on first call, invoking <see cref="OnStateChanged"/> when notified.
 	/// </para>
 	/// <para>
-	/// Most developers will not need to override this method. If you do override it, ensure you call 
-	/// <c>base.SetParametersAsync(parameters)</c> to maintain proper state subscription behavior.
+	/// Most developers will not need to override this method. If you do, always call
+	/// <c>base.SetParametersAsync(parameters)</c> to preserve subscription behavior.
+	/// </para>
+	/// <para>
+	/// This method intentionally avoids async/await. Using await here allows the component
+	/// to be disposed between the await point and subsequent code (e.g. during a NavigateTo
+	/// in OnInitializedAsync), causing ObjectDisposedException on resume.
 	/// </para>
 	/// </remarks>
 	public override Task SetParametersAsync(ParameterView parameters) {
-		// we do this here as most users won't need to override it
-		// versus OnInitializedAsync were they'd have to remember
-		// to call base.OnInitializedAsync()
-
-		// First let the base class set parameters (which will handle DI injections)
 		var task = base.SetParametersAsync(parameters);
-
-		// Then use the injected services
-		if (!stateInitialized) {
-			stateInitialized = true;
+		if (!this._stateSubscribed) {
+			this._stateSubscribed = true;
 			this.HandleStateChangesFor<TState>(() => {
 				if (!this.IsDisposing) {
 					this.OnStateChanged();
 				}
 			});
 		}
-
 		return task;
 	}
 

@@ -1,6 +1,5 @@
 ﻿namespace Cirreum.Components;
 
-using Cirreum.Components.Pages;
 using Microsoft.AspNetCore.Components;
 
 /// <summary>
@@ -20,7 +19,7 @@ using Microsoft.AspNetCore.Components;
 ///     </item>
 /// </list>
 /// </remarks>
-public abstract class MemoryStateComponent : ContainerStatePage<IMemoryState> {
+public abstract class MemoryStateComponent : ContainerStateComponent<IMemoryState> {
 
 	/// <summary>
 	/// The injected memory state service that implements <see cref="IMemoryState"/>.
