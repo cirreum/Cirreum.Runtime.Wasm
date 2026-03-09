@@ -38,18 +38,6 @@ sealed partial class ApplicationUserProcessor<T>(
 		IUserState userState,
 		CancellationToken cancellationToken = default) {
 
-		if (serviceProvider is null) {
-			Log.MissingServiceProvider(logger);
-			return;
-		}
-
-		// User locator pattern — prevents lifetime errors from direct injection
-		var loader = serviceProvider.GetService<IApplicationUserLoader<T>>();
-		if (loader is null) {
-			Log.NoLoader(logger, typeof(T).Name);
-			return;
-		}
-
 		if (userState is not ClientUser clientUser) {
 			Log.InvalidUserStateType(logger, userState?.GetType().Name ?? "null");
 			return;
@@ -62,6 +50,18 @@ sealed partial class ApplicationUserProcessor<T>(
 
 		if (!clientUser.IsAuthenticated) {
 			Log.NotAuthenticated(logger);
+			return;
+		}
+
+		if (serviceProvider is null) {
+			Log.MissingServiceProvider(logger);
+			return;
+		}
+
+		// User locator pattern — prevents lifetime errors from direct injection
+		var loader = serviceProvider.GetService<IApplicationUserLoader<T>>();
+		if (loader is null) {
+			Log.NoLoader(logger, typeof(T).Name);
 			return;
 		}
 

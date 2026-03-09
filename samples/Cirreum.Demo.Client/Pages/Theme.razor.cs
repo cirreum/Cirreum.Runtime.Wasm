@@ -6,6 +6,21 @@ using System.ComponentModel.DataAnnotations;
 
 public partial class Theme {
 
+	public static string FormatBytes(long bytes, int decimals = 2) {
+		if (bytes == 0) {
+			return "0 B";
+		}
+
+		string[] units = ["B", "KB", "MB", "GB", "TB", "PB"];
+
+		double size = bytes;
+		var unit = (int)Math.Floor(Math.Log(size, 1024));
+
+		size /= Math.Pow(1024, unit);
+
+		return $"{Math.Round(size, decimals)} {units[unit]}";
+	}
+
 	private Accordion accordion1 = default!;
 	private bool Expandable => (this.ExpandMode == AccordionExpandMode.Multiple);
 	private void SetExpandable(bool value) {

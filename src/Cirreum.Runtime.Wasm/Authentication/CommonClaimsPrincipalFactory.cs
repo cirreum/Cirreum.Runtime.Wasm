@@ -114,8 +114,6 @@ public abstract class CommonClaimsPrincipalFactory<TAccount>(
 		}
 
 		// Phase 1 — Inline, blocking, critical
-		// Must complete before CreateUserAsync returns so Blazor receives
-		// a fully enriched ClaimsPrincipal.
 		try {
 			await this.MapIdentityAsync(identity, account);
 			await this.ExtendClaimsAsync(identity, account);
@@ -125,27 +123,35 @@ public abstract class CommonClaimsPrincipalFactory<TAccount>(
 			return;
 		}
 
-		// Phase 2 — Deferred, non-blocking, best effort
-		// Task.Yield releases CreateUserAsync to return before this work begins.
-		// Stays on Blazor sync context — subscribers do not need InvokeAsync.
-		_ = this.RunPostAuthAsync(userPrincipal);
-	}
-
-	private async Task RunPostAuthAsync(ClaimsPrincipal userPrincipal) {
+		var userName = userPrincipal.Identity?.Name ?? "unknown userName";
 		try {
+
+			// Phase 2 — Inline, blocking
 			var clientUser = serviceProvider.GetRequiredService<ClientUser>();
 			clientUser.SetAuthenticatedPrincipal(userPrincipal);
 
+			// Phase 3 — Inline, blocking
 			await this.RunPostProcessors(clientUser);
 
 			var stateManager = serviceProvider.GetService<IStateManager>();
 			if (stateManager is not null) {
-				await Task.Yield(); // release CreateUserAsync first
-				await stateManager.NotifySubscribersAsync<IClientUserState>(clientUser);
-				logger.LogUserStateChanged(clientUser.Name);
+				// Phase 4 — Best-effort deferred notification.
+				_ = this.NotifyStateSubscribersDeferredAsync(stateManager, clientUser, userName);
 			}
+
 		} catch (Exception e) {
-			logger.LogUserStateProcessingError(e, userPrincipal.Identity?.Name ?? "unknown");
+			logger.LogUserStateProcessingError(e, userName);
+		}
+
+	}
+
+	private async Task NotifyStateSubscribersDeferredAsync(IStateManager stateManager, ClientUser clientUser, string userName) {
+		try {
+			await Task.Yield();
+			await stateManager.NotifySubscribersAsync<IClientUserState>(clientUser);
+			logger.LogUserStateChanged(userName);
+		} catch (Exception e) {
+			logger.LogUserStateProcessingError(e, userName);
 		}
 	}
 

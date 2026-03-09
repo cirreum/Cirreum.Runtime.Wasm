@@ -117,7 +117,7 @@
 								<DataGridColumn Field="@nameof(FileData.ModifiedDate)" Header="Last Modified" />
 								<DataGridColumn Field="@nameof(FileData.Type)" />
 								<DataGridColumn Field="@nameof(FileData.FileSize)" Header="Size">
-									@(context.IsFile ? Humanizer.ByteSize.FromBytes(context.FileSize).ToString() : "")
+									@(context.IsFile ? FormatBytes(context.FileSize) : "")
 								</DataGridColumn>
 							</DataGrid>
 						</div>
