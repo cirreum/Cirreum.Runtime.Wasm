@@ -89,7 +89,7 @@ public abstract class CommonClaimsPrincipalFactory<TAccount>(
 			clientUser.SetAnonymous();
 			// Anonymous transition is sync — lightweight, no app user concern
 			var stateManager = serviceProvider.GetService<IStateManager>();
-			stateManager?.NotifySubscribers<IClientUserState>(clientUser);
+			stateManager?.NotifySubscribers<IUserState>(clientUser);
 		} else {
 			clientUser?.SetAnonymous();
 		}
@@ -113,7 +113,7 @@ public abstract class CommonClaimsPrincipalFactory<TAccount>(
 			return;
 		}
 
-		// Phase 1 — Inline, blocking, critical
+		// Phase 1 — Inline: identity mapping + claims extension
 		try {
 			await this.MapIdentityAsync(identity, account);
 			await this.ExtendClaimsAsync(identity, account);
@@ -123,33 +123,29 @@ public abstract class CommonClaimsPrincipalFactory<TAccount>(
 			return;
 		}
 
-		var userName = userPrincipal.Identity?.Name ?? "unknown userName";
+		// Phase 2 — Inline: set authenticated principal
+		var clientUser = serviceProvider.GetRequiredService<ClientUser>();
+		clientUser.SetAuthenticatedPrincipal(userPrincipal);
+
+		// Phases 3+4 — Deferred: post-processors + state notification
+		var stateManager = serviceProvider.GetService<IStateManager>();
+		if (stateManager is not null) {
+			var userName = userPrincipal.Identity?.Name ?? "unknown";
+			_ = Task.Run(() => this.RunDeferredUserProcessingAsync(clientUser, stateManager, userName));
+		}
+	}
+
+	private async Task RunDeferredUserProcessingAsync(
+		ClientUser clientUser,
+		IStateManager stateManager,
+		string userName) {
 		try {
-
-			// Phase 2 — Inline, blocking
-			var clientUser = serviceProvider.GetRequiredService<ClientUser>();
-			clientUser.SetAuthenticatedPrincipal(userPrincipal);
-
-			// Phase 3 — Inline, blocking
 			await this.RunPostProcessors(clientUser);
-
-			var stateManager = serviceProvider.GetService<IStateManager>();
-			if (stateManager is not null) {
-				// Phase 4 — Best-effort deferred notification.
-				_ = Task.Run(async () => {
-					try {
-						await stateManager.NotifySubscribersAsync<IClientUserState>(clientUser);
-						logger.LogUserStateChanged(userName);
-					} catch (Exception e) {
-						logger.LogUserStateProcessingError(e, userName);
-					}
-				});
-			}
-
+			stateManager.NotifySubscribers<IUserState>(clientUser);
+			logger.LogUserStateChanged(userName);
 		} catch (Exception e) {
 			logger.LogUserStateProcessingError(e, userName);
 		}
-
 	}
 
 	// -------------------------------------------------------------------------

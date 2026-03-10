@@ -112,6 +112,7 @@
 		overflow: hidden;
 
 		background: {
+			image: var(--guest-user-img);   // ← default fallback
 			size: cover;
 			position: center center;
 			repeat: no-repeat;

@@ -2,7 +2,7 @@
 
 using System.Security.Claims;
 
-internal sealed class ClientUser : UserStateBase, IClientUserState {
+internal sealed class ClientUser : UserStateBase {
 
 	internal void SetEnrichmentCompleted() {
 		this.EnrichmentComplete();
