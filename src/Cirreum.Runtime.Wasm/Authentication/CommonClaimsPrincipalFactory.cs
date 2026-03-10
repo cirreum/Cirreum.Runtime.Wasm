@@ -136,23 +136,20 @@ public abstract class CommonClaimsPrincipalFactory<TAccount>(
 			var stateManager = serviceProvider.GetService<IStateManager>();
 			if (stateManager is not null) {
 				// Phase 4 — Best-effort deferred notification.
-				_ = this.NotifyStateSubscribersDeferredAsync(stateManager, clientUser, userName);
+				_ = Task.Run(async () => {
+					try {
+						await stateManager.NotifySubscribersAsync<IClientUserState>(clientUser);
+						logger.LogUserStateChanged(userName);
+					} catch (Exception e) {
+						logger.LogUserStateProcessingError(e, userName);
+					}
+				});
 			}
 
 		} catch (Exception e) {
 			logger.LogUserStateProcessingError(e, userName);
 		}
 
-	}
-
-	private async Task NotifyStateSubscribersDeferredAsync(IStateManager stateManager, ClientUser clientUser, string userName) {
-		try {
-			await Task.Yield();
-			await stateManager.NotifySubscribersAsync<IClientUserState>(clientUser);
-			logger.LogUserStateChanged(userName);
-		} catch (Exception e) {
-			logger.LogUserStateProcessingError(e, userName);
-		}
 	}
 
 	// -------------------------------------------------------------------------
