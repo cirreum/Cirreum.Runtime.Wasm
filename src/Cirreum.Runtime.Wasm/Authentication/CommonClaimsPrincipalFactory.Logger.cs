@@ -73,4 +73,16 @@ internal static partial class CommonClaimsPrincipalFactoryLogger {
 		Message = "User state processing failed after authentication for user {UserName}")]
 	public static partial void LogUserStateProcessingError(this ILogger logger, Exception ex, string userName);
 
+	[LoggerMessage(
+		EventId = 1020,
+		Level = LogLevel.Information,
+		Message = "Application user loaded of type '{UserType}'.")]
+	internal static partial void UserLoaded(this ILogger logger, string userType);
+
+	[LoggerMessage(
+		EventId = 1030,
+		Level = LogLevel.Error,
+		Message = "Error loading application user of type '{UserType}'.")]
+	internal static partial void UserLoadFailed(this ILogger logger, Exception? ex, string userType);
+
 }

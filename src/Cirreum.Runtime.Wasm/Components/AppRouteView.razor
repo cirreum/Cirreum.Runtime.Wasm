@@ -1,0 +1,48 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@switch (_viewState) {
+
+	case ViewState.AuthenticationPath:
+		<RouteView RouteData="@RouteData" DefaultLayout="@ResolvedAuthenticationLayout" />
+		break;
+
+	case ViewState.Pending:
+		<LayoutView Layout="@ResolvedAuthenticationLayout">
+			@if (!UserState.IsAuthenticated) {
+				<RedirectToLogin LoginPath="@LoginPath" LoginHint="@LoginHint" Prompt="@OidcPrompt" />
+			}
+		</LayoutView>
+		break;
+
+	case ViewState.NotProvisioned:
+		@if (NotProvisioned is not null) {
+			@NotProvisioned
+		} else {
+			<LayoutView Layout="@ResolvedAuthenticationLayout">
+				<div class="alert alert-warning">Your account has not been provisioned for this application.</div>
+			</LayoutView>
+		}
+		break;
+
+	case ViewState.Disabled:
+		@if (Disabled is not null) {
+			@Disabled
+		} else {
+			<LayoutView Layout="@ResolvedAuthenticationLayout">
+				<div class="alert alert-warning">Your account has been disabled. Contact your administrator for assistance.</div>
+			</LayoutView>
+		}
+		break;
+
+	case ViewState.Ready:
+		<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout">
+			<NotAuthorized>
+				@if (NotAuthorizedContent is not null) {
+					@NotAuthorizedContent
+				} else {
+					<RedirectToLogin LoginPath="@LoginPath" LoginHint="@LoginHint" Prompt="@OidcPrompt" />
+				}
+			</NotAuthorized>
+		</AuthorizeRouteView>
+		break;
+
+}

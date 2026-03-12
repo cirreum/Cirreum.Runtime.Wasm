@@ -22,7 +22,6 @@ public interface IClaimsExtender {
 	/// </summary>
 	/// <param name="identity">The claims identity being constructed</param>
 	/// <param name="account">The <typeparamref name="TAccount"/> with authentication information</param>
-	/// <param name="accessTokenProvider">The currently available <see cref="IAccessTokenProvider"/> instance used during authentication.</param>
-	ValueTask ExtendClaimsAsync<TAccount>(ClaimsIdentity identity, TAccount account, IAccessTokenProvider accessTokenProvider)
+	void ExtendClaims<TAccount>(ClaimsIdentity identity, TAccount account)
 		where TAccount : RemoteUserAccount;
 }
