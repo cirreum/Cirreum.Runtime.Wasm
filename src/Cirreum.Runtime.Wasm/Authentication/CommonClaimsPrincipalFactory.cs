@@ -13,22 +13,16 @@ using System.Text.Json;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Authentication is split into two phases to minimize latency in Blazor's
-/// <c>CreateUserAsync</c> pipeline:
+/// Handles identity mapping, claims extension, and <see cref="ClientUser"/> principal
+/// assignment inline within Blazor's <c>CreateUserAsync</c> pipeline. Returns immediately
+/// after setting the authenticated principal so the login-callback flow is unblocked.
 /// </para>
-/// <list type="bullet">
-///   <item>
-///     <strong>Phase 1 — Inline, blocking, critical:</strong> Identity mapping and claims
-///     extension. Must complete before <c>CreateUserAsync</c> returns so that Blazor
-///     receives a fully enriched <see cref="ClaimsPrincipal"/>.
-///   </item>
-///   <item>
-///     <strong>Phase 2 — Deferred, non-blocking, best effort:</strong> App user hydration
-///     via post-processors and async state notification. Deferred via <c>Task.Yield</c>
-///     so <c>CreateUserAsync</c> returns immediately after Phase 1. Stays on the Blazor
-///     synchronization context — no <c>Task.Run</c>.
-///   </item>
-/// </list>
+/// <para>
+/// Application user loading (<see cref="IApplicationUserFactory"/>), profile enrichment
+/// (<see cref="IUserProfileEnricher"/>), and data store initialization are handled
+/// separately by the <see cref="IInitializationOrchestrator"/> once <c>AppRouteView</c>
+/// triggers initialization after authentication settles.
+/// </para>
 /// </remarks>
 public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 	ILogger logger,
@@ -102,7 +96,7 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 	// Authenticated Path
 	// -------------------------------------------------------------------------
 
-	private async ValueTask<ClaimsPrincipal> OnAuthenticatedUser(
+	private ValueTask<ClaimsPrincipal> OnAuthenticatedUser(
 		ClaimsPrincipal userPrincipal,
 		ClaimsIdentity identity,
 		TAccount account) {
@@ -111,7 +105,7 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 #if DEBUG
 			Console.WriteLine($"warn: CommonClaimsPrincipalFactory => SKIPPING CreateUserAsync() - ACCOUNT {account} @ {DateTime.Now} - same user within cooldown of {CooldownPeriod.TotalSeconds}s");
 #endif
-			return userPrincipal;
+			return ValueTask.FromResult(userPrincipal);
 		}
 
 		try {
@@ -120,30 +114,21 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 			this.UpdatePrincipalTracking(userPrincipal);
 		} catch (Exception e) {
 			logger.LogCreateUserError(e);
-			return userPrincipal;
+			return ValueTask.FromResult(userPrincipal);
 		}
 
-		// Optionally create application user from application database
-		var clientUser = await this.CreateApplicationUser(userPrincipal);
+		// Set the authenticated principal on ClientUser and notify state subscribers.
+		// App user loading, profile enrichment, and data store initialization are
+		// handled by IInitializationOrchestrator after AppRouteView triggers init.
+		var clientUser = serviceProvider.GetRequiredService<ClientUser>();
+		clientUser.SetAuthenticatedPrincipal(userPrincipal);
 
-		// Deferred processing for Idp UserProfile enrichment and state notification
-		// Don't block - return to login-callback flow immediately
-		_ = Task.Run(() => this.RunDeferredUserProcessingAsync(clientUser));
+		var stateManager = serviceProvider.GetService<IStateManager>();
+		stateManager?.NotifySubscribers<IUserState>(clientUser);
+		logger.LogUserStateChanged(clientUser.Name ?? "unknown");
 
-		return userPrincipal;
+		return ValueTask.FromResult(userPrincipal);
 
-	}
-
-	private async Task RunDeferredUserProcessingAsync(ClientUser clientUser) {
-		var userName = clientUser.Name ?? "unknown";
-		try {
-			await this.RunUserProfileEnricher(clientUser);
-			var stateManager = serviceProvider.GetService<IStateManager>();
-			stateManager?.NotifySubscribers<IUserState>(clientUser);
-			logger.LogUserStateChanged(userName);
-		} catch (Exception e) {
-			logger.LogUserStateProcessingError(e, userName);
-		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -214,73 +199,6 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 				}
 			}
 		}
-	}
-
-	/// <summary>
-	/// Creates and configures a new application user based on the provided claims principal.
-	/// </summary>
-	/// <remarks>If an application user cannot be loaded, the returned ClientUser will indicate that loading was
-	/// attempted but no user was found. The method does not throw if user loading fails; instead, it sets the
-	/// ApplicationUser property to null and marks the user as loaded.</remarks>
-	/// <param name="claimsPrincipal">The claims principal containing authentication and identity information used to initialize the application user.</param>
-	/// <returns>A configured ClientUser instance representing the authenticated user. If no application user can be loaded, the
-	/// ApplicationUser property will be null.</returns>
-	private async Task<ClientUser> CreateApplicationUser(ClaimsPrincipal claimsPrincipal) {
-		var clientUser = serviceProvider.GetRequiredService<ClientUser>();
-		clientUser.SetAuthenticatedPrincipal(claimsPrincipal);
-		var appUserFactory = serviceProvider.GetServices<IApplicationUserFactory>();
-		if (appUserFactory is null) {
-			return clientUser;
-		}
-		//var result = appUserFactory.CreateUserAsync(clientUser.Id)
-		/*
-		 if (result.IsSuccess) {
-			clientUser.SetAppUser(result.Value);
-			logger.UserLoaded(result.Value.GetType().Name);
-			return clientUser;
-		}
-			 */
-
-		// Set to null to indicate that loading was attempted but no user was found/loadable.
-		// This sets IsApplicationUserLoaded = true with ApplicationUser = null.
-		// Using ClearApplicationUser() would reset IsApplicationUserLoaded = false, indicating
-		// no load attempt was made.
-		clientUser.SetAppUser(null);
-		//logger.UserLoadFailed(result.Error, typeof(T).Name);
-
-		return clientUser;
-	}
-
-	/// <summary>
-	/// Attempts to enrich the user profile for the specified client user using a registered profile enricher service.
-	/// </summary>
-	/// <remarks>If no profile enricher service is registered, the enrichment is marked as completed without
-	/// performing any enrichment. The method ensures that the enrichment completion state is always set, allowing
-	/// consumers to reliably check whether enrichment has finished. Any exceptions during enrichment are logged as
-	/// warnings.</remarks>
-	/// <param name="clientUser">The client user whose profile will be enriched. Cannot be null. The enrichment process updates the user's profile
-	/// and marks enrichment as completed.</param>
-	/// <returns>A task that represents the asynchronous operation. The task completes when the enrichment process has finished,
-	/// regardless of success or failure.</returns>
-	private async Task RunUserProfileEnricher(ClientUser clientUser) {
-
-		var enricher = serviceProvider.GetService<IUserProfileEnricher>();
-		if (enricher is null) {
-			// No enricher registered — mark complete and move on
-			clientUser.SetEnrichmentCompleted();
-			return;
-		}
-
-		try {
-			await enricher.EnrichProfileAsync(clientUser.Profile, clientUser.Identity!);
-		} catch (Exception ex) {
-			logger.LogWarning(ex, "UserProfile enrichment failed");
-		} finally {
-			// Always mark enrichment complete so consumers can rely on IsEnriched
-			// as a stable signal regardless of whether enrichment succeeded.
-			clientUser.SetEnrichmentCompleted();
-		}
-
 	}
 
 }

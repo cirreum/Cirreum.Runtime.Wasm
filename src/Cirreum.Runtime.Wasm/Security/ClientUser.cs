@@ -4,6 +4,17 @@ using System.Security.Claims;
 
 internal sealed class ClientUser : UserStateBase {
 
+	/// <summary>
+	/// Returns <see langword="true"/> when the user is authenticated and, if an application
+	/// user was loaded, the application user is enabled. For IDP-only apps (no
+	/// <see cref="IApplicationUserFactory"/> registered), <c>IsApplicationUserLoaded</c>
+	/// stays <see langword="false"/> and <c>IsReady</c> is <see langword="true"/> as soon
+	/// as authentication completes.
+	/// </summary>
+	public override bool IsReady =>
+		this._isAuthenticated
+		&& (!this.IsApplicationUserLoaded || this.ApplicationUser?.IsEnabled == true);
+
 	internal void SetEnrichmentCompleted() {
 		this.EnrichmentComplete();
 	}

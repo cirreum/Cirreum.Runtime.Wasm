@@ -1,16 +1,19 @@
 namespace Cirreum.Runtime.Components;
 
 using Cirreum.Security;
+using Cirreum.State;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 /// <summary>
-/// Application-level route view that enforces authentication and application user
-/// readiness before rendering routed page components. Drop-in replacement for
-/// <see cref="RouteView"/> or <see cref="AuthorizeRouteView"/> inside a
-/// <see cref="Router"/>'s <c>&lt;Found&gt;</c> block.
+/// Application-level route view that enforces authentication, initialization, and
+/// application user readiness before rendering routed page components. Drop-in
+/// replacement for <see cref="RouteView"/> or <see cref="AuthorizeRouteView"/>
+/// inside a <see cref="Router"/>'s <c>&lt;Found&gt;</c> block.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -19,15 +22,16 @@ using Microsoft.Extensions.DependencyInjection;
 /// Page components are never instantiated until readiness is confirmed.
 /// </para>
 /// <para>
-/// The state machine is re-evaluated on every <see cref="IUserState"/> change and
-/// URL navigation. States are evaluated top-to-bottom; first match wins:
+/// The state machine is re-evaluated on every <see cref="IUserState"/> change,
+/// <see cref="IInitializationState"/> change, and URL navigation. States are
+/// evaluated top-to-bottom; first match wins:
 /// </para>
 /// <list type="number">
-///   <item><description>Authentication path → <see cref="RouteView"/> with <see cref="AuthenticationLayout"/></description></item>
-///   <item><description>Not authenticated → <see cref="RedirectToLogin"/> inside <see cref="AuthenticationLayout"/></description></item>
-///   <item><description>App user loading in progress → <see cref="AuthenticationLayout"/> splash covers the wait (only when <see cref="IApplicationUserLoader"/> is registered)</description></item>
-///   <item><description>App user not found → <see cref="NotProvisioned"/> (only when <see cref="IApplicationUserLoader"/> is registered)</description></item>
-///   <item><description>App user disabled → <see cref="Disabled"/> (only when <see cref="IApplicationUserLoader"/> is registered)</description></item>
+///   <item><description>Authentication path → <see cref="RouteView"/> with <see cref="PendingLayout"/></description></item>
+///   <item><description>Route requires auth + not authenticated → <see cref="RedirectToLogin"/> inside <see cref="PendingLayout"/></description></item>
+///   <item><description>Initialization in progress → <see cref="PendingLayout"/> (splash covers user loading, enrichment, and data stores)</description></item>
+///   <item><description>App user not found → <see cref="NotProvisioned"/> (only when <see cref="IApplicationUserFactory"/> is registered)</description></item>
+///   <item><description>App user disabled → <see cref="Disabled"/> (only when <see cref="IApplicationUserFactory"/> is registered)</description></item>
 ///   <item><description>All checks pass → <see cref="AuthorizeRouteView"/> with <see cref="DefaultLayout"/></description></item>
 /// </list>
 /// </remarks>
@@ -37,6 +41,8 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	[Inject] private IStateManager StateManager { get; set; } = default!;
 	[Inject] private NavigationManager Navigation { get; set; } = default!;
 	[Inject] private IServiceProvider ServiceProvider { get; set; } = default!;
+	[Inject] private IInitializationState InitializationState { get; set; } = default!;
+	[Inject] private IInitializationOrchestrator InitOrchestrator { get; set; } = default!;
 
 	// -------------------------------------------------------------------------
 	// Parameters
@@ -57,12 +63,13 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	public Type DefaultLayout { get; set; } = default!;
 
 	/// <summary>
-	/// The layout rendered during authentication paths and pending states.
+	/// The layout rendered during authentication and initialization pending states.
 	/// Defaults to <see cref="DefaultLayout"/> when not specified. The splash
-	/// screen typically lives in this layout and self-manages via initialization state.
+	/// screen typically lives in this layout and self-manages via
+	/// <see cref="IInitializationState"/>.
 	/// </summary>
 	[Parameter]
-	public Type? AuthenticationLayout { get; set; }
+	public Type? PendingLayout { get; set; }
 
 	/// <summary>
 	/// The base-relative path prefix used for OIDC/MSAL authentication callbacks.
@@ -73,12 +80,12 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	public string AuthenticationBasePath { get; set; } = "authentication";
 
 	/// <summary>
-	/// Rendered when the application user loader completed but returned <see langword="null"/> —
+	/// Rendered when the application user factory completed but returned <see langword="null"/> —
 	/// the identity is authenticated but has no account in this application.
 	/// </summary>
 	/// <remarks>
-	/// Only evaluated when an <see cref="IApplicationUserLoader"/> is registered.
-	/// When no loader is registered, transitions directly from authenticated to ready.
+	/// Only evaluated when an <see cref="IApplicationUserFactory"/> is registered.
+	/// When no factory is registered, transitions directly from initialized to ready.
 	/// </remarks>
 	[Parameter]
 	public RenderFragment? NotProvisioned { get; set; }
@@ -132,18 +139,22 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// -------------------------------------------------------------------------
 
 	private IDisposable? _userStateSubscription;
+	private IDisposable? _initStateSubscription;
 	private ViewState _viewState;
 	private bool _requiresApplicationUser;
+	private bool _useAuthorizedRouting;
 
-	private Type ResolvedAuthenticationLayout => this.AuthenticationLayout ?? this.DefaultLayout;
+	private Type ResolvedPendingLayout => this.PendingLayout ?? this.DefaultLayout;
 
 	// -------------------------------------------------------------------------
 	// Lifecycle
 	// -------------------------------------------------------------------------
 
 	protected override void OnInitialized() {
-		this._requiresApplicationUser = this.ServiceProvider.GetService<IApplicationUserLoader>() is not null;
+		this._requiresApplicationUser = this.ServiceProvider.GetService<IApplicationUserFactory>() is not null;
+		this._useAuthorizedRouting = this.ServiceProvider.GetService<AuthenticationStateProvider>() is not null;
 		this._userStateSubscription = this.StateManager.Subscribe<IUserState>(this.OnUserStateChanged);
+		this._initStateSubscription = this.StateManager.Subscribe<IInitializationState>(this.OnInitStateChanged);
 		this.Navigation.LocationChanged += this.OnLocationChanged;
 		this.EvaluateState();
 	}
@@ -153,6 +164,12 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// -------------------------------------------------------------------------
 
 	private void OnUserStateChanged(IUserState _) {
+		if (this.EvaluateState()) {
+			this.InvokeAsync(this.StateHasChanged);
+		}
+	}
+
+	private void OnInitStateChanged(IInitializationState _) {
 		if (this.EvaluateState()) {
 			this.InvokeAsync(this.StateHasChanged);
 		}
@@ -183,38 +200,54 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 
 	private ViewState ComputeViewState() {
 
-		// 1. Authentication callback path — route normally
+		// 1. Authentication callback path — route normally with pending layout
 		var relativePath = this.Navigation.ToBaseRelativePath(this.Navigation.Uri);
 		if (relativePath.StartsWith(this.AuthenticationBasePath, StringComparison.OrdinalIgnoreCase)) {
 			return ViewState.AuthenticationPath;
 		}
 
-		// 2. Not authenticated — redirect to login
-		if (!this.UserState.IsAuthenticated) {
+		// 2. Route requires auth + not authenticated — redirect to login
+		if (RouteRequiresAuthorization(this.RouteData.PageType) && !this.UserState.IsAuthenticated) {
 			return ViewState.Pending;
 		}
 
-		// 3–5. Application user checks (only when a loader is registered)
+		// 3. Trigger initialization if not yet started — synchronous flip to IsInitializing
+		if (!this.InitOrchestrator.HasStarted) {
+			this.InitOrchestrator.Start();
+		}
+
+		// 4. Initialization in progress — splash covers auth, user loading, enrichment, and data stores
+		if (this.InitializationState.IsInitializing) {
+			return ViewState.Pending;
+		}
+
+		// 5–6. Application user checks (only when a factory is registered)
 		if (this._requiresApplicationUser) {
 
-			// 3. Loader registered but not yet completed — splash covers the wait
-			if (!this.UserState.IsApplicationUserLoaded) {
-				return ViewState.Pending;
-			}
-
-			// 4. Load completed but no account exists in this application
+			// 5. Factory completed but no account exists in this application
 			if (this.UserState.ApplicationUser is null) {
 				return ViewState.NotProvisioned;
 			}
 
-			// 5. Account exists but is disabled
+			// 6. Account exists but is disabled
 			if (!this.UserState.ApplicationUser.IsEnabled) {
 				return ViewState.Disabled;
 			}
 		}
 
-		// 6. All checks pass
+		// 7. All checks pass
 		return ViewState.Ready;
+	}
+
+	/// <summary>
+	/// Returns <see langword="true"/> when the page type has an <see cref="AuthorizeAttribute"/>
+	/// and does not have an <see cref="AllowAnonymousAttribute"/>.
+	/// </summary>
+	private static bool RouteRequiresAuthorization(Type pageType) {
+		if (pageType.GetCustomAttribute<AllowAnonymousAttribute>(true) is not null) {
+			return false;
+		}
+		return pageType.GetCustomAttribute<AuthorizeAttribute>(true) is not null;
 	}
 
 	// -------------------------------------------------------------------------
@@ -224,6 +257,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	public void Dispose() {
 		this.Navigation.LocationChanged -= this.OnLocationChanged;
 		this._userStateSubscription?.Dispose();
+		this._initStateSubscription?.Dispose();
 	}
 
 	// -------------------------------------------------------------------------

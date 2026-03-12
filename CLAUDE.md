@@ -139,7 +139,6 @@ builder.AddEntraAuth(tenantId, clientId);
 builder.AddClientState(state => state
     .RegisterState<IMyState, MyState>()
     .AddDataStores()
-        .WithAutoInitialization()
 );
 
 await builder.BuildAndRunAsync();

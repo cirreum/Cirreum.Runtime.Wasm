@@ -2,11 +2,11 @@
 @switch (_viewState) {
 
 	case ViewState.AuthenticationPath:
-		<RouteView RouteData="@RouteData" DefaultLayout="@ResolvedAuthenticationLayout" />
+		<RouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout" />
 		break;
 
 	case ViewState.Pending:
-		<LayoutView Layout="@ResolvedAuthenticationLayout">
+		<LayoutView Layout="@ResolvedPendingLayout">
 			@if (!UserState.IsAuthenticated) {
 				<RedirectToLogin LoginPath="@LoginPath" LoginHint="@LoginHint" Prompt="@OidcPrompt" />
 			}
@@ -17,7 +17,7 @@
 		@if (NotProvisioned is not null) {
 			@NotProvisioned
 		} else {
-			<LayoutView Layout="@ResolvedAuthenticationLayout">
+			<LayoutView Layout="@ResolvedPendingLayout">
 				<div class="alert alert-warning">Your account has not been provisioned for this application.</div>
 			</LayoutView>
 		}
@@ -27,22 +27,26 @@
 		@if (Disabled is not null) {
 			@Disabled
 		} else {
-			<LayoutView Layout="@ResolvedAuthenticationLayout">
+			<LayoutView Layout="@ResolvedPendingLayout">
 				<div class="alert alert-warning">Your account has been disabled. Contact your administrator for assistance.</div>
 			</LayoutView>
 		}
 		break;
 
 	case ViewState.Ready:
-		<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout">
-			<NotAuthorized>
-				@if (NotAuthorizedContent is not null) {
-					@NotAuthorizedContent
-				} else {
-					<RedirectToLogin LoginPath="@LoginPath" LoginHint="@LoginHint" Prompt="@OidcPrompt" />
-				}
-			</NotAuthorized>
-		</AuthorizeRouteView>
+		@if (_useAuthorizedRouting) {
+			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout">
+				<NotAuthorized>
+					@if (NotAuthorizedContent is not null) {
+						@NotAuthorizedContent
+					} else {
+						<RedirectToLogin LoginPath="@LoginPath" LoginHint="@LoginHint" Prompt="@OidcPrompt" />
+					}
+				</NotAuthorized>
+			</AuthorizeRouteView>
+		} else {
+			<RouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout" />
+		}
 		break;
 
 }

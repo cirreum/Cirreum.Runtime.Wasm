@@ -235,6 +235,12 @@ public sealed class DomainApplicationBuilder : IClientDomainApplicationBuilder {
 			// Default Telemetry User Context
 			.TryAddSingleton<ITelemetryUserContext, NullTelemetryUserContext>();
 
+		// ******************************************************************************
+		// Initialization Orchestrator
+		//
+		this.Services
+			.TryAddSingleton<IInitializationOrchestrator, InitializationOrchestrator>();
+
 
 		// ******************************************************************************
 		// Domain Authorization Related Services
