@@ -257,10 +257,10 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	/// and does not have an <see cref="AllowAnonymousAttribute"/>.
 	/// </summary>
 	private static bool RouteRequiresAuthorization(Type pageType) {
-		if (pageType.GetCustomAttribute<AllowAnonymousAttribute>(true) is not null) {
+		if (pageType.GetCustomAttributes<AllowAnonymousAttribute>(true).Any()) {
 			return false;
 		}
-		return pageType.GetCustomAttribute<AuthorizeAttribute>(true) is not null;
+		return pageType.GetCustomAttributes<AuthorizeAttribute>(true).Any();
 	}
 
 	// -------------------------------------------------------------------------
