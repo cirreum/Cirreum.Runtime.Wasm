@@ -15,9 +15,10 @@
 ## Features
 
 - **Authentication & Security**
-  - Flexible authentication with claims processing
+  - Flexible authentication with claims processing and extension
+  - `AppRouteView` — drop-in route view that gates on auth, initialization, and app user readiness
+  - Initialization orchestrator for sequenced startup (auth, app user, enrichment, data stores)
   - No-auth fallback for development scenarios
-  - Post-processing hooks for user enrichment
   
 - **State Management**
   - Multiple state scopes: Memory, Session, Local Storage, and Container
@@ -97,6 +98,24 @@ await builder.BuildAndRunAsync();
 <ThemeSelector />
 ```
 
+### AppRouteView
+
+```razor
+<!-- Drop-in replacement for RouteView/AuthorizeRouteView -->
+<!-- Handles auth gating, initialization, app user checks, and layout switching -->
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <AppRouteView RouteData="@routeData"
+                      DefaultLayout="@typeof(MainLayout)"
+                      PendingLayout="@typeof(SplashLayout)">
+            <NotAuthorizedContent>
+                <RedirectToUnauthorized UnauthorizedPage="/unauthorized" />
+            </NotAuthorizedContent>
+        </AppRouteView>
+    </Found>
+</Router>
+```
+  
 ### Session Monitoring
 
 ```razor
@@ -109,10 +128,10 @@ await builder.BuildAndRunAsync();
 The library is organized into several key namespaces:
 
 - `Cirreum.Runtime.Authentication` - Authentication infrastructure and claims processing
-- `Cirreum.Runtime.Components` - Reusable Blazor components
+- `Cirreum.Runtime.Components` - Reusable Blazor components including `AppRouteView`
 - `Cirreum.Runtime.Components.ViewModels` - State management and view model patterns
+- `Cirreum.Runtime.Initialization` - Initialization orchestrator and state tracking
 - `Cirreum.Runtime.Security` - Security providers and user management
-- `Cirreum.Runtime.StartupTasks` - Application initialization tasks
 
 ## Demo Application
 
