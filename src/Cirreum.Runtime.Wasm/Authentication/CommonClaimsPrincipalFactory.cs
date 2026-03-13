@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.AspNetCore.Components.WebAssembly.Authentication.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -34,8 +35,8 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 
 	private string? _lastProcessedId;
 	private string? _lastProcessedName;
-	private DateTimeOffset _lastProcessedTime;
-	private static readonly TimeSpan CooldownPeriod = TimeSpan.FromSeconds(30);
+	private long _lastProcessedTimestamp;
+	private static readonly TimeSpan deduplicationWindow = TimeSpan.FromSeconds(30);
 
 	// -------------------------------------------------------------------------
 	// CreateUserAsync Entry Point
@@ -63,7 +64,8 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 		logger.LogCreateUser(userPrincipalName);
 
 		if (userPrincipal.Identity is ClaimsIdentity identity && identity.IsAuthenticated) {
-			return this.OnAuthenticatedUser(userPrincipal, identity, account);
+			this.OnAuthenticatedUser(userPrincipal, identity, account);
+			return ValueTask.FromResult(userPrincipal);
 		}
 
 		return ValueTask.FromResult((ClaimsPrincipal)this.SetAnonymous());
@@ -75,7 +77,7 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 	// -------------------------------------------------------------------------
 
 	private AnonymousUser SetAnonymous() {
-		this._lastProcessedTime = DateTimeOffset.MinValue;
+		this._lastProcessedTimestamp = 0;
 		this._lastProcessedId = null;
 		this._lastProcessedName = null;
 
@@ -96,16 +98,16 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 	// Authenticated Path
 	// -------------------------------------------------------------------------
 
-	private ValueTask<ClaimsPrincipal> OnAuthenticatedUser(
+	private void OnAuthenticatedUser(
 		ClaimsPrincipal userPrincipal,
 		ClaimsIdentity identity,
 		TAccount account) {
 
 		if (!this.ShouldProcessPrincipal(userPrincipal)) {
 #if DEBUG
-			Console.WriteLine($"warn: CommonClaimsPrincipalFactory => SKIPPING CreateUserAsync() - ACCOUNT {account} @ {DateTime.Now} - same user within cooldown of {CooldownPeriod.TotalSeconds}s");
+			Console.WriteLine($"warn: CommonClaimsPrincipalFactory => SKIPPING CreateUserAsync() - ACCOUNT {account} @ {DateTime.Now} - same user within deduplication window of {deduplicationWindow.TotalSeconds}s");
 #endif
-			return ValueTask.FromResult(userPrincipal);
+			return;
 		}
 
 		try {
@@ -114,7 +116,6 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 			this.UpdatePrincipalTracking(userPrincipal);
 		} catch (Exception e) {
 			logger.LogCreateUserError(e);
-			return ValueTask.FromResult(userPrincipal);
 		}
 
 		// Set the authenticated principal on ClientUser and notify state subscribers.
@@ -127,8 +128,6 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 		stateManager?.NotifySubscribers<IUserState>(clientUser);
 		logger.LogUserStateChanged(clientUser.Name ?? "unknown");
 
-		return ValueTask.FromResult(userPrincipal);
-
 	}
 
 	// -------------------------------------------------------------------------
@@ -138,16 +137,15 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 	private bool ShouldProcessPrincipal(ClaimsPrincipal principal) {
 		var id = ClaimsHelper.ResolveId(principal) ?? "";
 		var name = ClaimsHelper.ResolveName(principal) ?? "";
-		var now = DateTimeOffset.Now;
 		return id != this._lastProcessedId ||
 			   name != this._lastProcessedName ||
-			   now >= this._lastProcessedTime + CooldownPeriod;
+			   Stopwatch.GetElapsedTime(this._lastProcessedTimestamp) >= deduplicationWindow;
 	}
 
 	private void UpdatePrincipalTracking(ClaimsPrincipal principal) {
 		this._lastProcessedId = ClaimsHelper.ResolveId(principal) ?? "";
 		this._lastProcessedName = ClaimsHelper.ResolveName(principal) ?? "";
-		this._lastProcessedTime = DateTimeOffset.Now;
+		this._lastProcessedTimestamp = Stopwatch.GetTimestamp();
 	}
 
 	private static ClaimsPrincipal CreatePrincipal(

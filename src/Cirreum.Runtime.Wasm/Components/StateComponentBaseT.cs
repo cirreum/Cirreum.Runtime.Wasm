@@ -9,8 +9,6 @@ using Microsoft.AspNetCore.Components;
 /// </summary>
 /// <typeparam name="TState">
 /// The type of state to inject. Must implement <see cref="IApplicationState"/>.
-/// For async state types implementing <see cref="IAsyncApplicationState"/>, use
-/// <see cref="AsyncStateComponentBase{TState}"/> instead.
 /// </typeparam>
 /// <remarks>
 /// <para>This generic base class provides:</para>
@@ -33,8 +31,7 @@ using Microsoft.AspNetCore.Components;
 ///     </item>
 /// </list>
 /// <para>
-/// Use this base class when you want strongly-typed access to a specific sync state interface.
-/// For async state types, use <see cref="AsyncStateComponentBase{TState}"/> instead.
+/// Use this base class when you want strongly-typed access to a specific state interface.
 /// For built-in state types, consider <see cref="SessionStateComponent"/>,
 /// <see cref="LocalStateComponent"/>, or <see cref="MemoryStateComponent"/>.
 /// </para>

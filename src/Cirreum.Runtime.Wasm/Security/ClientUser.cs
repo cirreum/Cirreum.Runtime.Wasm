@@ -4,19 +4,10 @@ using System.Security.Claims;
 
 internal sealed class ClientUser : UserStateBase {
 
-	/// <summary>
-	/// Returns <see langword="true"/> when the user is authenticated and, if an application
-	/// user was loaded, the application user is enabled. For IDP-only apps (no
-	/// <see cref="IApplicationUserFactory"/> registered), <c>IsApplicationUserLoaded</c>
-	/// stays <see langword="false"/> and <c>IsLoaded</c> is <see langword="true"/> as soon
-	/// as authentication completes. Or the user is considered loaded if the principal is the
-	/// shared anonymous user, meaning there is no authenticated user but the user state is
-	/// still initialized and ready for use with the anonymous principal.
-	/// </summary>
-	public override bool IsAuthenticationComplete =>
-		(this._isAuthenticated
-		&& (!this.IsApplicationUserLoaded || this.ApplicationUser?.IsEnabled == true))
-		|| this._principal == AnonymousUser.Shared;
+	private bool _authenticationComplete;
+
+	/// <inheritdoc/>
+	public override bool IsAuthenticationComplete => this._authenticationComplete;
 
 	internal void SetEnrichmentCompleted() {
 		this.EnrichmentComplete();
@@ -43,6 +34,7 @@ internal sealed class ClientUser : UserStateBase {
 			this.StartSession();
 		}
 
+		this._authenticationComplete = true;
 	}
 
 	internal void SetAnonymous() {
@@ -52,6 +44,7 @@ internal sealed class ClientUser : UserStateBase {
 		this._profile = UserProfile.Anonymous;
 		this.ClearApplicationUser();
 		this.EndSession();
+		this._authenticationComplete = true;
 	}
 
 	internal void SetAuthenticationLibrary(AuthenticationLibraryType authenticationLibraryType) {

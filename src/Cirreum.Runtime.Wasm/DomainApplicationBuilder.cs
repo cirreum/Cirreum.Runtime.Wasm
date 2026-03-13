@@ -241,13 +241,6 @@ public sealed class DomainApplicationBuilder : IClientDomainApplicationBuilder {
 
 
 		// ******************************************************************************
-		// Initialization Orchestrator
-		//
-		this.Services
-			.TryAddSingleton<IInitializationOrchestrator, InitializationOrchestrator>();
-
-
-		// ******************************************************************************
 		// Domain Authorization Related Services
 		//
 		this.Services.AddDefaultAuthorizationEvaluator();

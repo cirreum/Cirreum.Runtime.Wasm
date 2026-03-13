@@ -5,41 +5,62 @@
  * Core bootstrap script for Cirreum-based Blazor WebAssembly apps.
  *
  * Responsibilities:
+ *  • Read Cirreum configuration from #app cirreum-config JSON block
  *  • Resolve and load fingerprinted CSS/JS assets from the Import Map
  *  • Apply Subresource Integrity (SRI) where available
  *  • Initialize the selected Bootstrap color scheme (cirreum-bootstrap-*.css)
  *  • Persist the selected color scheme for future browser sessions
  *  • Load custom fonts, vendor libraries, and application resources
  *  • Handle authentication library loading (MSAL/OIDC)
+ *  • Pre-authenticate before Blazor downloads when auth-mode="always"
  *  • Register PWA service workers when configured
  *  • Bootstrap the Blazor Error UI with Cirreum styling
  *  • Provide helper utilities for diagnostics and fallback loading
  *
- * Notes:
- *  • Script attributes on the <script> tag control behavior:
- *      - asm-name     : Client assembly name  
- *      - app-name     : Friendly public name  
- *      - app-theme    : Bootstrap color scheme  
- *                      (default | aqua | aspire | excel | office | outlook | windows)
- *      - font-name    : Custom font name (from cdnfonts) or "default"
- *      - auth-type    : Authentication mode  
- *                      (msal | oidc | dynamic | none)
- *      - auth-type-url: The URL template to call when auth-type is 'dynamic'
- *      - pwa-script   : Service worker file for PWA scenarios
+ * Configuration:
+ *  Place a JSON config block inside your #app div (cleared by Blazor on mount):
+ *
+ *  <div id="app">
+ *    <script type="application/json" id="cirreum-config">
+ *    {
+ *      "app":   { "name": "My App", "assembly": "My.App.Wasm" },
+ *      "theme": { "scheme": "default", "font": "default" },
+ *      "auth":  { "type": "msal", "mode": "always",
+ *                 "authority": "https://mytenant.ciamlogin.com/",
+ *                 "clientId": "...", "redirectUri": "/authentication/login-callback" },
+ *      "pwa":   { "script": "none" }
+ *    }
+ *    </script>
+ *    <!-- splash screen -->
+ *  </div>
+ *
+ * Legacy script tag attributes (fallback when no cirreum-config block present):
+ *      asm-name     : Client assembly name
+ *      app-name     : Friendly public name
+ *      app-theme    : Bootstrap color scheme
+ *                    (default | aqua | aspire | excel | office | outlook | windows)
+ *      font-name    : Custom font name (from cdnfonts) or "default"
+ *      auth-type    : Authentication mode (msal | oidc | dynamic | none)
+ *      auth-type-url: URL template when auth-type is 'dynamic'
+ *      auth-mode    : Pre-auth enforcement (always | optional)
+ *      auth-authority: OIDC/MSAL authority URL
+ *      auth-client-id: OAuth client ID
+ *      auth-redirect-uri: OAuth redirect URI
+ *      pwa-script   : Service worker file for PWA scenarios
  *
  * Cirreum's JavaScript API:
- *  • window.cirreum.app.getName()         - Get the application name
- *  • window.cirreum.app.getAssemblyName() - Get the assembly name
- *  • window.cirreum.auth.getMode()        - Get declared auth mode (dynamic/msal/oidc/none)
- *  • window.cirreum.auth.getLibrary()     - Get resolved auth library (msal/oidc/none)
- *  • window.cirreum.auth.isEnabled()      - Check if auth is enabled
- *  • window.cirreum.tenant.getConfig()    - Get tenant auth configuration
- *  • window.cirreum.tenant.getSlug()      - Get tenant slug from URL
+ *  • window.cirreum.app.getName()           - Get the application name
+ *  • window.cirreum.app.getAssemblyName()   - Get the assembly name
+ *  • window.cirreum.auth.getMode()          - Get declared auth mode (dynamic/msal/oidc/none)
+ *  • window.cirreum.auth.getLibrary()       - Get resolved auth library (msal/oidc/none)
+ *  • window.cirreum.auth.isEnabled()        - Check if auth is enabled
+ *  • window.cirreum.tenant.getConfig()      - Get tenant auth configuration
+ *  • window.cirreum.tenant.getSlug()        - Get tenant slug from URL
  *  • window.cirreum.tenant.getDisplayName() - Get tenant display name
- *  • window.cirreum.theme.getCurrent()    - Get current color scheme
- *  • window.cirreum.theme.set(scheme)     - Set and persist color scheme
- *  • window.cirreum.assets.loadCss(...)   - Load CSS with SRI support
- *  • window.cirreum.assets.loadJs(...)    - Load JS with SRI support
+ *  • window.cirreum.theme.getCurrent()      - Get current color scheme
+ *  • window.cirreum.theme.set(scheme)       - Set and persist color scheme
+ *  • window.cirreum.assets.loadCss(...)     - Load CSS with SRI support
+ *  • window.cirreum.assets.loadJs(...)      - Load JS with SRI support
  *
  * Version:     @VERSION@
  * License:     MIT
@@ -57,25 +78,72 @@
 
 	const validThemes = ["default", "aqua", "aspire", "excel", "office", "outlook", "windows", "none", "custom"];
 
-	// Script attributes
+	// -----------------------------------------------------------------------
+	// Read cirreum-config JSON block from #app (preferred)
+	// Falls back to script tag attributes for backwards compatibility
+	// -----------------------------------------------------------------------
+
+	let _config = null;
+
+	function readCirreumConfig() {
+		if (_config !== null) return _config;
+		try {
+			const el = document.getElementById("cirreum-config");
+			if (el) {
+				_config = JSON.parse(el.textContent);
+				console.debug("[cirreum] Loaded configuration from #cirreum-config block.");
+				return _config;
+			}
+		} catch {
+			console.warn("[cirreum] Failed to parse #cirreum-config block — falling back to script tag attributes.");
+		}
+		_config = {};
+		return _config;
+	}
+
+	function cfg(section, key) {
+		return readCirreumConfig()?.[section]?.[key] ?? null;
+	}
+
+	// -----------------------------------------------------------------------
+	// Script tag attributes (legacy / fallback)
+	// -----------------------------------------------------------------------
+
 	const currentScript = document.currentScript;
-	const asmName = currentScript.getAttribute("asm-name");
-	const appName = currentScript.getAttribute("app-name");
-	const fontName = currentScript.getAttribute("font-name");
-	const authType = currentScript.getAttribute("auth-type")?.toLowerCase() ?? "none";
-	const authTypeUrl = currentScript.getAttribute("auth-type-url");
-	const pwaScript = currentScript.getAttribute("pwa-script");
-	let appTheme = currentScript.getAttribute("app-theme")?.trim() || "default";
+
+	// -----------------------------------------------------------------------
+	// Resolved values — cirreum-config wins, script attributes are fallback
+	// -----------------------------------------------------------------------
+
+	const asmName = cfg("app", "assembly") ?? currentScript.getAttribute("asm-name");
+	const appName = cfg("app", "name") ?? currentScript.getAttribute("app-name");
+	const fontName = cfg("theme", "font") ?? currentScript.getAttribute("font-name");
+	const pwaScript = cfg("pwa", "script") ?? currentScript.getAttribute("pwa-script");
+
+	const authType = (cfg("auth", "type") ?? currentScript.getAttribute("auth-type") ?? "none").toLowerCase();
+	const authTypeUrl = cfg("auth", "typeUrl") ?? currentScript.getAttribute("auth-type-url");
+	const authMode = (cfg("auth", "mode") ?? currentScript.getAttribute("auth-mode") ?? "optional").toLowerCase();
+	const authAuthority = cfg("auth", "authority") ?? currentScript.getAttribute("auth-authority");
+	const authClientId = cfg("auth", "clientId") ?? currentScript.getAttribute("auth-client-id");
+	const authRedirectUri = cfg("auth", "redirectUri")
+		?? currentScript.getAttribute("auth-redirect-uri")
+		?? (window.location.origin + "/authentication/login-callback");
+
+	let appTheme = (cfg("theme", "scheme") ?? currentScript.getAttribute("app-theme")?.trim() ?? "default");
+
+	// -----------------------------------------------------------------------
+	// Validation
+	// -----------------------------------------------------------------------
 
 	if (!asmName) {
-		console.error('[cirreum] Required attribute "asm-name" is missing. Cannot initialize.');
-		displayFatalError('Configuration Error', 'Missing assembly name. Please contact support.');
+		console.error('[cirreum] Assembly name is required. Set "app.assembly" in #cirreum-config or the "asm-name" script attribute.');
+		displayFatalError("Configuration Error", "Missing assembly name. Please contact support.");
 		return;
 	}
 
 	let themeFromStorage = false;
 	if (!validThemes.includes(appTheme)) {
-		console.warn(`[cirreum] Invalid app-theme "${appTheme}". Falling back to "default".`);
+		console.warn(`[cirreum] Invalid theme "${appTheme}". Falling back to "default".`);
 		appTheme = "default";
 	}
 
@@ -93,7 +161,7 @@
 	window.cirreum.app = {
 		/**
 		 * Gets the application name.
-		 * @returns {string} The app name from attribute, or hostname as fallback.
+		 * @returns {string} The app name from config, or hostname as fallback.
 		 */
 		getName: function () {
 			return appName || window.location.hostname.toUpperCase();
@@ -113,11 +181,11 @@
 	// ---------------------------------------------------------------------
 
 	window.cirreum.auth = {
-		_mode: authType,  // from attribute, immutable
+		_mode: authType,
 		_library: authType !== "dynamic" && authType !== "none" ? authType : null,
 
 		/**
-		 * Gets the declared auth mode from the script attribute.
+		 * Gets the declared auth mode from config.
 		 * @returns {string} "dynamic", "msal", "oidc", or "none"
 		 */
 		getMode: function () {
@@ -126,7 +194,7 @@
 
 		/**
 		 * Gets the resolved authentication library to use.
-		 * For static modes, this matches the mode. For dynamic, it's resolved from tenant config.
+		 * For static modes this matches the mode. For dynamic it is resolved from tenant config.
 		 * @returns {string} "msal", "oidc", or "none"
 		 */
 		getLibrary: function () {
@@ -152,7 +220,6 @@
 	// ---------------------------------------------------------------------
 
 	window.cirreum.tenant = {
-		// Internal state - populated when auth-type="dynamic"
 		_config: null,
 
 		/**
@@ -170,7 +237,7 @@
 		 */
 		getSlug: function () {
 			const path = window.location.pathname;
-			const segments = path.split('/').filter(s => s.length > 0);
+			const segments = path.split("/").filter(s => s.length > 0);
 			return segments.length > 0 ? segments[0] : "default";
 		},
 
@@ -182,11 +249,7 @@
 			return this._config?.displayName ?? null;
 		},
 
-		/**
-		 * @internal
-		 * Sets the tenant configuration (used after dynamic config fetch).
-		 * @param {object} config - The tenant configuration.
-		 */
+		/** @internal */
 		_setConfig: function (config) {
 			this._config = config;
 		}
@@ -274,6 +337,7 @@
 		}
 	};
 
+
 	// =====================================================================
 	// Internal Helper Functions
 	// =====================================================================
@@ -285,14 +349,9 @@
 		try {
 			const importMap = JSON.parse(importMapScript.textContent || importMapScript.innerHTML);
 			if (importMap.integrity) {
-				// Try with ./ prefix first (common in Blazor importmaps)
 				const lookupPath = "./" + url;
-				if (importMap.integrity[lookupPath]) {
-					return importMap.integrity[lookupPath];
-				}
-				if (importMap.integrity[url]) {
-					return importMap.integrity[url];
-				}
+				if (importMap.integrity[lookupPath]) return importMap.integrity[lookupPath];
+				if (importMap.integrity[url]) return importMap.integrity[url];
 			}
 		} catch (e) {
 			console.warn("[cirreum] Failed to parse import map integrity for:", url, e);
@@ -305,17 +364,9 @@
 		if (importMapScript) {
 			try {
 				const importMap = JSON.parse(importMapScript.textContent || importMapScript.innerHTML);
-
-				// Try with ./ prefix first (as shown in import map)
 				const lookupPath = "./" + originalPath;
-				if (importMap.imports && importMap.imports[lookupPath]) {
-					return importMap.imports[lookupPath].substring(2); // Remove './'
-				}
-
-				// Try without prefix
-				if (importMap.imports && importMap.imports[originalPath]) {
-					return importMap.imports[originalPath];
-				}
+				if (importMap.imports?.[lookupPath]) return importMap.imports[lookupPath].substring(2);
+				if (importMap.imports?.[originalPath]) return importMap.imports[originalPath];
 			} catch (e) {
 				console.warn("[cirreum] Failed to resolve fingerprinted URL for:", originalPath, e);
 			}
@@ -444,6 +495,7 @@
 	function displayAuthError(message) {
 		displayFatalError("Authentication Error", message);
 	}
+
 	function displayFatalError(title, message) {
 		const appContainer = document.getElementById("app");
 		if (appContainer) {
@@ -463,7 +515,7 @@
 
 	async function loadTenantAuthConfig() {
 		if (!authTypeUrl) {
-			console.error('[cirreum] auth-type-url is required when auth-type="dynamic"');
+			console.error('[cirreum] auth.typeUrl is required when auth.type="dynamic"');
 			displayAuthError("Authentication configuration error. Please contact support.");
 			return null;
 		}
@@ -476,14 +528,11 @@
 		try {
 			const response = await fetch(url, {
 				method: "GET",
-				headers: {
-					"Accept": "application/json"
-				}
+				headers: { "Accept": "application/json" }
 			});
 
 			if (!response.ok) {
 				console.error(`[cirreum] Failed to load tenant auth config: ${response.status} ${response.statusText}`);
-
 				if (response.status === 404) {
 					displayAuthError(`Tenant "${tenant}" not found. Please check the URL and try again.`);
 				} else {
@@ -494,7 +543,6 @@
 
 			const config = await response.json();
 
-			// Validate required fields
 			if (!config.clientId) {
 				console.error("[cirreum] Tenant auth config missing required field: clientId");
 				displayAuthError("Invalid authentication configuration. Please contact support.");
@@ -522,6 +570,125 @@
 
 
 	// =====================================================================
+	// Pre-Auth Check (experimental)
+	// Redirects to Entra before Blazor downloads when auth.mode="always"
+	// and no valid MSAL session exists. Best-effort — any failure falls
+	// through to normal Blazor boot.
+	// =====================================================================
+
+	async function preAuthCheck() {
+		if (authMode !== "always" || authType === "none") {
+			return false;
+		}
+
+		const clientId = authClientId ?? window.cirreum.tenant.getConfig()?.clientId;
+		const authority = authAuthority ?? window.cirreum.tenant.getConfig()?.authority;
+
+		if (!clientId || !authority) {
+			console.warn("[cirreum] auth.mode=always requires auth.clientId and auth.authority. Skipping pre-auth check.");
+			return false;
+		}
+
+		const params = new URLSearchParams(window.location.search);
+		if (params.has("code") && params.has("state")) {
+			console.debug("[cirreum] Auth callback detected — resuming boot.");
+			return false;
+		}
+
+		if (hasValidMsalSession(clientId)) {
+			console.debug("[cirreum] Valid MSAL session found — resuming boot.");
+			return false;
+		}
+
+		console.debug("[cirreum] No valid session found. Redirecting to Entra before Blazor loads.");
+		await redirectToEntra(clientId, authority);
+
+		// redirectToEntra swallows its own errors and falls through on failure
+		// so we can't know for certain navigation was triggered — but if we
+		// reach here without throwing, assume redirect is in flight
+		return true;
+	}
+
+	function hasValidMsalSession(clientId) {
+		try {
+			const prefix = `msal.${clientId}`;
+			const now = Math.floor(Date.now() / 1000);
+
+			return Object.keys(sessionStorage).some(key => {
+				if (!key.startsWith(prefix)) return false;
+				if (!key.includes("accesstoken") && !key.includes("idtoken")) return false;
+
+				try {
+					const entry = JSON.parse(sessionStorage.getItem(key));
+					if (entry?.expiresOn) {
+						return parseInt(entry.expiresOn, 10) > now;
+					}
+					// Can't determine expiry — assume valid, let MSAL decide
+					return true;
+				} catch {
+					// Can't parse entry — assume valid, fall through to boot
+					return true;
+				}
+			});
+		} catch {
+			// sessionStorage unavailable or enumeration failed — assume valid, fall through to boot
+			return true;
+		}
+	}
+
+	async function redirectToEntra(clientId, authority) {
+		try {
+			const verifier = generateRandomString(64);
+			const challenge = await generateCodeChallenge(verifier);
+			const state = generateRandomString(32);
+			const nonce = generateRandomString(32);
+
+			// Store verifier so MSAL can retrieve it on the callback
+			sessionStorage.setItem(`msal.${clientId}.pkce.verifier`, verifier);
+			sessionStorage.setItem(`msal.${clientId}.pkce.state`, state);
+
+			const baseUrl = authority.replace(/\/$/, "");
+			const authorizeUrl = `${baseUrl}/oauth2/v2.0/authorize`;
+
+			const queryParams = new URLSearchParams({
+				client_id: clientId,
+				response_type: "code",
+				redirect_uri: authRedirectUri,
+				scope: "openid profile offline_access",
+				response_mode: "query",
+				state: state,
+				nonce: nonce,
+				code_challenge: challenge,
+				code_challenge_method: "S256",
+			});
+
+			window.location.replace(`${authorizeUrl}?${queryParams.toString()}`);
+
+		} catch (err) {
+			// PKCE generation or redirect failed — fall through, Blazor handles auth normally
+			console.warn("[cirreum] Pre-auth redirect failed, falling through to Blazor:", err);
+		}
+	}
+
+	function generateRandomString(length) {
+		const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+		const array = new Uint8Array(length);
+		crypto.getRandomValues(array);
+		return Array.from(array, b => chars[b % chars.length]).join("");
+	}
+
+	async function generateCodeChallenge(verifier) {
+		const encoder = new TextEncoder();
+		const data = encoder.encode(verifier);
+		const digest = await crypto.subtle.digest("SHA-256", data);
+		return btoa(String.fromCharCode(...new Uint8Array(digest)))
+			.replace(/\+/g, "-")
+			.replace(/\//g, "_")
+			.replace(/=/g, "");
+	}
+
+
+	// =====================================================================
 	// Application Initialization
 	// =====================================================================
 
@@ -531,7 +698,7 @@
 		// Dynamic Auth: Load tenant config before anything else
 		//
 		if (authType === "dynamic") {
-			console.debug("[cirreum] Dynamic auth mode - loading tenant configuration...");
+			console.debug("[cirreum] Dynamic auth mode — loading tenant configuration...");
 
 			const config = await loadTenantAuthConfig();
 
@@ -545,10 +712,17 @@
 				window.cirreum.auth._setLibrary(resolvedLibrary);
 
 			} else {
-				console.error("[cirreum] Aborting app initialization due to auth config failure");
+				console.error("[cirreum] Aborting app initialization due to auth config failure.");
 				return;
 			}
 		}
+
+		//
+		// Pre-auth check: redirect before Blazor downloads if no valid session
+		// Best-effort — any failure falls through to normal boot
+		//
+		const redirecting = await preAuthCheck();
+		if (redirecting) return;
 
 		//
 		// HTML - Blazor Error UI
@@ -567,7 +741,7 @@
 		// Stylesheets
 		//
 
-		// Allow persisted scheme to override the script attribute
+		// Allow persisted scheme to override config
 		try {
 			const storedScheme = localStorage.getItem("user-color-scheme");
 			if (storedScheme && validThemes.includes(storedScheme)) {
@@ -580,7 +754,6 @@
 
 		// Load appropriate Bootstrap CSS
 		if (appTheme !== "none" && appTheme !== "custom") {
-			// Only persist if this value did *not* come from storage already
 			if (!themeFromStorage) {
 				try {
 					localStorage.setItem("user-color-scheme", appTheme);
@@ -602,9 +775,7 @@
 		// cirreum-spinners.css
 		loadLocalCss("_content/Cirreum.Components.WebAssembly/css/cirreum-spinners.css");
 
-		// bootstrap-icons.min.css
-		// Latest: v1.13.1
-		// https://unpkg.com/bootstrap-icons@1.13.1/?meta
+		// bootstrap-icons.min.css (v1.13.1)
 		loadLocalCss("_content/Cirreum.Components.WebAssembly/css/bootstrap-icons.min.css");
 
 		//
@@ -642,14 +813,10 @@
 		};
 		loadLocalJs("_content/Cirreum.Components.WebAssembly/js/pace.min.js");
 
-		// popper.js
-		// Latest: v2.11.8
-		// https://app.unpkg.com/@popperjs/core@2.11.8
+		// popper.js (v2.11.8)
 		loadLocalJs("_content/Cirreum.Components.WebAssembly/js/popper.min.js");
 
-		// draggabilly.js
-		// Latest: v3.0.0
-		// https://app.unpkg.com/draggabilly@3.0.0
+		// draggabilly.js (v3.0.0)
 		loadLocalJs("_content/Cirreum.Components.WebAssembly/js/draggabilly.pkgd.min.js");
 
 		//
@@ -658,7 +825,6 @@
 		window.addEventListener("load", () => {
 			loadLocalCss(`${asmName}.styles.css`);
 		});
-
 	}
 
 

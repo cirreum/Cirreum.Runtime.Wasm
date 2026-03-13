@@ -1,6 +1,5 @@
 ﻿namespace Cirreum.Components.Theme;
 
-using Cirreum;
 using Cirreum.Components.Interop;
 using Microsoft.JSInterop;
 using System.Diagnostics.CodeAnalysis;
@@ -81,7 +80,7 @@ public sealed class DefaultThemeMonitor(
 
 		public Func<bool, string, Task>? OnThemeModeChanged { get; }
 
-		[JSInvokable(EventNames.ModeChangedEvent)]
+		[JSInvokable("OnModeChanged")]
 		public async Task ModeChanged(bool isDarkMode, string storedMode) {
 			if (this.OnThemeModeChanged is not null) {
 				await this.OnThemeModeChanged.Invoke(isDarkMode, storedMode);

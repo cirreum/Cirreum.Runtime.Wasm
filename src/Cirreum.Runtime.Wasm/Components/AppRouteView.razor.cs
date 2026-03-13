@@ -135,6 +135,14 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	[Parameter]
 	public OidcPrompt? LoginPrompt { get; set; }
 
+	/// <summary>
+	/// Optional domain hint passed to the identity provider to skip the organization/account
+	/// picker and route directly to the specified tenant's login page.
+	/// Maps to the OIDC <c>domain_hint</c> parameter.
+	/// </summary>
+	[Parameter]
+	public string? DomainHint { get; set; }
+
 	// -------------------------------------------------------------------------
 	// State
 	// -------------------------------------------------------------------------

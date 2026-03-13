@@ -52,7 +52,7 @@ public interface IStateViewModel : IViewModel {
 	/// <summary>
 	/// Creates a scope that coalesces multiple state changes into a single notification.
 	/// </summary>
-	/// <returns>An <see cref="IAsyncDisposable"/> scope that will trigger a single notification when disposed.</returns>
+	/// <returns>An <see cref="IDisposable"/> scope that will trigger a single notification when disposed.</returns>
 	/// <remarks>
 	/// <para>
 	/// Supports nested scopes - notifications are deferred until the outermost scope is disposed.
@@ -60,7 +60,7 @@ public interface IStateViewModel : IViewModel {
 	/// <para>
 	/// Use with a using statement to automatically handle scope disposal:
 	/// <code>
-	/// await using(var scope = viewModel.CreateNotificationScope()) {
+	/// using (var scope = viewModel.CreateNotificationScope()) {
 	///     await viewModel.SetFirstName("John");
 	///     await viewModel.SetLastName("Doe");
 	/// }
@@ -70,6 +70,6 @@ public interface IStateViewModel : IViewModel {
 	/// This is a wrapper method for the backing state container's notification scope functionality.
 	/// </para>
 	/// </remarks>
-	IAsyncDisposable CreateNotificationScope();
+	IDisposable CreateNotificationScope();
 
 }

@@ -46,7 +46,7 @@ public abstract class StateViewModel : IStateViewModel {
 	/// <inheritdoc/>
 	public abstract void Clear();
 	/// <inheritdoc/>
-	public abstract IAsyncDisposable CreateNotificationScope();
+	public abstract IDisposable CreateNotificationScope();
 
 	[JsonIgnore]
 	internal readonly ConcurrentDictionary<string, object> NestedViewModels = new(StringComparer.OrdinalIgnoreCase);
@@ -160,7 +160,7 @@ public abstract class StateViewModel : IStateViewModel {
 /// 
 /// <para><strong>Bulk Updates with Notification Scoping:</strong></para>
 /// <code>
-/// await using (var scope = viewModel.CreateNotificationScope()) {
+/// using (var scope = viewModel.CreateNotificationScope()) {
 ///     await viewModel.SetFirstName("Jane");
 ///     await viewModel.SetLastName("Smith");
 ///     await viewModel.HomeAddress.SetCity("San Francisco");
@@ -216,9 +216,9 @@ public abstract class StateViewModel<TViewModel, TState> : StateViewModel
 
 
 	/// <inheritdoc/>
-	public override IAsyncDisposable CreateNotificationScope() {
+	public override IDisposable CreateNotificationScope() {
 		this.EnsureConfigured();
-		return this._state.CreateNotificationScopeAsync();
+		return this._state.CreateNotificationScope();
 	}
 
 	/// <inheritdoc/>
@@ -230,7 +230,7 @@ public abstract class StateViewModel<TViewModel, TState> : StateViewModel
 		try {
 			this._isMutating = true;
 
-			await using (var scope = this._state.CreateNotificationScopeAsync()) {
+			using (var scope = this._state.CreateNotificationScope()) {
 				foreach (var resetFunc in this._resetHandlers) {
 					await resetFunc();
 				}

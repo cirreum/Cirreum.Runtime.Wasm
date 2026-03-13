@@ -1,7 +1,7 @@
 <Project>
 
 	<PropertyGroup>
-		<UseLocalComponents>true</UseLocalComponents>
+		<UseLocalComponents>false</UseLocalComponents>
 		<!-- Auto-enable when using the local dev solution -->
 		<UseLocalComponents Condition="'$(SolutionName)' == 'Cirreum.Runtime.Wasm.Samples'">true</UseLocalComponents>
 	</PropertyGroup>
