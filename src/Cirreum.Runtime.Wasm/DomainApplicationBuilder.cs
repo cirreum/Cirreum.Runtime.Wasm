@@ -2,6 +2,7 @@
 
 using Cirreum.Conductor.Configuration;
 using Cirreum.Runtime.Security;
+using Cirreum.Runtime.State;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -199,7 +200,7 @@ public sealed class DomainApplicationBuilder : IClientDomainApplicationBuilder {
 
 
 		// ******************************************************************************
-		// IUserState / IClientUserState
+		// IUserState
 		//
 		var clientUser = new ClientUser();
 		this.Services
@@ -229,11 +230,15 @@ public sealed class DomainApplicationBuilder : IClientDomainApplicationBuilder {
 			// Core Blazor Components Library
 			.AddCoreComponents()
 
-			// Initializers
+			// Startup Initializers
 			.AddApplicationInitializers(ServiceLifetime.Scoped)
+
+			// Application Initialization Orchestrator
+			.AddScoped<IInitializationOrchestrator, InitializationOrchestrator>()
 
 			// Default Telemetry User Context
 			.TryAddSingleton<ITelemetryUserContext, NullTelemetryUserContext>();
+
 
 		// ******************************************************************************
 		// Initialization Orchestrator

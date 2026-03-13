@@ -138,7 +138,7 @@ builder.AddEntraAuth(tenantId, clientId);
 // Configure state management
 builder.AddClientState(state => state
     .RegisterState<IMyState, MyState>()
-    .AddDataStores()
+    .RegisterRemoteState<IMyRemoteState, MyRemoteState>()
 );
 
 await builder.BuildAndRunAsync();

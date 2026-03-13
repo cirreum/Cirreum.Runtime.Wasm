@@ -35,6 +35,21 @@
 			</a>
 
 			<NavList Css="navbar-nav">
+				<NavListItemButton Active="NotificationsShow"
+								   AriaLabel="Notifications"
+								   Title="notifications"
+								   OnClick="ShowNotifications">
+					<CounterBadge Count="@notificationState.UnreadCount"
+								  Color="TextColor.Dark"
+								  BackgroundColor="BackgroundColor.Info"
+								  HorizontalPosition="40"
+								  VerticalPosition="40">
+						<i class="bi bi-bell" aria-hidden="true"></i>
+					</CounterBadge>
+				</NavListItemButton>
+				<NavListItemContent LiCss="nav-item py-2 col-auto">
+					<div class="vr d-flex h-100 mx-2 text-white"></div>
+				</NavListItemContent>
 				<ThemeModeSelector />
 				<ThemeNameSelector />
 				<NavListItemContent LiCss="nav-item py-2 col-auto">

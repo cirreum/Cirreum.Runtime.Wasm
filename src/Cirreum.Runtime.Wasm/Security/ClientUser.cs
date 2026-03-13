@@ -8,12 +8,15 @@ internal sealed class ClientUser : UserStateBase {
 	/// Returns <see langword="true"/> when the user is authenticated and, if an application
 	/// user was loaded, the application user is enabled. For IDP-only apps (no
 	/// <see cref="IApplicationUserFactory"/> registered), <c>IsApplicationUserLoaded</c>
-	/// stays <see langword="false"/> and <c>IsReady</c> is <see langword="true"/> as soon
-	/// as authentication completes.
+	/// stays <see langword="false"/> and <c>IsLoaded</c> is <see langword="true"/> as soon
+	/// as authentication completes. Or the user is considered loaded if the principal is the
+	/// shared anonymous user, meaning there is no authenticated user but the user state is
+	/// still initialized and ready for use with the anonymous principal.
 	/// </summary>
-	public override bool IsReady =>
-		this._isAuthenticated
-		&& (!this.IsApplicationUserLoaded || this.ApplicationUser?.IsEnabled == true);
+	public override bool IsAuthenticationComplete =>
+		(this._isAuthenticated
+		&& (!this.IsApplicationUserLoaded || this.ApplicationUser?.IsEnabled == true))
+		|| this._principal == AnonymousUser.Shared;
 
 	internal void SetEnrichmentCompleted() {
 		this.EnrichmentComplete();

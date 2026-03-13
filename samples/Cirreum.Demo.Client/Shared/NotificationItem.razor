@@ -22,10 +22,11 @@
 			<div class="hstack gap-2">
 				@if (Notification.ActionUrl != null) {
 					<a href="@Notification.ActionUrl"
+					   target="_blank"
 					   class="notification-action"
 					   @onclick="HandleActionClick"
 					   @onclick:stopPropagation="true">
-						@(Notification.ActionText ?? "View")
+						@(Notification.ActionText ?? "View Details...")
 					</a>
 				}
 				<span class="notification-time ms-auto">@currentTimeDisplay</span>

@@ -28,7 +28,7 @@ using System.Reflection;
 /// </para>
 /// <list type="number">
 ///   <item><description>Authentication path → <see cref="RouteView"/> with <see cref="PendingLayout"/></description></item>
-///   <item><description>Route requires auth + not authenticated → <see cref="RedirectToLogin"/> inside <see cref="PendingLayout"/></description></item>
+///   <item><description>Route requires auth + not authenticated → <see cref="RedirectToLogin"/> (no layout, no DOM)</description></item>
 ///   <item><description>Initialization in progress → <see cref="PendingLayout"/> (splash covers user loading, enrichment, and data stores)</description></item>
 ///   <item><description>App user not found → <see cref="NotProvisioned"/> (only when <see cref="IApplicationUserFactory"/> is registered)</description></item>
 ///   <item><description>App user disabled → <see cref="Disabled"/> (only when <see cref="IApplicationUserFactory"/> is registered)</description></item>
@@ -206,9 +206,9 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 			return ViewState.AuthenticationPath;
 		}
 
-		// 2. Route requires auth + not authenticated — redirect to login
+		// 2. Route requires auth + not authenticated — redirect to login, no layout or DOM rendered
 		if (RouteRequiresAuthorization(this.RouteData.PageType) && !this.UserState.IsAuthenticated) {
-			return ViewState.Pending;
+			return ViewState.RedirectToLogin;
 		}
 
 		// 3. Trigger initialization if not yet started — synchronous flip to IsInitializing
@@ -266,6 +266,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 
 	private enum ViewState {
 		AuthenticationPath,
+		RedirectToLogin,
 		Pending,
 		NotProvisioned,
 		Disabled,

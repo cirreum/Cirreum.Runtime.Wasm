@@ -5,4 +5,6 @@ public record SampleAppUser(
 	string ExternalId,
 	string DisplayName,
 	string Email
-) : IApplicationUser;
+) : IApplicationUser {
+	public bool IsEnabled => true;
+}

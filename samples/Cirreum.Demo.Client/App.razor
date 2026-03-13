@@ -1,4 +1,5 @@
-﻿
+﻿@using Cirreum.Runtime.Components
+
 <HeadContent>
 	<meta name="description" content="Cirreum Demo Client Application.">
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -38,7 +39,7 @@
 	</NotFound>
 </Router> *@
 
-@* For use with no-auth *@
+@* For use with no-auth
 <Router AppAssembly="@typeof(App).Assembly">
 	<Found Context="routeData">
 		<RouteView RouteData="@routeData" DefaultLayout="@typeof(MinimalLayout)" />
@@ -49,6 +50,26 @@
 		</LayoutView>
 	</NotFound>
 </Router>
+*@
+
+@* For use with auth and no-auth *@
+<Router AppAssembly="@typeof(App).Assembly">
+	<Found Context="routeData">
+		<AppRouteView RouteData="@routeData"
+					  DefaultLayout="@typeof(MinimalLayout)"
+					  PendingLayout="@typeof(AuthenticationLayout)">
+			<NotAuthorizedContent>
+				<RedirectToUnauthorized UnauthorizedPage="/unauthorized" />
+			</NotAuthorizedContent>
+		</AppRouteView>
+	</Found>
+	<NotFound>
+		<LayoutView Layout="@typeof(MinimalLayout)">
+			<Custom404 />
+		</LayoutView>
+	</NotFound>
+</Router>
+
 
 <DialogContainer DefaultOptions="@(DialogOptions.Default)" />
 <MenuContainer />

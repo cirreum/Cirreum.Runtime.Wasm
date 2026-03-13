@@ -28,6 +28,7 @@ internal sealed partial class InitializationOrchestrator(
 	IInitializationState initState,
 	ClientUser clientUser,
 	IServiceProvider serviceProvider,
+	INotificationState notificationState,
 	ILogger<InitializationOrchestrator> logger
 ) : IInitializationOrchestrator {
 
@@ -42,6 +43,7 @@ internal sealed partial class InitializationOrchestrator(
 
 	/// <inheritdoc />
 	public void Start() {
+
 		if (this._hasStarted) {
 			return;
 		}
@@ -118,6 +120,10 @@ internal sealed partial class InitializationOrchestrator(
 			} catch (Exception ex) {
 				Log.ApplicationUserLoadFailed(logger, ex);
 				initState.LogError("Application User", ex);
+				notificationState.AddNotification(Notification.Create(
+					title: "Application User Error",
+					message: ex.Message,
+					type: NotificationType.Error));
 				clientUser.SetAppUser(null);
 			} finally {
 				initState.CompleteTask();
@@ -136,6 +142,10 @@ internal sealed partial class InitializationOrchestrator(
 			} catch (Exception ex) {
 				Log.ProfileEnrichmentFailed(logger, ex);
 				initState.LogError("Profile Enrichment", ex);
+				notificationState.AddNotification(Notification.Create(
+					title: "Application User Enrichment Error",
+					message: ex.Message,
+					type: NotificationType.Error));
 				// Always mark enrichment as complete to avoid blocking
 				clientUser.SetEnrichmentCompleted();
 			} finally {
@@ -153,6 +163,7 @@ internal sealed partial class InitializationOrchestrator(
 		Log.BeginningPhase2(logger, items.Count);
 
 		foreach (var item in items) {
+
 			// Evaluate late — Phase 1 may have mutated IUserState (e.g., SetAppUser)
 			// which downstream initializables may depend on.
 			if (!item.ShouldInitialize(clientUser)) {
@@ -173,6 +184,10 @@ internal sealed partial class InitializationOrchestrator(
 			} catch (Exception ex) {
 				Log.ServiceInitializationFailed(logger, item.DisplayName, ex);
 				initState.LogError(item.DisplayName, ex);
+				notificationState.AddNotification(Notification.Create(
+					title: $"{item.DisplayName} Error",
+					message: ex.Message,
+					type: NotificationType.Error));
 				// Continue with other initializers
 			} finally {
 				initState.CompleteTask();

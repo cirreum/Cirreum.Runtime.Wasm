@@ -1,5 +1,5 @@
 ﻿@page "/detail"
-@inherits StatePageBase
+@inherits StatePageBase<IPeopleRemoteState>
 @inject IHttpClientFactory HttpClientFactory
 @inject IWasmFileSystem WasmFileSystem;
 @inject ICsvFileBuilder CsvBuilder;
@@ -69,7 +69,7 @@
 	<button type="button" class="btn btn-xs btn-danger" @onclick="ToggleIsDataGridExporting">Toggle IsDataGridExporting</button>
 </div>
 
-<DataGrid Data="data"
+<DataGrid Data="State.People"
 		  ShowFooter="@DGAggregates"
 		  HeadersCss="@DGHeaders"
 		  Searchable="@DGSearchable"
@@ -81,12 +81,13 @@
 		  Pageable="@DGPageable"
 		  InitialPageSize="5"
 		  Title="Detail Template"
-		  IsLoading="isLoading"
+		  IsLoading="State.IsLoading"
+		  IsRefreshing="State.IsRefreshing"
+		  OnRefreshData="State.RefreshAsync"
 		  IsExporting="IsDataGridExporting"
+		  OnExportData="ExportAsync"
 		  SelectionType="SelectionType"
 		  @bind-SelectedItems="selectedPeople"
-		  OnRefreshData="RefreshAsync"
-		  OnExportData="ExportAsync"
 		  OnRowClicked=RowClicked
 		  OnRowDoubleClicked="RowDoubleClicked"
 		  OnRowContextMenuItemSelected="RowContextClicked">
@@ -146,9 +147,7 @@
 @code {
 
 	private SelectionType SelectionType { get; set; } = SelectionType.Multiple;
-	private IEnumerable<PersonData>? data;
 	private List<PersonData> selectedPeople = [];
-	private bool isLoading = true;
 	bool DGSearchable { get; set; } = true;
 	bool DGShowTitle { get; set; } = true;
 	bool DGShowToolbar { get; set; } = true;
@@ -195,48 +194,35 @@
 		this.IsDataGridExporting = !this.IsDataGridExporting;
 	}
 	private async Task ExportAsync() {
-		// this.IsDataGridExporting = true;
-		// Console.WriteLine(IsDataGridExporting);
-		// await Task.Delay(10_000);
-		// this.IsDataGridExporting = false;
-		if (this.data is not null) {
-			var csvBytes = CsvBuilder.BuildFile<PersonData>(this.data);
+		if (this.State.People is not null) {
+			var csvBytes = CsvBuilder.BuildFile<PersonData>(this.State.People);
 			await WasmFileSystem.DownloadFileAsync(csvBytes, "TestFile.csv", "text/csv");
 		}
 	}
-	private async Task RefreshAsync() {
-		var client = HttpClientFactory.CreateClient("FakeData");
-		var result = await client.GetFromJsonAsync<IEnumerable<PersonData>>("FXImuy6I7yBj/data");
-		if (result is null) {
-			return;
-		}
-		data = result.ToArray();
+	private Task RefreshAsync() {
+		return this.State.RefreshAsync();
 	}
-
+	protected override void OnStateChanged()
+	{
+		this.StateHasChanged();
+	}
 	protected override async Task OnInitializedAsync() {
-		Console.WriteLine($"DetailPage:OnInitializedAsync");
-		try {
-			Console.WriteLine($"DetailPage:OnInitializedAsync => GetData...");
-			await RefreshAsync();
-		} finally {
-			isLoading = false;
-
-			if (data is not null && data.Count() > 3) {
+		if(this.State.IsLoaded) {
+			if (this.State.People is not null && this.State.People.Count() > 3) {
 				switch (this.SelectionType) {
 					case SelectionType.None:
 						break;
 					case SelectionType.Single:
-						selectedPeople.Add(data.Skip(2).Take(1).First());
+						selectedPeople.Add(this.State.People.Skip(2).Take(1).First());
 						break;
 					case SelectionType.Multiple:
-						selectedPeople.Add(data.Skip(1).Take(1).First());
-						selectedPeople.Add(data.Skip(2).Take(1).First());
+						selectedPeople.Add(this.State.People.Skip(1).Take(1).First());
+						selectedPeople.Add(this.State.People.Skip(2).Take(1).First());
 						break;
-				}
-				;
+				};
 			}
-			Console.WriteLine($"DetailPage:OnInitializedAsync => Finished...");
 		}
+		Console.WriteLine($"DetailPage:OnInitializedAsync => Finished...");
 	}
 
 }

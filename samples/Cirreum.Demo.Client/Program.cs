@@ -5,8 +5,6 @@
 // dis-assembly, this is only meant to prevent it from
 // being super easy and convenient to download on demand.
 //
-
-
 // ******************************************************************************
 // Configure the WebAssemblyApplication
 //
@@ -22,15 +20,11 @@ builder.Logging.AddFilter("Microsoft.AspNetCore.Components.Sections", LogLevel.N
 builder.Logging.AddFilter("Microsoft.AspNetCore.Components.Authorization", LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Components.Routing", LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Components.WebAssembly.Authentication", LogLevel.Information);
-
-
 // ******************************************************************************
 // Configure the WebAssemblyHostBuilder
 //
 builder.RootComponents.Add<HeadOutlet>(App.HeadOutlet);
 builder.RootComponents.Add<App>(App.ElementId);
-
-
 // ******************************************************************************
 // Add Clients for your Remote Services
 //
@@ -71,7 +65,7 @@ builder.AddRemoteClient("FakeData", o => {
 	o.ServiceUri = new("https://api.json-generator.com/templates/");
 	o.AuthorizationHeader = new AuthorizationHeaderSettings {
 		Scheme = "bearer",
-		Value = "5h70ul87b4czgcpaqwnpp2ii7akd8b6gfa82uf0d"
+		Value = "y1ob25obwi5nz0v0pb2cjqks16q6mvi2gb6v8c65"
 	};
 });
 
@@ -116,8 +110,6 @@ builder.Services.AddScoped(sp => new HttpClient {
 // OIDC
 //
 //builder.AddMyOidcAuth(); //local helper extension method
-
-
 // ******************************************************************************
 // Add Application State
 //
@@ -125,17 +117,13 @@ builder.AddClientState(state => state
 	.RegisterState<INavMenuState, NavMenuState>()
 	.RegisterState<ITabRenderModeState, TabRenderModeState>()
 	.RegisterState<INavMenuState, NavMenuState>()
-	.RegisterState<INotificationState, NotificationState>()
+	.RegisterRemoteState<IPeopleRemoteState, PeopleRemoteState>()
 	.RegisterEncryptor(BuiltInEncryption.Base64Obfuscation)
-	.AddDataStores()
-		.WithAutoInitialization()
 // register previously used algorithms (None and Base64 are built-in)
 //.RegisterDecryptor(BuiltInEncryption.XorObfuscation(42))
 //.RegisterDecryptor(BuiltInEncryption.XorObfuscation(123))
 //.RegisterDecryptor(new MyCustomEncryptor())
 );
-
-
 // ******************************************************************************
 // Add Application Services
 //
@@ -144,16 +132,12 @@ builder.AddClientState(state => state
 // Application ViewModels
 builder.Services.AddScoped<UserSessionViewModel>();
 builder.Services.AddScoped<IMermaidService, MermaidService>();
-
-
 // ******************************************************************************
 // Add AppInsights
 //
 //var appinsights = "InstrumentationKey=a1e3d2fc-1610-4c8c-a557-34500df7e32b;IngestionEndpoint=https://westus3-1.in.applicationinsights.azure.com/;ApplicationId=a5e09368-609e-479b-bc45-f389ea2a240f";
 //builder
 //	.AddAppInsights(appinsights, correlatedServices: ["localhost"]);
-
-
 // ******************************************************************************
 // Build and Run the app
 //

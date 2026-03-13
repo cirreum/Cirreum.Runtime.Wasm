@@ -109,7 +109,7 @@
 						<b>@file.Name</b> 🔹
 						@($"{Decimal.Divide(file.Size, 1024):N} KB") 🔹
 						@file.ContentType 🔹
-						@file.LastModified.Humanize()
+						@file.LastModified
 					</li>
 				}
 			} else {
@@ -655,7 +655,7 @@
 	string SpinnerColor { get; set; } = "var(--bs-primary)";
 	void OnSpinnerColorSelected(BackgroundColor color) {
 		selectedSpinnerColor = color;
-		SpinnerColorName = $"{color}".Humanize();
+		SpinnerColorName = $"{color}";
 		SpinnerColor = $"var(--bs{color.ToShortName()})";
 	}
 

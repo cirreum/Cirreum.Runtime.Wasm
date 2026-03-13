@@ -5,12 +5,12 @@
 		<RouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout" />
 		break;
 
+	case ViewState.RedirectToLogin:
+		<RedirectToLogin LoginPath="@LoginPath" LoginHint="@LoginHint" Prompt="@OidcPrompt" />
+		break;
+
 	case ViewState.Pending:
-		<LayoutView Layout="@ResolvedPendingLayout">
-			@if (!UserState.IsAuthenticated) {
-				<RedirectToLogin LoginPath="@LoginPath" LoginHint="@LoginHint" Prompt="@OidcPrompt" />
-			}
-		</LayoutView>
+		<LayoutView Layout="@ResolvedPendingLayout" />
 		break;
 
 	case ViewState.NotProvisioned:

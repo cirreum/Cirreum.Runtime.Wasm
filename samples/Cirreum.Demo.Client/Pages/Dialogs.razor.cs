@@ -3,7 +3,7 @@
 using Cirreum.Demo.Client.Shared;
 using System;
 
-public partial class Dialogs {
+public partial class Dialogs(INotificationState notificationState) {
 
 	// Dialogs
 
@@ -349,6 +349,15 @@ public partial class Dialogs {
 	}
 	private void CloseUploadFileProgressToast() {
 		this.Toastr.Close(CustomToastId);
+	}
+
+	void AddNotification() {
+		notificationState.AddNotification(Notification.Create(
+			title: "New Message",
+			message: "You have received a new message.",
+			type: NotificationType.Info,
+			actionUrl: "https://example.com/messages",
+			actionText: "View Messages"));
 	}
 
 }
