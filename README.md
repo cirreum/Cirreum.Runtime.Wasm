@@ -17,7 +17,7 @@
 - **Authentication & Security**
   - Flexible authentication with claims processing and extension
   - `AppRouteView` — drop-in route view that gates on auth, initialization, and app user readiness
-  - Initialization orchestrator for sequenced startup (auth, app user, enrichment, data stores)
+  - Initialization orchestrator for sequenced startup (auth, app user, enrichment, remote state)
   - No-auth fallback for development scenarios
   
 - **State Management**

@@ -228,7 +228,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 			this.InitOrchestrator.Start();
 		}
 
-		// 4. Initialization in progress — splash covers auth, user loading, enrichment, and data stores
+		// 4. Initialization in progress — splash covers auth, user loading, enrichment, and remote state
 		if (this.InitializationState.IsInitializing) {
 			return ViewState.Pending;
 		}

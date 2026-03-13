@@ -19,7 +19,7 @@ using Microsoft.Extensions.Logging;
 /// </para>
 /// <para>
 /// <strong>Phase 2 — App-registered (ordered by <see cref="IInitializable.Order"/>):</strong>
-/// All registered <see cref="IInitializable"/> services (including data stores) that
+/// All registered <see cref="IInitializable"/> services (including remote state) that
 /// return <see langword="true"/> from <see cref="IInitializable.ShouldInitialize"/>.
 /// </para>
 /// </remarks>

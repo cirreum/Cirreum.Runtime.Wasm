@@ -20,7 +20,7 @@ using System.Text.Json;
 /// </para>
 /// <para>
 /// Application user loading (<see cref="IApplicationUserFactory"/>), profile enrichment
-/// (<see cref="IUserProfileEnricher"/>), and data store initialization are handled
+/// (<see cref="IUserProfileEnricher"/>), and remote state initialization are handled
 /// separately by the <see cref="IInitializationOrchestrator"/> once <c>AppRouteView</c>
 /// triggers initialization after authentication settles.
 /// </para>
@@ -119,7 +119,7 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 		}
 
 		// Set the authenticated principal on ClientUser and notify state subscribers.
-		// App user loading, profile enrichment, and data store initialization are
+		// App user loading, profile enrichment, and remote state initialization are
 		// handled by IInitializationOrchestrator after AppRouteView triggers init.
 		var clientUser = serviceProvider.GetRequiredService<ClientUser>();
 		clientUser.SetAuthenticatedPrincipal(userPrincipal);
