@@ -1,0 +1,69 @@
+﻿@page "/authentication/{action}"
+@using Cirreum.Runtime.Security
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject ClientUser clientUser
+
+<div style="padding: 2rem; font-family: monospace;">
+	<h3>Fake Authentication</h3>
+	<p>Action: <strong>@Action</strong></p>
+	<p>Status: <strong>@_status</strong></p>
+
+	@if (Action == "login") {
+		<button @onclick="SimulateLoginSuccess">Simulate Login Success</button>
+		<span>&nbsp;</span>
+		<button @onclick="SimulateLoginFailure">Simulate Login Failure</button>
+	}
+
+	@if (Action == "logout") {
+		<button @onclick="SimulateLogout">Simulate Logout</button>
+	}
+</div>
+
+@code {
+
+	[Parameter]
+	public string Action { get; set; } = default!;
+
+	[Inject]
+	private NavigationManager Navigation { get; set; } = default!;
+
+	private string _status = "Waiting...";
+	private string _returnUrl = "/";
+
+	protected override void OnInitialized() {
+		// NavigateToLogin encodes the return URL in the query string as returnUrl
+		Console.WriteLine($"[FakeAuth] Uri={Navigation.Uri}");
+		var uri = new Uri(Navigation.Uri);
+		var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+		_returnUrl = query["returnUrl"] ?? "/";
+		Console.WriteLine($"[FakeAuth] Action={Action}, ReturnUrl={_returnUrl}");
+	}
+
+	private async Task SimulateLoginSuccess() {
+		_status = "Authenticating...";
+		await Task.Delay(800);
+		clientUser.SetEnrichmentCompleted();
+		clientUser.SetAuthenticatedPrincipal(new ClaimsPrincipal(new ClaimsIdentity([
+				new Claim(ClaimTypes.Name, "John Doe"),
+				new Claim(ClaimTypes.Email, "j.d@example.com")
+			],
+			"FakeAuth"
+		)));
+		_status = "Redirecting...";
+		Navigation.NavigateTo(_returnUrl);
+	}
+
+	private async Task SimulateLoginFailure() {
+		_status = "Authentication failed.";
+		await Task.Delay(1500);
+		Navigation.NavigateTo("/authentication/login-failed");
+	}
+
+	private async Task SimulateLogout() {
+		_status = "Logging out...";
+		clientUser.SetAnonymous();
+		await Task.Delay(800);
+		Navigation.NavigateTo("/");
+	}
+
+}

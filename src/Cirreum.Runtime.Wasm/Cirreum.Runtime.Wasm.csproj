@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
 	<PropertyGroup>
 		<RootNamespace>Cirreum.Runtime</RootNamespace>
@@ -55,4 +55,8 @@
 		<Content Update="sasscompiler.json" CopyToOutputDirectory="Never" Pack="false" />
 	</ItemGroup>
 
+	<ItemGroup Condition="'$(UseLocalComponents)' == 'true'">
+		<InternalsVisibleTo Include="Cirreum.Demo.Client" />
+	</ItemGroup>
+	
 </Project>

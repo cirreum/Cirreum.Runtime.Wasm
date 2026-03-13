@@ -1,4 +1,6 @@
+@namespace Cirreum.Components
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @switch (_viewState) {
 
 	case ViewState.AuthenticationPath:
@@ -6,7 +8,10 @@
 		break;
 
 	case ViewState.RedirectToLogin:
-		<RedirectToLogin LoginPath="@LoginPath" LoginHint="@LoginHint" Prompt="@OidcPrompt" />
+		<RedirectToLogin LoginPath="@LoginPath"
+						 LoginHint="@LoginHint"
+						 LoginPrompt="@LoginPrompt"
+						 ReturnUrl="@_redirectReturnUrl" />
 		break;
 
 	case ViewState.Pending:
@@ -40,7 +45,10 @@
 					@if (NotAuthorizedContent is not null) {
 						@NotAuthorizedContent
 					} else {
-						<RedirectToLogin LoginPath="@LoginPath" LoginHint="@LoginHint" Prompt="@OidcPrompt" />
+						<RedirectToLogin LoginPath="@LoginPath"
+										 LoginHint="@LoginHint"
+										 LoginPrompt="@LoginPrompt"
+										 ReturnUrl="@_redirectReturnUrl" />
 					}
 				</NotAuthorized>
 			</AuthorizeRouteView>

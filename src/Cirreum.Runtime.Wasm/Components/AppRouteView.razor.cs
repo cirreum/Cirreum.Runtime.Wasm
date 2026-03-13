@@ -1,4 +1,4 @@
-namespace Cirreum.Runtime.Components;
+namespace Cirreum.Components;
 
 using Cirreum.Security;
 using Cirreum.State;
@@ -23,16 +23,17 @@ using System.Reflection;
 /// </para>
 /// <para>
 /// The state machine is re-evaluated on every <see cref="IUserState"/> change,
-/// <see cref="IInitializationState"/> change, and URL navigation. States are
-/// evaluated top-to-bottom; first match wins:
+/// <see cref="IInitializationState"/> change, and <see cref="RouteData"/> update.
+/// States are evaluated top-to-bottom; first match wins:
 /// </para>
 /// <list type="number">
 ///   <item><description>Authentication path → <see cref="RouteView"/> with <see cref="PendingLayout"/></description></item>
 ///   <item><description>Route requires auth + not authenticated → <see cref="RedirectToLogin"/> (no layout, no DOM)</description></item>
-///   <item><description>Initialization in progress → <see cref="PendingLayout"/> (splash covers user loading, enrichment, and data stores)</description></item>
+///   <item><description>Initialization in progress → <see cref="PendingLayout"/> (covers user loading, enrichment, and any registered remote states)</description></item>
 ///   <item><description>App user not found → <see cref="NotProvisioned"/> (only when <see cref="IApplicationUserFactory"/> is registered)</description></item>
 ///   <item><description>App user disabled → <see cref="Disabled"/> (only when <see cref="IApplicationUserFactory"/> is registered)</description></item>
-///   <item><description>All checks pass → <see cref="AuthorizeRouteView"/> with <see cref="DefaultLayout"/></description></item>
+///   <item><description>All checks pass + auth registered → <see cref="AuthorizeRouteView"/> with <see cref="DefaultLayout"/></description></item>
+///   <item><description>All checks pass + no auth registered → <see cref="RouteView"/> with <see cref="DefaultLayout"/></description></item>
 /// </list>
 /// </remarks>
 public sealed partial class AppRouteView : ComponentBase, IDisposable {
@@ -114,7 +115,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	/// Defaults to <c>"authentication/login"</c>.
 	/// </summary>
 	[Parameter]
-	public string? LoginPath { get; set; }
+	public string? LoginPath { get; set; } = "authentication/login";
 
 	/// <summary>
 	/// Optional login hint passed to the identity provider to pre-populate the username field.
@@ -132,7 +133,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	/// Use <c>OidcPrompt.None</c> for silent checks.
 	/// </remarks>
 	[Parameter]
-	public OidcPrompt? OidcPrompt { get; set; }
+	public OidcPrompt? LoginPrompt { get; set; }
 
 	// -------------------------------------------------------------------------
 	// State
@@ -150,12 +151,21 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// Lifecycle
 	// -------------------------------------------------------------------------
 
+	private string? _redirectReturnUrl;
+
+	public override async Task SetParametersAsync(ParameterView parameters) {
+		this._redirectReturnUrl = this.Navigation.Uri;
+		await base.SetParametersAsync(parameters);
+		if (this.EvaluateState()) {
+			await this.InvokeAsync(this.StateHasChanged);
+		}
+	}
+
 	protected override void OnInitialized() {
 		this._requiresApplicationUser = this.ServiceProvider.GetService<IApplicationUserFactory>() is not null;
 		this._useAuthorizedRouting = this.ServiceProvider.GetService<AuthenticationStateProvider>() is not null;
 		this._userStateSubscription = this.StateManager.Subscribe<IUserState>(this.OnUserStateChanged);
 		this._initStateSubscription = this.StateManager.Subscribe<IInitializationState>(this.OnInitStateChanged);
-		this.Navigation.LocationChanged += this.OnLocationChanged;
 		this.EvaluateState();
 	}
 
@@ -170,12 +180,6 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	}
 
 	private void OnInitStateChanged(IInitializationState _) {
-		if (this.EvaluateState()) {
-			this.InvokeAsync(this.StateHasChanged);
-		}
-	}
-
-	private void OnLocationChanged(object? sender, LocationChangedEventArgs args) {
 		if (this.EvaluateState()) {
 			this.InvokeAsync(this.StateHasChanged);
 		}
@@ -237,6 +241,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 
 		// 7. All checks pass
 		return ViewState.Ready;
+
 	}
 
 	/// <summary>
@@ -255,7 +260,6 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// -------------------------------------------------------------------------
 
 	public void Dispose() {
-		this.Navigation.LocationChanged -= this.OnLocationChanged;
 		this._userStateSubscription?.Dispose();
 		this._initStateSubscription?.Dispose();
 	}
@@ -265,6 +269,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// -------------------------------------------------------------------------
 
 	private enum ViewState {
+		Uninitialized,
 		AuthenticationPath,
 		RedirectToLogin,
 		Pending,
