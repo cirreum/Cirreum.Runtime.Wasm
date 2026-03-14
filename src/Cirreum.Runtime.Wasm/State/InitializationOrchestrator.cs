@@ -113,10 +113,15 @@ internal sealed partial class InitializationOrchestrator(
 				message: "An unexpected initialization error occurred.",
 				type: NotificationType.Error));
 
-			activityState.ResetTasks();
-
 		} finally {
 			Interlocked.Exchange(ref this._hasCompleted, 1);
+
+			// Reset tasks after marking completion. In single-threaded Blazor WASM,
+			// the last CompleteTask() notification fires synchronously — AppRouteView
+			// processes it before _hasCompleted is set, so it still sees Pending.
+			// This final ResetTasks() gives AppRouteView one more notification where
+			// HasCompleted is already true, allowing the transition to Ready.
+			activityState.ResetTasks();
 		}
 	}
 
