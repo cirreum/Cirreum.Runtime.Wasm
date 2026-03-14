@@ -12,7 +12,13 @@
       "Bash(dotnet restore:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "WebFetch(domain:devblogs.microsoft.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Read(//c/Program Files/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk.StaticWebAssets/**)",
+      "Read(//c//**)",
+      "Bash(dotnet --version)",
+      "Bash(dotnet --list-sdks)"
     ]
   }
 }

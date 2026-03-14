@@ -65,7 +65,17 @@
 	<!-- Generates .min.js alongside source files in wwwroot/js/.           -->
 	<!-- Both versions ship as static web assets — consumers choose which   -->
 	<!-- to reference. The .min.js files are gitignored.                    -->
+	<!--                                                                    -->
+	<!-- Timing: must run before the SDK's DefineStaticWebAssets task       -->
+	<!-- (inside ResolveProjectStaticWebAssets) scans Content items.        -->
+	<!-- We hook ResolveCoreStaticWebAssetsDependsOn to guarantee ordering. -->
 	<!-- ================================================================== -->
+
+	<PropertyGroup>
+		<ResolveCoreStaticWebAssetsDependsOn>
+			MinifyStaticJavaScript;$(ResolveCoreStaticWebAssetsDependsOn)
+		</ResolveCoreStaticWebAssetsDependsOn>
+	</PropertyGroup>
 
 	<UsingTask TaskName="MinifyJavaScript" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
 		<ParameterGroup>
@@ -93,7 +103,7 @@
 		</Task>
 	</UsingTask>
 
-	<Target Name="MinifyStaticJavaScript" BeforeTargets="ResolveStaticWebAssetsInputs">
+	<Target Name="MinifyStaticJavaScript" BeforeTargets="AssignTargetPaths">
 		<ItemGroup>
 			<_JsToMinify Include="wwwroot\js\**\*.js" Exclude="wwwroot\js\**\*.min.js" />
 		</ItemGroup>
