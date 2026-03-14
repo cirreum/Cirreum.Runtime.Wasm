@@ -98,6 +98,13 @@
 			<_JsToMinify Include="wwwroot\js\**\*.js" Exclude="wwwroot\js\**\*.min.js" />
 		</ItemGroup>
 		<MinifyJavaScript Files="@(_JsToMinify)" Condition="@(_JsToMinify->Count()) > 0" />
+		<!-- Generated .min.js files miss the SDK's initial wwwroot glob (evaluated
+		     before targets run). Remove stale entries then re-add so the static
+		     web asset pipeline serves them alongside the originals. -->
+		<ItemGroup>
+			<Content Remove="wwwroot\js\**\*.min.js" />
+			<Content Include="wwwroot\js\**\*.min.js" />
+		</ItemGroup>
 	</Target>
 
 </Project>
