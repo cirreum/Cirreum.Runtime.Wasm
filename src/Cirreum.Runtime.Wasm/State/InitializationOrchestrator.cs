@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 /// <summary>
 /// Orchestrates application initialization in two phases, coordinating Cirreum-controlled
 /// services and app-registered <see cref="IInitializable"/> services while reporting
-/// progress through <see cref="IInitializationState"/>.
+/// progress through <see cref="IActivityState"/>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -25,79 +25,99 @@ using Microsoft.Extensions.Logging;
 /// </remarks>
 internal sealed partial class InitializationOrchestrator(
 	IEnumerable<IInitializable> initializables,
-	IInitializationState initState,
+	IActivityState activityState,
 	ClientUser clientUser,
 	IServiceProvider serviceProvider,
 	INotificationState notificationState,
 	ILogger<InitializationOrchestrator> logger
 ) : IInitializationOrchestrator {
 
-	private bool _hasStarted;
-	private bool _hasCompleted;
+	private int _hasStarted;
+	private int _hasCompleted;
 
 	/// <inheritdoc />
-	public bool HasStarted => this._hasStarted;
+	public bool HasStarted => this._hasStarted == 1;
 
 	/// <inheritdoc />
-	public bool HasCompleted => this._hasCompleted;
+	public bool HasCompleted => this._hasCompleted == 1;
 
 	/// <inheritdoc />
 	public void Start() {
-
-		if (this._hasStarted) {
+		if (Interlocked.Exchange(ref this._hasStarted, 1) == 1) {
 			return;
 		}
 
-		this._hasStarted = true;
+		// Synchronously begin activity so the UI can immediately reflect that
+		// initialization is in progress with no rendering gap.
+		activityState.StartTask("Starting application...");
 
-		// Resolve Phase 1 services once — avoids double DI resolution.
-		IApplicationUserFactory? userFactory = null;
-		IUserProfileEnricher? enricher = null;
-
-		if (clientUser.IsAuthenticated) {
-			userFactory = serviceProvider.GetService<IApplicationUserFactory>();
-			enricher = serviceProvider.GetService<IUserProfileEnricher>();
-		}
-
-		var phase2Items = initializables
-			.OrderBy(i => i.Order)
-			.ToList();
-
-		if (userFactory is null && enricher is null && phase2Items.Count == 0) {
-			this._hasCompleted = true;
-			Log.NoInitializationWork(logger);
-			return;
-		}
-
-		// Calculate total tasks upfront for deterministic progress tracking.
-		// Phase 2 items that are later skipped via ShouldInitialize still count
-		// toward the total — they're "resolved" instantly.
-		var totalTasks = phase2Items.Count
-			+ (userFactory is not null ? 1 : 0)
-			+ (enricher is not null ? 1 : 0);
-
-		// Synchronously set total before returning — prevents any
-		// rendering gap where the app could briefly appear ready.
-		initState.SetTotalTasks(totalTasks);
-
-		_ = this.RunAsync(userFactory, enricher, phase2Items);
+		_ = this.RunAsync();
 	}
 
-	private async Task RunAsync(
-		IApplicationUserFactory? userFactory,
-		IUserProfileEnricher? enricher,
-		List<IInitializable> phase2Items) {
-		// Phase 1 — Cirreum-controlled: app user + profile enrichment
-		if (userFactory is not null || enricher is not null) {
-			await this.RunPhase1Async(userFactory, enricher);
-		}
+	private async Task RunAsync() {
+		try {
 
-		// Phase 2 — App-registered initializers
-		if (phase2Items.Count > 0) {
-			await this.RunPhase2Async(phase2Items);
-		}
+			// Resolve Phase 1 services once — avoids double DI resolution.
+			IApplicationUserFactory? userFactory = null;
+			IUserProfileEnricher? enricher = null;
 
-		this._hasCompleted = true;
+			if (clientUser.IsAuthenticated) {
+				userFactory = serviceProvider.GetService<IApplicationUserFactory>();
+				enricher = serviceProvider.GetService<IUserProfileEnricher>();
+			}
+
+			var phase2Items = initializables
+				.OrderBy(i => i.Order)
+				.ToList();
+
+			var totalTasks = phase2Items.Count
+				+ (userFactory is not null ? 1 : 0)
+				+ (enricher is not null ? 1 : 0);
+
+			if (totalTasks == 0) {
+				Interlocked.Exchange(ref this._hasCompleted, 1);
+				Log.NoInitializationWork(logger);
+				activityState.CompleteTask();
+				return;
+			}
+
+			// Replace the initial indeterminate task with deterministic tracked work.
+			// The notification scope prevents an intermediate UI update that would
+			// briefly make the application appear inactive.
+			using (activityState.CreateNotificationScope()) {
+				activityState.ResetTasks();
+				activityState.BeginTasks(totalTasks, "Initializing application...");
+				activityState.SetMode(ActivityMode.Deterministic);
+			}
+
+			// Phase 1 — Cirreum-controlled: app user + profile enrichment
+			if (userFactory is not null || enricher is not null) {
+				await this.RunPhase1Async(userFactory, enricher);
+			}
+
+			// Phase 2 — App-registered initializers
+			if (phase2Items.Count > 0) {
+				await this.RunPhase2Async(phase2Items);
+			}
+
+		} catch (Exception ex) {
+			Log.InitializationPipelineFailed(logger, ex);
+
+			activityState.LogError(
+				sourceName: "Initialization Pipeline",
+				exception: ex,
+				displayMessage: "An unexpected initialization error occurred.");
+
+			notificationState.AddNotification(Notification.Create(
+				title: "Initialization Error",
+				message: "An unexpected initialization error occurred.",
+				type: NotificationType.Error));
+
+			activityState.ResetTasks();
+
+		} finally {
+			Interlocked.Exchange(ref this._hasCompleted, 1);
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -111,7 +131,7 @@ internal sealed partial class InitializationOrchestrator(
 		// 1. Application user loading
 		if (userFactory is not null) {
 			Log.LoadingApplicationUser(logger);
-			initState.SetDisplayStatus("Loading user profile...");
+			activityState.SetDisplayStatus("Loading application user...");
 
 			try {
 				var result = await userFactory.CreateUserAsync(clientUser);
@@ -119,21 +139,24 @@ internal sealed partial class InitializationOrchestrator(
 				Log.ApplicationUserLoaded(logger, result.IsSuccess);
 			} catch (Exception ex) {
 				Log.ApplicationUserLoadFailed(logger, ex);
-				initState.LogError("Application User", ex);
+				activityState.LogError(
+					sourceName: "Application User",
+					exception: ex,
+					displayMessage: "The application user could not be loaded.");
 				notificationState.AddNotification(Notification.Create(
 					title: "Application User Error",
-					message: ex.Message,
+					message: "The application user could not be loaded.",
 					type: NotificationType.Error));
 				clientUser.SetAppUser(null);
 			} finally {
-				initState.CompleteTask();
+				activityState.CompleteTask();
 			}
 		}
 
 		// 2. Profile enrichment
 		if (enricher is not null) {
 			Log.EnrichingProfile(logger);
-			initState.SetDisplayStatus("Loading user profile...");
+			activityState.SetDisplayStatus("Enriching user profile...");
 
 			try {
 				await enricher.EnrichProfileAsync(clientUser.Profile, clientUser.Identity);
@@ -141,18 +164,20 @@ internal sealed partial class InitializationOrchestrator(
 				Log.ProfileEnrichmentComplete(logger);
 			} catch (Exception ex) {
 				Log.ProfileEnrichmentFailed(logger, ex);
-				initState.LogError("Profile Enrichment", ex);
+				activityState.LogError(
+					sourceName: "Profile Enrichment",
+					exception: ex,
+					displayMessage: "The user profile could not be fully enriched.");
 				notificationState.AddNotification(Notification.Create(
-					title: "Application User Enrichment Error",
-					message: ex.Message,
+					title: "Profile Enrichment Error",
+					message: "The user profile could not be fully enriched.",
 					type: NotificationType.Error));
 				// Always mark enrichment as complete to avoid blocking
 				clientUser.SetEnrichmentCompleted();
 			} finally {
-				initState.CompleteTask();
+				activityState.CompleteTask();
 			}
 		}
-
 	}
 
 	// -------------------------------------------------------------------------
@@ -168,33 +193,37 @@ internal sealed partial class InitializationOrchestrator(
 			// which downstream initializables may depend on.
 			if (!item.ShouldInitialize(clientUser)) {
 				Log.SkippingService(logger, item.DisplayName);
-				initState.CompleteTask();
+				activityState.CompleteTask();
 				continue;
 			}
 
-			var statusMessage = item.InitializationMessage
-				?? $"Loading {item.DisplayName}...";
+			var statusMessage = string.IsNullOrWhiteSpace(item.InitializationMessage)
+				? $"Loading {item.DisplayName}..."
+				: item.InitializationMessage;
 
 			Log.InitializingService(logger, item.DisplayName);
-			initState.SetDisplayStatus(statusMessage);
+			activityState.SetDisplayStatus(statusMessage);
 
 			try {
-				await item.InitializeAsync(initState.SetDisplayStatus);
+				await item.InitializeAsync(activityState.SetDisplayStatus);
 				Log.ServiceInitialized(logger, item.DisplayName);
 			} catch (Exception ex) {
 				Log.ServiceInitializationFailed(logger, item.DisplayName, ex);
-				initState.LogError(item.DisplayName, ex);
+				activityState.LogError(
+					sourceName: item.DisplayName,
+					exception: ex,
+					displayMessage: $"{item.DisplayName} could not be initialized.");
 				notificationState.AddNotification(Notification.Create(
 					title: $"{item.DisplayName} Error",
-					message: ex.Message,
+					message: $"{item.DisplayName} could not be initialized.",
 					type: NotificationType.Error));
 				// Continue with other initializers
 			} finally {
-				initState.CompleteTask();
+				activityState.CompleteTask();
 			}
 		}
 
-		Log.Phase2Complete(logger, initState.ErrorCount);
+		Log.Phase2Complete(logger, activityState.Errors.Count);
 	}
 
 	// -------------------------------------------------------------------------
@@ -250,6 +279,10 @@ internal sealed partial class InitializationOrchestrator(
 		[LoggerMessage(Level = LogLevel.Error,
 			Message = "Failed to initialize service: {ServiceName}")]
 		public static partial void ServiceInitializationFailed(ILogger logger, string serviceName, Exception exception);
+
+		[LoggerMessage(Level = LogLevel.Error,
+			Message = "Initialization pipeline failed unexpectedly")]
+		public static partial void InitializationPipelineFailed(ILogger logger, Exception exception);
 
 		[LoggerMessage(Level = LogLevel.Information,
 			Message = "Initialization complete. Errors: {ErrorCount}")]

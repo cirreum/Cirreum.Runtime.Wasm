@@ -18,18 +18,19 @@ using System.Reflection;
 /// <remarks>
 /// <para>
 /// Renders <see cref="RouteView"/> for authentication callback paths and pending
-/// states, and <see cref="AuthorizeRouteView"/> once the application is ready.
+/// states. Once the application is ready, renders either <see cref="AuthorizeRouteView"/>
+/// or <see cref="RouteView"/> depending on whether authentication services are registered.
 /// Page components are never instantiated until readiness is confirmed.
 /// </para>
 /// <para>
 /// The state machine is re-evaluated on every <see cref="IUserState"/> change,
-/// <see cref="IInitializationState"/> change, and <see cref="RouteData"/> update.
+/// <see cref="IActivityState"/> change, and <see cref="RouteData"/> update.
 /// States are evaluated top-to-bottom; first match wins:
 /// </para>
 /// <list type="number">
 ///   <item><description>Authentication path → <see cref="RouteView"/> with <see cref="PendingLayout"/></description></item>
 ///   <item><description>Route requires auth + not authenticated → <see cref="RedirectToLogin"/> (no layout, no DOM)</description></item>
-///   <item><description>Initialization in progress → <see cref="PendingLayout"/> (covers user loading, enrichment, and any registered remote states)</description></item>
+///   <item><description>Initialization in progress → <see cref="PendingLayout"/> (covers application user loading, profile enrichment, and any registered initializable services, including remote state)</description></item>
 ///   <item><description>App user not found → <see cref="NotProvisioned"/> (only when <see cref="IApplicationUserFactory"/> is registered)</description></item>
 ///   <item><description>App user disabled → <see cref="Disabled"/> (only when <see cref="IApplicationUserFactory"/> is registered)</description></item>
 ///   <item><description>All checks pass + auth registered → <see cref="AuthorizeRouteView"/> with <see cref="DefaultLayout"/></description></item>
@@ -42,8 +43,8 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	[Inject] private IStateManager StateManager { get; set; } = default!;
 	[Inject] private NavigationManager Navigation { get; set; } = default!;
 	[Inject] private IServiceProvider ServiceProvider { get; set; } = default!;
-	[Inject] private IInitializationState InitializationState { get; set; } = default!;
-	[Inject] private IInitializationOrchestrator InitOrchestrator { get; set; } = default!;
+	[Inject] private IActivityState ActivityState { get; set; } = default!;
+	[Inject] private IInitializationOrchestrator Orchestrator { get; set; } = default!;
 
 	// -------------------------------------------------------------------------
 	// Parameters
@@ -67,7 +68,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	/// The layout rendered during authentication and initialization pending states.
 	/// Defaults to <see cref="DefaultLayout"/> when not specified. The splash
 	/// screen typically lives in this layout and self-manages via
-	/// <see cref="IInitializationState"/>.
+	/// <see cref="IActivityState"/>.
 	/// </summary>
 	[Parameter]
 	public Type? PendingLayout { get; set; }
@@ -147,11 +148,13 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// State
 	// -------------------------------------------------------------------------
 
+	private int _renderQueued;
 	private IDisposable? _userStateSubscription;
-	private IDisposable? _initStateSubscription;
-	private ViewState _viewState;
+	private IDisposable? _activityStateSubscription;
+	private ViewState _viewState = ViewState.Pending;
 	private bool _requiresApplicationUser;
-	private bool _useAuthorizedRouting;
+	private bool _hasAuthenticationRouting;
+	private string? _redirectReturnUrl;
 
 	private Type ResolvedPendingLayout => this.PendingLayout ?? this.DefaultLayout;
 
@@ -159,37 +162,63 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// Lifecycle
 	// -------------------------------------------------------------------------
 
-	private string? _redirectReturnUrl;
-
 	public override async Task SetParametersAsync(ParameterView parameters) {
 		this._redirectReturnUrl = this.Navigation.Uri;
 		await base.SetParametersAsync(parameters);
-		if (this.EvaluateState()) {
-			await this.InvokeAsync(this.StateHasChanged);
-		}
+
+		this.EnsureInitializationStarted();
+		this._viewState = this.ComputeViewState();
 	}
 
 	protected override void OnInitialized() {
 		this._requiresApplicationUser = this.ServiceProvider.GetService<IApplicationUserFactory>() is not null;
-		this._useAuthorizedRouting = this.ServiceProvider.GetService<AuthenticationStateProvider>() is not null;
+		this._hasAuthenticationRouting = this.ServiceProvider.GetService<AuthenticationStateProvider>() is not null;
 		this._userStateSubscription = this.StateManager.Subscribe<IUserState>(this.OnUserStateChanged);
-		this._initStateSubscription = this.StateManager.Subscribe<IInitializationState>(this.OnInitStateChanged);
-		this.EvaluateState();
+		this._activityStateSubscription = this.StateManager.Subscribe<IActivityState>(this.OnActivityStateChanged);
 	}
 
 	// -------------------------------------------------------------------------
 	// Event Handlers
 	// -------------------------------------------------------------------------
 
-	private void OnUserStateChanged(IUserState _) {
-		if (this.EvaluateState()) {
-			this.InvokeAsync(this.StateHasChanged);
+	private void OnUserStateChanged(IUserState _) => this.RequestRender();
+
+	private void OnActivityStateChanged(IActivityState _) => this.RequestRender();
+
+	private void RequestRender() {
+
+		if (Interlocked.Exchange(ref this._renderQueued, 1) == 1) {
+			return;
 		}
+
+		_ = this.InvokeAsync(this.ProcessRender);
+
 	}
 
-	private void OnInitStateChanged(IInitializationState _) {
-		if (this.EvaluateState()) {
-			this.InvokeAsync(this.StateHasChanged);
+	private void ProcessRender() {
+		try {
+			// Loop until no new changes arrive during processing.
+			// Each iteration resets the flag first so that a concurrent
+			// state change re-raises it, guaranteeing another pass.
+			do {
+				Interlocked.Exchange(ref this._renderQueued, 0);
+
+				this.EnsureInitializationStarted();
+
+				if (this.EvaluateState()) {
+					this.StateHasChanged();
+				}
+
+			} while (Interlocked.CompareExchange(ref this._renderQueued, 0, 0) == 1);
+
+			if (this.Orchestrator.HasCompleted) {
+				this._activityStateSubscription?.Dispose();
+				this._activityStateSubscription = null;
+			}
+		} catch (Exception) {
+			// Reset so future state changes aren't permanently blocked.
+			Interlocked.Exchange(ref this._renderQueued, 0);
+			throw;
 		}
 	}
 
@@ -210,11 +239,15 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		return true;
 	}
 
+	private bool IsAuthenticationPath() {
+		var relativePath = this.Navigation.ToBaseRelativePath(this.Navigation.Uri);
+		return relativePath.StartsWith(this.AuthenticationBasePath, StringComparison.OrdinalIgnoreCase);
+	}
+
 	private ViewState ComputeViewState() {
 
 		// 1. Authentication callback path — route normally with pending layout
-		var relativePath = this.Navigation.ToBaseRelativePath(this.Navigation.Uri);
-		if (relativePath.StartsWith(this.AuthenticationBasePath, StringComparison.OrdinalIgnoreCase)) {
+		if (this.IsAuthenticationPath()) {
 			return ViewState.AuthenticationPath;
 		}
 
@@ -223,31 +256,29 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 			return ViewState.RedirectToLogin;
 		}
 
-		// 3. Trigger initialization if not yet started — synchronous flip to IsInitializing
-		if (!this.InitOrchestrator.HasStarted) {
-			this.InitOrchestrator.Start();
-		}
-
-		// 4. Initialization in progress — splash covers auth, user loading, enrichment, and remote state
-		if (this.InitializationState.IsInitializing) {
+		// 3. Initialization not yet complete — render the pending layout. The splash
+		//    screen (typically hosted by the layout) covers application user loading,
+		//    profile enrichment, and any registered initializable services, including
+		//    remote state. We gate on HasCompleted rather than IsActive to avoid
+		//    brief flickers when the activity state transitions between tasks.
+		if (!this.Orchestrator.HasCompleted) {
 			return ViewState.Pending;
 		}
 
-		// 5–6. Application user checks (only when a factory is registered)
+		// 4–5. Application user checks (only when a factory is registered)
 		if (this._requiresApplicationUser) {
 
-			// 5. Factory completed but no account exists in this application
 			if (this.UserState.ApplicationUser is null) {
 				return ViewState.NotProvisioned;
 			}
 
-			// 6. Account exists but is disabled
 			if (!this.UserState.ApplicationUser.IsEnabled) {
 				return ViewState.Disabled;
 			}
+
 		}
 
-		// 7. All checks pass
+		// 6. All checks pass
 		return ViewState.Ready;
 
 	}
@@ -264,12 +295,33 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	}
 
 	// -------------------------------------------------------------------------
+	// Helpers
+	// -------------------------------------------------------------------------
+
+	private void EnsureInitializationStarted() {
+
+		if (this.Orchestrator.HasStarted) {
+			return;
+		}
+
+		if (this.IsAuthenticationPath()) {
+			return;
+		}
+
+		if (RouteRequiresAuthorization(this.RouteData.PageType) && !this.UserState.IsAuthenticated) {
+			return;
+		}
+
+		this.Orchestrator.Start();
+	}
+
+	// -------------------------------------------------------------------------
 	// Disposal
 	// -------------------------------------------------------------------------
 
 	public void Dispose() {
 		this._userStateSubscription?.Dispose();
-		this._initStateSubscription?.Dispose();
+		this._activityStateSubscription?.Dispose();
 	}
 
 	// -------------------------------------------------------------------------
@@ -277,7 +329,6 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// -------------------------------------------------------------------------
 
 	private enum ViewState {
-		Uninitialized,
 		AuthenticationPath,
 		RedirectToLogin,
 		Pending,

@@ -17,11 +17,12 @@
 	<ItemGroup>
 		<PackageReference Include="AspNetCore.SassCompiler" Version="1.97.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.5" />
+		<PackageReference Include="NUglify" Version="1.21.17" PrivateAssets="all" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' != 'true'">
 		<PackageReference Include="Cirreum.Components.WebAssembly" Version="1.0.30" />
-		<PackageReference Include="Cirreum.Services.Wasm" Version="1.0.8" />
+		<PackageReference Include="Cirreum.Services.Wasm" Version="1.0.9" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(UseLocalComponents)' == 'true'">
 		<ProjectReference Include="..\..\..\..\Infrastructure\Cirreum.Services.Wasm\src\Cirreum.Services.Wasm\Cirreum.Services.Wasm.csproj" />
@@ -58,5 +59,45 @@
 	<ItemGroup Condition="'$(UseLocalComponents)' == 'true'">
 		<InternalsVisibleTo Include="Cirreum.Demo.Client" />
 	</ItemGroup>
-	
+
+	<!-- ================================================================== -->
+	<!-- JS Minification                                                    -->
+	<!-- Generates .min.js alongside source files in wwwroot/js/.           -->
+	<!-- Both versions ship as static web assets — consumers choose which   -->
+	<!-- to reference. The .min.js files are gitignored.                    -->
+	<!-- ================================================================== -->
+
+	<UsingTask TaskName="MinifyJavaScript" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+		<ParameterGroup>
+			<Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+		</ParameterGroup>
+		<Task>
+			<Reference Include="$(NuGetPackageRoot)nuglify/1.21.17/lib/netstandard2.0/NUglify.dll" />
+			<Using Namespace="NUglify" />
+			<Code Type="Fragment" Language="cs"><![CDATA[
+				foreach (var file in Files) {
+					var sourcePath = file.GetMetadata("FullPath");
+					var minPath = System.IO.Path.ChangeExtension(sourcePath, ".min.js");
+					var source = System.IO.File.ReadAllText(sourcePath);
+					var result = Uglify.Js(source);
+					if (result.HasErrors) {
+						foreach (var error in result.Errors)
+							Log.LogWarning($"[MinifyJS] {error.Message} ({sourcePath}:{error.StartLine})");
+					} else {
+						System.IO.File.WriteAllText(minPath, result.Code);
+						Log.LogMessage(MessageImportance.High,
+							$"[MinifyJS] {System.IO.Path.GetFileName(sourcePath)}: {source.Length:#,0} → {result.Code.Length:#,0} bytes ({(1.0 - (double)result.Code.Length / source.Length):P0} reduction)");
+					}
+				}
+			]]></Code>
+		</Task>
+	</UsingTask>
+
+	<Target Name="MinifyStaticJavaScript" BeforeTargets="ResolveStaticWebAssetsInputs">
+		<ItemGroup>
+			<_JsToMinify Include="wwwroot\js\**\*.js" Exclude="wwwroot\js\**\*.min.js" />
+		</ItemGroup>
+		<MinifyJavaScript Files="@(_JsToMinify)" Condition="@(_JsToMinify->Count()) > 0" />
+	</Target>
+
 </Project>

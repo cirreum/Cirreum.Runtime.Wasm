@@ -2,3 +2,6 @@
 *.css
 *.min.css
 *.css.map
+
+# exclude generated minified JS (build artifact from MinifyStaticJavaScript target)
+*.min.js
