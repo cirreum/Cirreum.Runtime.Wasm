@@ -12,37 +12,34 @@ sealed class NoAuthPolicyProvider : IAuthorizationPolicyProvider {
 	internal static readonly HashSet<string> RestrictedPolicies
 		= new(AuthorizationPolicies.All, StringComparer.OrdinalIgnoreCase);
 
-	public Task<AuthorizationPolicy> GetDefaultPolicyAsync() {
-		return Task.FromResult(
-			new AuthorizationPolicyBuilder()
-				.RequireAssertion(_ => true)
-				.Build()
-		);
-	}
+	private static readonly AuthorizationPolicy _allowAllPolicy =
+		new AuthorizationPolicyBuilder()
+			.RequireAssertion(_ => true)
+			.Build();
 
-	public Task<AuthorizationPolicy?> GetFallbackPolicyAsync() {
-		return Task.FromResult<AuthorizationPolicy?>(
-			new AuthorizationPolicyBuilder()
-				.RequireAssertion(_ => true)
-				.Build()
-		);
-	}
+	private static readonly AuthorizationPolicy _restrictedPolicy =
+		new AuthorizationPolicyBuilder()
+			.RequireAuthenticatedUser()
+			.Build();
+
+	private static readonly Task<AuthorizationPolicy> _defaultPolicy =
+		Task.FromResult(_allowAllPolicy);
+
+	private static readonly Task<AuthorizationPolicy?> _allowAllPolicyNullable =
+		Task.FromResult<AuthorizationPolicy?>(_allowAllPolicy);
+
+	private static readonly Task<AuthorizationPolicy?> _restrictedPolicyNullable =
+		Task.FromResult<AuthorizationPolicy?>(_restrictedPolicy);
+
+	public Task<AuthorizationPolicy> GetDefaultPolicyAsync() => _defaultPolicy;
+
+	public Task<AuthorizationPolicy?> GetFallbackPolicyAsync() => _allowAllPolicyNullable;
 
 	public Task<AuthorizationPolicy?> GetPolicyAsync(string policyName) {
-		// Fail for known restricted policies or role-based policies
 		if (RestrictedPolicies.Contains(policyName)) {
-			return Task.FromResult<AuthorizationPolicy?>(
-				new AuthorizationPolicyBuilder()
-					.RequireAuthenticatedUser() // This will always fail for anonymous users
-					.Build()
-			);
+			return _restrictedPolicyNullable;
 		}
-
-		// Allow all other policies
-		return Task.FromResult<AuthorizationPolicy?>(
-			new AuthorizationPolicyBuilder()
-				.RequireAssertion(_ => true)
-				.Build()
-		);
+		return _allowAllPolicyNullable;
 	}
+
 }

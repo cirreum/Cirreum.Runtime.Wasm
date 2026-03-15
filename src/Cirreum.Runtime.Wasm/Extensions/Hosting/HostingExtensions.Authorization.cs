@@ -58,7 +58,6 @@ public static partial class HostingExtensions {
 			builder.Services.AddScoped<AuthenticationStateProvider, NoAuthStateProvider>();
 			builder.Services.AddScoped<IAuthorizationPolicyProvider, NoAuthPolicyProvider>();
 			builder.Services.AddScoped<IAuthorizationService, NoAuthAuthenticationService>();
-			builder.Services.AddScoped<IUserStateAccessor, NoAuthUserStateAccessor>();
 			return;
 		}
 

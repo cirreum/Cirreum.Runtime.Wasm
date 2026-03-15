@@ -1,8 +1,16 @@
 ﻿@*AuthenticationLayout.razor*@
+@inject IWebAssemblyHostEnvironment Env
 @inherits LayoutComponentBase
 <ErrorBoundary>
 	<ChildContent>
-		@Body
+		@if (Env.IsDevelopment()) {
+			<div class="container-fluid" style="border: solid 1px red;min-height:100vh;box-sizing:border-box;">
+				@Body
+				<p>Authentication Page: Debug / Development mode</p>
+			</div>
+		} else {
+			@Body
+		}
 		<SplashScreen />
 	</ChildContent>
 	<ErrorContent Context="exception">

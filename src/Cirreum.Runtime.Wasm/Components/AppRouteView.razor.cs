@@ -191,7 +191,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		// For auth apps on cold start, the orchestrator is started from OnUserStateChanged
 		// once IsAuthenticationComplete flips to true — ensuring Phase 1 (app user loading,
 		// profile enrichment) runs with the correct identity.
-		if (this.UserState.IsAuthenticationComplete) {
+		if (!this._hasAuthenticationRouting || this.UserState.IsAuthenticationComplete) {
 			this.Orchestrator.Start();
 		}
 
