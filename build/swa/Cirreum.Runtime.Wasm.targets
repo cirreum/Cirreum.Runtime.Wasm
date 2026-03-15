@@ -4,19 +4,36 @@
 		<CspEnvironmentName Condition="'$(Configuration)' == 'Debug' And '$(CspEnvironmentName)' == ''">Development</CspEnvironmentName>
 		<CspEnvironmentName Condition="'$(CspEnvironmentName)' == ''">Production</CspEnvironmentName>
 
+		<CirreumGenerateSwaConfig Condition="'$(CirreumGenerateSwaConfig)' == ''">true</CirreumGenerateSwaConfig>
+
 		<CspBasePolicy Condition="'$(CspBasePolicy)' == ''">$(MSBuildThisFileDirectory)csp.base.policy</CspBasePolicy>
 		<CspEnvPolicy Condition="'$(CspEnvPolicy)' == ''">$(MSBuildProjectDirectory)\Properties\csp.$(CspEnvironmentName).policy</CspEnvPolicy>
+
+		<!-- Option 2: Use consuming app's template if it exists, otherwise fall back to package default -->
+		<SwaConfigTemplate Condition="'$(SwaConfigTemplate)' == '' And Exists('$(MSBuildProjectDirectory)\wwwroot\staticwebapp.config.template.json')">$(MSBuildProjectDirectory)\wwwroot\staticwebapp.config.template.json</SwaConfigTemplate>
 		<SwaConfigTemplate Condition="'$(SwaConfigTemplate)' == ''">$(MSBuildThisFileDirectory)staticwebapp.config.template.json</SwaConfigTemplate>
+
 		<SwaConfigOutput Condition="'$(SwaConfigOutput)' == ''">$(MSBuildProjectDirectory)\wwwroot\staticwebapp.config.json</SwaConfigOutput>
 		<SwaCspGenerator Condition="'$(SwaCspGenerator)' == ''">$(MSBuildThisFileDirectory)SwaConfig-CspGen.ps1</SwaCspGenerator>
+
+		<!-- Option 3: Opt-in by convention — skip if no policy files exist -->
+		<_CspProdPolicy>$(MSBuildProjectDirectory)\Properties\csp.Production.policy</_CspProdPolicy>
+		<_HasCspPolicyFiles Condition="Exists('$(CspEnvPolicy)') Or Exists('$(_CspProdPolicy)')">true</_HasCspPolicyFiles>
+		<_HasCspPolicyFiles Condition="'$(_HasCspPolicyFiles)' == ''">false</_HasCspPolicyFiles>
 	</PropertyGroup>
 
-	<Target Name="GenerateStaticWebAppConfig" BeforeTargets="Build">
+	<Target Name="GenerateStaticWebAppConfig"
+		BeforeTargets="Build"
+		Condition="'$(CirreumGenerateSwaConfig)' == 'true' And '$(_HasCspPolicyFiles)' == 'true'">
+
 		<Error Condition="!Exists('$(SwaCspGenerator)')" Text="[Cirreum] SwaCspGenerator not found: $(SwaCspGenerator)" />
 		<Error Condition="!Exists('$(CspBasePolicy)')" Text="[Cirreum] CspBasePolicy not found: $(CspBasePolicy)" />
 		<Error Condition="!Exists('$(SwaConfigTemplate)')" Text="[Cirreum] SwaConfigTemplate not found: $(SwaConfigTemplate)" />
 
 		<Message Importance="High" Text="[Cirreum] Generating staticwebapp.config.json ($(CspEnvironmentName))" />
+		<Message Importance="Normal" Text="[Cirreum] Template: $(SwaConfigTemplate)" />
+		<Message Importance="Normal" Text="[Cirreum] Base policy: $(CspBasePolicy)" />
+		<Message Importance="Normal" Text="[Cirreum] Env policy: $(CspEnvPolicy)" />
 
 		<Exec Command='powershell -NoProfile -ExecutionPolicy Bypass -File "$(SwaCspGenerator)" -Template "$(SwaConfigTemplate)" -BasePolicy "$(CspBasePolicy)" -EnvPolicy "$(CspEnvPolicy)" -Output "$(SwaConfigOutput)"' />
 	</Target>
