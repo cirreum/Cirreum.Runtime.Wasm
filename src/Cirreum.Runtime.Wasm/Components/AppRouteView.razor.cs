@@ -43,7 +43,6 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	[Inject] private IStateManager StateManager { get; set; } = default!;
 	[Inject] private NavigationManager Navigation { get; set; } = default!;
 	[Inject] private IServiceProvider ServiceProvider { get; set; } = default!;
-	[Inject] private IActivityState ActivityState { get; set; } = default!;
 	[Inject] private IInitializationOrchestrator Orchestrator { get; set; } = default!;
 
 	// -------------------------------------------------------------------------
@@ -173,25 +172,6 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	}
 
 	/// <inheritdoc />
-	/// <remarks>
-	/// <para>
-	/// Probes the DI container once to detect whether <see cref="IApplicationUserFactory"/>
-	/// and <see cref="AuthenticationStateProvider"/> are registered, then subscribes to
-	/// <see cref="IUserState"/> and <see cref="IActivityState"/> change notifications.
-	/// </para>
-	/// <para>
-	/// Starts the <see cref="IInitializationOrchestrator"/> unconditionally. The orchestrator's
-	/// <see cref="IInitializationOrchestrator.Start"/> synchronously calls
-	/// <see cref="IActivityState.StartTask"/> so that <see cref="IActivityState.IsActive"/>
-	/// is <see langword="true"/> on the very first render — ensuring splash screens gated
-	/// on <c>IsActive</c> are visible immediately with no blank frame.
-	/// </para>
-	/// <para>
-	/// When the orchestrator has no initialization work (no authenticated user, no registered
-	/// <see cref="IInitializable"/> services), it completes synchronously before the first
-	/// render, transitioning the view state directly to <see cref="ViewState.Ready"/>.
-	/// </para>
-	/// </remarks>
 	protected override void OnInitialized() {
 
 		// Detect optional services that influence the state machine.
@@ -202,12 +182,19 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		this._userStateSubscription = this.StateManager.Subscribe<IUserState>(this.OnUserStateChanged);
 		this._activityStateSubscription = this.StateManager.Subscribe<IActivityState>(this.OnActivityStateChanged);
 
-		// Start the orchestrator immediately. Its Start() synchronously sets
-		// IsActive = true so the splash screen renders on the first frame.
-		// When there is no work, the orchestrator completes synchronously and
-		// the view transitions straight to Ready — the splash is never painted.
+		// Hold in Pending until authentication is resolved and orchestration completes.
+		// This prevents any page component from rendering before the app is ready.
 		this._viewState = ViewState.Pending;
-		this.Orchestrator.Start();
+
+		// Start the orchestrator only when authentication state is already known.
+		// For anonymous apps or post-callback returns, auth is complete immediately.
+		// For auth apps on cold start, the orchestrator is started from OnUserStateChanged
+		// once IsAuthenticationComplete flips to true — ensuring Phase 1 (app user loading,
+		// profile enrichment) runs with the correct identity.
+		if (this.UserState.IsAuthenticationComplete) {
+			this.Orchestrator.Start();
+		}
+
 	}
 
 	// -------------------------------------------------------------------------
@@ -216,9 +203,17 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 
 	/// <summary>
 	/// Called when <see cref="IUserState"/> changes (authentication state, application user).
-	/// Re-evaluates the state machine and triggers a render only when the view state changed.
+	/// Starts the <see cref="IInitializationOrchestrator"/> once authentication is complete
+	/// and the app is not mid-redirect. Re-evaluates the state machine and triggers a render
+	/// only when the view state changed.
 	/// </summary>
 	private void OnUserStateChanged(IUserState _) {
+		if (!this.Orchestrator.HasStarted
+			&& this.UserState.IsAuthenticationComplete
+			&& !this.IsAuthenticationPath()
+			&& !(RouteRequiresAuthorization(this.RouteData.PageType) && !this.UserState.IsAuthenticated)) {
+			this.Orchestrator.Start();
+		}
 		if (this.EvaluateState()) {
 			this.InvokeAsync(this.StateHasChanged);
 		}
