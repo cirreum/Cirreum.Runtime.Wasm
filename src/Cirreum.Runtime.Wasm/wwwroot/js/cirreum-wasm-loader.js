@@ -651,11 +651,27 @@
 			return false;
 		}
 
-		// Auth callback in progress - let Blazor handle it
+		// Check if this is a session warmer return. We match our stored state
+		// against the query param to distinguish from MSAL-initiated callbacks.
+		// On match: the IdP session cookie is now set — redirect to the original
+		// page and let MSAL handle auth normally (near-instant with cookie).
 		const params = new URLSearchParams(window.location.search);
 		if (params.has("code") && params.has("state")) {
-			sessionStorage.removeItem(WARMER_KEY);
-			console.debug("[cirreum] Auth callback detected - resuming boot.");
+			try {
+				const warmerState = sessionStorage.getItem("cirreum.warmer.state");
+				if (warmerState && warmerState === params.get("state")) {
+					const returnUrl = sessionStorage.getItem("cirreum.warmer.returnUrl") || "/";
+					sessionStorage.removeItem(WARMER_KEY);
+					sessionStorage.removeItem("cirreum.warmer.state");
+					sessionStorage.removeItem("cirreum.warmer.returnUrl");
+					console.debug("[cirreum] Session warmer complete — cookie established. Redirecting to:", returnUrl);
+					window.location.replace(returnUrl);
+					return true; // redirecting — don't boot Blazor
+				}
+			} catch {
+				// sessionStorage unavailable — fall through
+			}
+			// State doesn't match — this is a real MSAL callback, let Blazor handle it
 			return false;
 		}
 
@@ -715,9 +731,11 @@
 			const state = generateRandomString(32);
 			const nonce = generateRandomString(32);
 
-			// Store verifier so MSAL can retrieve it on the callback
-			sessionStorage.setItem(`msal.${clientId}.pkce.verifier`, verifier);
-			sessionStorage.setItem(`msal.${clientId}.pkce.state`, state);
+			// Store warmer state for return detection. We use our own namespace
+			// (cirreum.warmer.*) — never MSAL's — so we don't interfere with
+			// MSAL's internal state management.
+			sessionStorage.setItem("cirreum.warmer.state", state);
+			sessionStorage.setItem("cirreum.warmer.returnUrl", window.location.href);
 
 			const baseUrl = authority.replace(/\/$/, "");
 			const authorizeUrl = `${baseUrl}/oauth2/v2.0/authorize`;

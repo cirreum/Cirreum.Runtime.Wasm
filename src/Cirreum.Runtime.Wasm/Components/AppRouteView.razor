@@ -3,8 +3,32 @@
 @using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @switch (_viewState) {
 
+	case ViewState.Pending:
+		<LayoutView Layout="@ResolvedPendingLayout" />
+		break;
+
 	case ViewState.AuthenticationPath:
 		<RouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout" />
+		break;
+
+	case ViewState.Ready:
+		@if (_hasAuthenticationRouting) {
+			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout">
+				<NotAuthorized>
+					@if (NotAuthorizedContent is not null) {
+						@NotAuthorizedContent
+					} else {
+						<RedirectToLogin LoginPath="@LoginPath"
+										 LoginHint="@LoginHint"
+										 LoginPrompt="@LoginPrompt"
+										 DomainHint="@DomainHint"
+										 ReturnUrl="@_redirectReturnUrl" />
+					}
+				</NotAuthorized>
+			</AuthorizeRouteView>
+		} else {
+			<RouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout" />
+		}
 		break;
 
 	case ViewState.RedirectToLogin:
@@ -13,10 +37,6 @@
 						 LoginPrompt="@LoginPrompt"
 						 DomainHint="@DomainHint"
 						 ReturnUrl="@_redirectReturnUrl" />
-		break;
-
-	case ViewState.Pending:
-		<LayoutView Layout="@ResolvedPendingLayout" />
 		break;
 
 	case ViewState.NotProvisioned:
@@ -68,26 +88,6 @@
 					</div>
 				</div>
 			</LayoutView>
-		}
-		break;
-
-	case ViewState.Ready:
-		@if (_hasAuthenticationRouting) {
-			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout">
-				<NotAuthorized>
-					@if (NotAuthorizedContent is not null) {
-						@NotAuthorizedContent
-					} else {
-						<RedirectToLogin LoginPath="@LoginPath"
-										 LoginHint="@LoginHint"
-										 LoginPrompt="@LoginPrompt"
-										 DomainHint="@DomainHint"
-										 ReturnUrl="@_redirectReturnUrl" />
-					}
-				</NotAuthorized>
-			</AuthorizeRouteView>
-		} else {
-			<RouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout" />
 		}
 		break;
 

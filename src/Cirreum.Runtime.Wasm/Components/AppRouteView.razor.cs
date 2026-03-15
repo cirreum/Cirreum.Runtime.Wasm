@@ -17,9 +17,10 @@ using System.Reflection;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Renders <see cref="RouteView"/> for authentication callback paths and pending
-/// states. Once the application is ready, renders either <see cref="AuthorizeRouteView"/>
-/// or <see cref="RouteView"/> depending on whether authentication services are registered.
+/// Renders <see cref="LayoutView"/> during initialization (no page component instantiated)
+/// and <see cref="RouteView"/> for authentication callback paths. Once the application
+/// is ready, renders either <see cref="AuthorizeRouteView"/> or <see cref="RouteView"/>
+/// depending on whether authentication services are registered.
 /// Page components are never instantiated until readiness is confirmed.
 /// </para>
 /// <para>
@@ -29,7 +30,7 @@ using System.Reflection;
 /// </para>
 /// <list type="number">
 ///   <item><description>Authentication path → <see cref="RouteView"/> with <see cref="PendingLayout"/></description></item>
-///   <item><description>Route requires auth + not authenticated → <see cref="RedirectToLogin"/> (no layout, no DOM)</description></item>
+///   <item><description>Route requires auth + not authenticated → <see cref="RedirectToLogin"/> (no layout, navigates immediately)</description></item>
 ///   <item><description>Initialization in progress → <see cref="PendingLayout"/> (covers application user loading, profile enrichment, and any registered initializable services, including remote state)</description></item>
 ///   <item><description>App user not found → <see cref="NotProvisioned"/> (only when <see cref="IApplicationUserFactory"/> is registered)</description></item>
 ///   <item><description>App user disabled → <see cref="Disabled"/> (only when <see cref="IApplicationUserFactory"/> is registered)</description></item>
@@ -148,7 +149,6 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// State
 	// -------------------------------------------------------------------------
 
-	private int _renderQueued;
 	private IDisposable? _userStateSubscription;
 	private IDisposable? _activityStateSubscription;
 	private ViewState _viewState = ViewState.Pending;
@@ -165,60 +165,38 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	public override async Task SetParametersAsync(ParameterView parameters) {
 		this._redirectReturnUrl = this.Navigation.Uri;
 		await base.SetParametersAsync(parameters);
-
-		this.EnsureInitializationStarted();
-		this._viewState = this.ComputeViewState();
 	}
 
 	protected override void OnInitialized() {
+		// Detect optional services that influence the state machine.
 		this._requiresApplicationUser = this.ServiceProvider.GetService<IApplicationUserFactory>() is not null;
 		this._hasAuthenticationRouting = this.ServiceProvider.GetService<AuthenticationStateProvider>() is not null;
+
+		// Subscribe to state changes that drive view transitions.
 		this._userStateSubscription = this.StateManager.Subscribe<IUserState>(this.OnUserStateChanged);
 		this._activityStateSubscription = this.StateManager.Subscribe<IActivityState>(this.OnActivityStateChanged);
+
+		// Set activity before starting the orchestrator so IsActive is true
+		// on the very first render — splash screens gated on IsActive show
+		// immediately with no blank frame.
+		this._viewState = ViewState.Pending;
+		this.ActivityState.StartTask("Initializing application...");
+		this.Orchestrator.Start();
 	}
 
 	// -------------------------------------------------------------------------
 	// Event Handlers
 	// -------------------------------------------------------------------------
 
-	private void OnUserStateChanged(IUserState _) => this.RequestRender();
-
-	private void OnActivityStateChanged(IActivityState _) => this.RequestRender();
-
-	private void RequestRender() {
-
-		if (Interlocked.Exchange(ref this._renderQueued, 1) == 1) {
-			return;
+	private void OnUserStateChanged(IUserState _) {
+		if (this.EvaluateState()) {
+			this.InvokeAsync(this.StateHasChanged);
 		}
-
-		_ = this.InvokeAsync(this.ProcessRender);
-
 	}
 
-	private void ProcessRender() {
-		try {
-			// Loop until no new changes arrive during processing.
-			// Each iteration resets the flag first so that a concurrent
-			// state change re-raises it, guaranteeing another pass.
-			do {
-				Interlocked.Exchange(ref this._renderQueued, 0);
-
-				this.EnsureInitializationStarted();
-
-				if (this.EvaluateState()) {
-					this.StateHasChanged();
-				}
-
-			} while (Interlocked.CompareExchange(ref this._renderQueued, 0, 0) == 1);
-
-			if (this.Orchestrator.HasCompleted) {
-				this._activityStateSubscription?.Dispose();
-				this._activityStateSubscription = null;
-			}
-		} catch (Exception) {
-			// Reset so future state changes aren't permanently blocked.
-			Interlocked.Exchange(ref this._renderQueued, 0);
-			throw;
+	private void OnActivityStateChanged(IActivityState _) {
+		if (this.EvaluateState()) {
+			this.InvokeAsync(this.StateHasChanged);
 		}
 	}
 
@@ -239,11 +217,19 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		return true;
 	}
 
+	/// <summary>
+	/// Returns <see langword="true"/> when the current URI starts with
+	/// <see cref="AuthenticationBasePath"/> (e.g. <c>/authentication/login-callback</c>).
+	/// </summary>
 	private bool IsAuthenticationPath() {
 		var relativePath = this.Navigation.ToBaseRelativePath(this.Navigation.Uri);
 		return relativePath.StartsWith(this.AuthenticationBasePath, StringComparison.OrdinalIgnoreCase);
 	}
 
+	/// <summary>
+	/// Pure function that evaluates the current state and returns the matching
+	/// <see cref="ViewState"/>. Evaluated top-to-bottom; first match wins.
+	/// </summary>
 	private ViewState ComputeViewState() {
 
 		// 1. Authentication callback path — route normally with pending layout
@@ -292,27 +278,6 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 			return false;
 		}
 		return pageType.GetCustomAttributes<AuthorizeAttribute>(true).Any();
-	}
-
-	// -------------------------------------------------------------------------
-	// Helpers
-	// -------------------------------------------------------------------------
-
-	private void EnsureInitializationStarted() {
-
-		if (this.Orchestrator.HasStarted) {
-			return;
-		}
-
-		if (this.IsAuthenticationPath()) {
-			return;
-		}
-
-		if (RouteRequiresAuthorization(this.RouteData.PageType) && !this.UserState.IsAuthenticated) {
-			return;
-		}
-
-		this.Orchestrator.Start();
 	}
 
 	// -------------------------------------------------------------------------

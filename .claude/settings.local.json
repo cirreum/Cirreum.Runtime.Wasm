@@ -18,7 +18,11 @@
       "Read(//c/Program Files/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk.StaticWebAssets/**)",
       "Read(//c//**)",
       "Bash(dotnet --version)",
-      "Bash(dotnet --list-sdks)"
+      "Bash(dotnet --list-sdks)",
+      "Bash(grep -r IInitializationState /c/Cirreum --include=*.cs)",
+      "Bash(grep -i \"\\\\.cs$\")",
+      "Bash(grep -r \"IInitializationState\\\\|DisplayStatus\\\\|TotalTasks\" /c/Cirreum/Core --include=*.cs)",
+      "Bash(grep -A 5 -B 5 \"SplashScreen\" /c/Cirreum/Runtime/Cirreum.Runtime.Wasm/samples/Cirreum.Demo.Client/Layout/*.razor)"
     ]
   }
 }
