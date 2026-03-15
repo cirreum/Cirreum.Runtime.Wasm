@@ -32,15 +32,11 @@
 		break;
 
 	case ViewState.RedirectToLogin:
-		<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout">
-			<NotAuthorized>
-				<RedirectToLogin LoginPath="@LoginPath"
-								 LoginHint="@LoginHint"
-								 LoginPrompt="@LoginPrompt"
-								 DomainHint="@DomainHint"
-								 ReturnUrl="@_redirectReturnUrl" />
-			</NotAuthorized>
-		</AuthorizeRouteView>
+		<RedirectToLogin LoginPath="@LoginPath"
+						 LoginHint="@LoginHint"
+						 LoginPrompt="@LoginPrompt"
+						 DomainHint="@DomainHint"
+						 ReturnUrl="@_redirectReturnUrl" />
 		break;
 
 	case ViewState.NotProvisioned:
