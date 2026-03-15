@@ -43,6 +43,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	[Inject] private IStateManager StateManager { get; set; } = default!;
 	[Inject] private NavigationManager Navigation { get; set; } = default!;
 	[Inject] private IServiceProvider ServiceProvider { get; set; } = default!;
+	[Inject] private IActivityState Activity { get; set; } = default!;
 	[Inject] private IInitializationOrchestrator Orchestrator { get; set; } = default!;
 
 	// -------------------------------------------------------------------------
@@ -185,6 +186,10 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		// Hold in Pending until authentication is resolved and orchestration completes.
 		// This prevents any page component from rendering before the app is ready.
 		this._viewState = ViewState.Pending;
+
+		// Start activity immediately so splash shows from first frame
+		// regardless of auth state or orchestrator status
+		this.Activity.StartTask("Starting application...");
 
 		// Start the orchestrator only when authentication state is already known.
 		// For anonymous apps or post-callback returns, auth is complete immediately.

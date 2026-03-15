@@ -46,12 +46,6 @@ internal sealed partial class InitializationOrchestrator(
 		if (Interlocked.Exchange(ref this._hasStarted, 1) == 1) {
 			return;
 		}
-
-		// Synchronously begin activity so the UI can immediately reflect that
-		// initialization is in progress with no rendering gap.
-		activityState.StartTask("Starting application...");
-
-
 		_ = this.RunAsync();
 	}
 

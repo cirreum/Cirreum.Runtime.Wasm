@@ -36,11 +36,13 @@
 		break;
 
 	case ViewState.RedirectToLogin:
-		<RedirectToLogin LoginPath="@LoginPath"
-						 LoginHint="@LoginHint"
-						 LoginPrompt="@LoginPrompt"
-						 DomainHint="@DomainHint"
-						 ReturnUrl="@_redirectReturnUrl" />
+		<LayoutView Layout="@ResolvedPendingLayout">
+			<RedirectToLogin LoginPath="@LoginPath"
+							 LoginHint="@LoginHint"
+							 LoginPrompt="@LoginPrompt"
+							 DomainHint="@DomainHint"
+							 ReturnUrl="@_redirectReturnUrl" />
+		</LayoutView>
 		break;
 
 	case ViewState.NotProvisioned:
