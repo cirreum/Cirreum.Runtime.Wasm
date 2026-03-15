@@ -18,7 +18,8 @@
 					}
 					@if (DisplayProgress) {
 						<Progress Indeterminate="@(State.IsDeterministic == false)"
-								  Color="BackgroundColor.Info" />
+								  Color="BackgroundColor.Info"
+								  Percentage="@((int)((State.ProgressPercent ?? 0.0) * 100))" />
 					}
 					<p class="splash-busy-text">@activityMessage</p>
 					<p class="splash-extra-text">@AppSplashMessage</p>

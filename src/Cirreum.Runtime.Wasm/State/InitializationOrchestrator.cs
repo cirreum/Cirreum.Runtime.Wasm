@@ -89,7 +89,6 @@ internal sealed partial class InitializationOrchestrator(
 			using (activityState.CreateNotificationScope()) {
 				activityState.ResetTasks();
 				activityState.BeginTasks(totalTasks, "Initializing application...");
-				activityState.SetMode(ActivityMode.Deterministic);
 			}
 
 			// Phase 1 — Cirreum-controlled: app user + profile enrichment
@@ -117,7 +116,7 @@ internal sealed partial class InitializationOrchestrator(
 
 		} finally {
 			Interlocked.Exchange(ref this._hasCompleted, 1);
-
+			await Task.Delay(300);
 			// Reset tasks after marking completion. In single-threaded Blazor WASM,
 			// the last CompleteTask() notification fires synchronously — AppRouteView
 			// processes it before _hasCompleted is set, so it still sees Pending.

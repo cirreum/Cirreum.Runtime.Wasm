@@ -124,6 +124,7 @@ builder.AddClientState(state => state
 //.RegisterDecryptor(BuiltInEncryption.XorObfuscation(123))
 //.RegisterDecryptor(new MyCustomEncryptor())
 );
+
 // ******************************************************************************
 // Add Application Services
 //
@@ -132,6 +133,9 @@ builder.AddClientState(state => state
 // Application ViewModels
 builder.Services.AddScoped<UserSessionViewModel>();
 builder.Services.AddScoped<IMermaidService, MermaidService>();
+
+builder.Services.AddScoped<IInitializable, TestInit>();
+
 // ******************************************************************************
 // Add AppInsights
 //
