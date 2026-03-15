@@ -1,0 +1,24 @@
+<Project>
+
+	<PropertyGroup>
+		<CspEnvironmentName Condition="'$(Configuration)' == 'Debug' And '$(CspEnvironmentName)' == ''">Development</CspEnvironmentName>
+		<CspEnvironmentName Condition="'$(CspEnvironmentName)' == ''">Production</CspEnvironmentName>
+
+		<CspBasePolicy Condition="'$(CspBasePolicy)' == ''">$(MSBuildThisFileDirectory)csp.base.policy</CspBasePolicy>
+		<CspEnvPolicy Condition="'$(CspEnvPolicy)' == ''">$(MSBuildProjectDirectory)\Properties\csp.$(CspEnvironmentName).policy</CspEnvPolicy>
+		<SwaConfigTemplate Condition="'$(SwaConfigTemplate)' == ''">$(MSBuildThisFileDirectory)staticwebapp.config.template.json</SwaConfigTemplate>
+		<SwaConfigOutput Condition="'$(SwaConfigOutput)' == ''">$(MSBuildProjectDirectory)\wwwroot\staticwebapp.config.json</SwaConfigOutput>
+		<SwaCspGenerator Condition="'$(SwaCspGenerator)' == ''">$(MSBuildThisFileDirectory)SwaConfig-CspGen.ps1</SwaCspGenerator>
+	</PropertyGroup>
+
+	<Target Name="GenerateStaticWebAppConfig" BeforeTargets="Build">
+		<Error Condition="!Exists('$(SwaCspGenerator)')" Text="[Cirreum] SwaCspGenerator not found: $(SwaCspGenerator)" />
+		<Error Condition="!Exists('$(CspBasePolicy)')" Text="[Cirreum] CspBasePolicy not found: $(CspBasePolicy)" />
+		<Error Condition="!Exists('$(SwaConfigTemplate)')" Text="[Cirreum] SwaConfigTemplate not found: $(SwaConfigTemplate)" />
+
+		<Message Importance="High" Text="[Cirreum] Generating staticwebapp.config.json ($(CspEnvironmentName))" />
+
+		<Exec Command='powershell -NoProfile -ExecutionPolicy Bypass -File "$(SwaCspGenerator)" -Template "$(SwaConfigTemplate)" -BasePolicy "$(CspBasePolicy)" -EnvPolicy "$(CspEnvPolicy)" -Output "$(SwaConfigOutput)"' />
+	</Target>
+
+</Project>

@@ -1,0 +1,25 @@
+connect-src
+  https://core-demo-api-container.wittysky-81847266.westus3.azurecontainerapps.io
+  https://hsdmedia-lapcast-api.calmdune-ccb5af25.westus3.azurecontainerapps.io
+  https://graph.microsoft.com
+  https://login.microsoftonline.com
+  https://correxternaldev.ciamlogin.com
+  https://lh3.googleusercontent.com
+  https://people.googleapis.com
+  https://api.descope.com
+  https://dev-yn1oshrbo32te5o0.us.auth0.com
+  https://westus3-1.in.applicationinsights.azure.com
+  https://js.monitor.azure.com
+  https://dc.services.visualstudio.com
+  https://dc.applicationinsights.azure.com
+  https://dc.applicationinsights.microsoft.com
+  https://live.applicationinsights.azure.com
+  https://rt.applicationinsights.microsoft.com
+  https://rt.services.visualstudio.com
+  https://profiler.monitor.azure.com
+  https://snapshot.monitor.azure.com
+  https://api.json-generator.com;
+frame-src
+  https://correxternaldev.ciamlogin.com
+  https://api.descope.com
+  https://dev-yn1oshrbo32te5o0.us.auth0.com;

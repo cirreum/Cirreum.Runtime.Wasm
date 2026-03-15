@@ -51,13 +51,15 @@ internal sealed partial class InitializationOrchestrator(
 		// initialization is in progress with no rendering gap.
 		activityState.StartTask("Starting application...");
 
+
 		_ = this.RunAsync();
 	}
 
 	private async Task RunAsync() {
 		try {
 
-			// Resolve Phase 1 services once — avoids double DI resolution.
+			// Resolve Phase 1 services only when authenticated — these services
+			// depend on a valid identity. Skipped entirely for anonymous users.
 			IApplicationUserFactory? userFactory = null;
 			IUserProfileEnricher? enricher = null;
 

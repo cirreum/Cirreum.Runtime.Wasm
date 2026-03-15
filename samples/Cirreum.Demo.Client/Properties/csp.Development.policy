@@ -1,0 +1,6 @@
+connect-src
+  ws://localhost:*
+  wss://localhost:*
+  http://localhost:*
+  https://localhost:*
+  https://raw.githubusercontent.com;

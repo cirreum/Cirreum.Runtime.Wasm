@@ -17,10 +17,10 @@ using System.Reflection;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Renders <see cref="LayoutView"/> during initialization (no page component instantiated)
-/// and <see cref="RouteView"/> for authentication callback paths. Once the application
-/// is ready, renders either <see cref="AuthorizeRouteView"/> or <see cref="RouteView"/>
-/// depending on whether authentication services are registered.
+/// Renders <see cref="LayoutView"/> during initialization and authentication (no page
+/// component instantiated) and <see cref="AuthorizeRouteView"/> for authentication callback
+/// paths. Once the application is ready, renders either <see cref="AuthorizeRouteView"/>
+/// or <see cref="RouteView"/> depending on whether authentication services are registered.
 /// Page components are never instantiated until readiness is confirmed.
 /// </para>
 /// <para>
@@ -29,13 +29,12 @@ using System.Reflection;
 /// States are evaluated top-to-bottom; first match wins:
 /// </para>
 /// <list type="number">
-///   <item><description>Authentication path → <see cref="RouteView"/> with <see cref="PendingLayout"/></description></item>
-///   <item><description>Route requires auth + not authenticated → <see cref="RedirectToLogin"/> (no layout, navigates immediately)</description></item>
-///   <item><description>Initialization in progress → <see cref="PendingLayout"/> (covers application user loading, profile enrichment, and any registered initializable services, including remote state)</description></item>
-///   <item><description>App user not found → <see cref="NotProvisioned"/> (only when <see cref="IApplicationUserFactory"/> is registered)</description></item>
-///   <item><description>App user disabled → <see cref="Disabled"/> (only when <see cref="IApplicationUserFactory"/> is registered)</description></item>
-///   <item><description>All checks pass + auth registered → <see cref="AuthorizeRouteView"/> with <see cref="DefaultLayout"/></description></item>
-///   <item><description>All checks pass + no auth registered → <see cref="RouteView"/> with <see cref="DefaultLayout"/></description></item>
+///   <item><description><see cref="ViewState.Pending"/> — Initialization not yet complete → <see cref="LayoutView"/> with <see cref="PendingLayout"/> (no page component instantiated). Covers authentication, application user loading, profile enrichment, and any registered <see cref="IInitializable"/> services.</description></item>
+///   <item><description><see cref="ViewState.AuthenticationPath"/> — URI matches <see cref="AuthenticationBasePath"/> → <see cref="AuthorizeRouteView"/> with <see cref="PendingLayout"/> so the authentication callback page can process the response.</description></item>
+///   <item><description><see cref="ViewState.RedirectToLogin"/> — Route requires auth and user is not authenticated → <see cref="AuthorizeRouteView"/> with <see cref="PendingLayout"/> and <see cref="RedirectToLogin"/> in the <c>NotAuthorized</c> slot. The splash screen remains visible during the redirect.</description></item>
+///   <item><description><see cref="ViewState.NotProvisioned"/> — Authenticated identity has no application account (only when <see cref="IApplicationUserFactory"/> is registered).</description></item>
+///   <item><description><see cref="ViewState.Disabled"/> — Application user exists but <see cref="IApplicationUser.IsEnabled"/> is <see langword="false"/>.</description></item>
+///   <item><description><see cref="ViewState.Ready"/> — All checks pass → <see cref="AuthorizeRouteView"/> (when auth registered) or <see cref="RouteView"/> with <see cref="DefaultLayout"/>.</description></item>
 /// </list>
 /// </remarks>
 public sealed partial class AppRouteView : ComponentBase, IDisposable {
@@ -162,12 +161,39 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// Lifecycle
 	// -------------------------------------------------------------------------
 
+	/// <inheritdoc />
+	/// <remarks>
+	/// Captures the current URI as the return URL for login redirects before
+	/// delegating to the base implementation. Called on every parameter update
+	/// (including re-renders triggered by the <see cref="Router"/>).
+	/// </remarks>
 	public override async Task SetParametersAsync(ParameterView parameters) {
 		this._redirectReturnUrl = this.Navigation.Uri;
 		await base.SetParametersAsync(parameters);
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	/// <para>
+	/// Probes the DI container once to detect whether <see cref="IApplicationUserFactory"/>
+	/// and <see cref="AuthenticationStateProvider"/> are registered, then subscribes to
+	/// <see cref="IUserState"/> and <see cref="IActivityState"/> change notifications.
+	/// </para>
+	/// <para>
+	/// Starts the <see cref="IInitializationOrchestrator"/> unconditionally. The orchestrator's
+	/// <see cref="IInitializationOrchestrator.Start"/> synchronously calls
+	/// <see cref="IActivityState.StartTask"/> so that <see cref="IActivityState.IsActive"/>
+	/// is <see langword="true"/> on the very first render — ensuring splash screens gated
+	/// on <c>IsActive</c> are visible immediately with no blank frame.
+	/// </para>
+	/// <para>
+	/// When the orchestrator has no initialization work (no authenticated user, no registered
+	/// <see cref="IInitializable"/> services), it completes synchronously before the first
+	/// render, transitioning the view state directly to <see cref="ViewState.Ready"/>.
+	/// </para>
+	/// </remarks>
 	protected override void OnInitialized() {
+
 		// Detect optional services that influence the state machine.
 		this._requiresApplicationUser = this.ServiceProvider.GetService<IApplicationUserFactory>() is not null;
 		this._hasAuthenticationRouting = this.ServiceProvider.GetService<AuthenticationStateProvider>() is not null;
@@ -176,11 +202,11 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		this._userStateSubscription = this.StateManager.Subscribe<IUserState>(this.OnUserStateChanged);
 		this._activityStateSubscription = this.StateManager.Subscribe<IActivityState>(this.OnActivityStateChanged);
 
-		// Set activity before starting the orchestrator so IsActive is true
-		// on the very first render — splash screens gated on IsActive show
-		// immediately with no blank frame.
+		// Start the orchestrator immediately. Its Start() synchronously sets
+		// IsActive = true so the splash screen renders on the first frame.
+		// When there is no work, the orchestrator completes synchronously and
+		// the view transitions straight to Ready — the splash is never painted.
 		this._viewState = ViewState.Pending;
-		this.ActivityState.StartTask("Initializing application...");
 		this.Orchestrator.Start();
 	}
 
@@ -188,12 +214,20 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// Event Handlers
 	// -------------------------------------------------------------------------
 
+	/// <summary>
+	/// Called when <see cref="IUserState"/> changes (authentication state, application user).
+	/// Re-evaluates the state machine and triggers a render only when the view state changed.
+	/// </summary>
 	private void OnUserStateChanged(IUserState _) {
 		if (this.EvaluateState()) {
 			this.InvokeAsync(this.StateHasChanged);
 		}
 	}
 
+	/// <summary>
+	/// Called when <see cref="IActivityState"/> changes (task progress, completion).
+	/// Re-evaluates the state machine and triggers a render only when the view state changed.
+	/// </summary>
 	private void OnActivityStateChanged(IActivityState _) {
 		if (this.EvaluateState()) {
 			this.InvokeAsync(this.StateHasChanged);
@@ -218,40 +252,31 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	}
 
 	/// <summary>
-	/// Returns <see langword="true"/> when the current URI starts with
-	/// <see cref="AuthenticationBasePath"/> (e.g. <c>/authentication/login-callback</c>).
-	/// </summary>
-	private bool IsAuthenticationPath() {
-		var relativePath = this.Navigation.ToBaseRelativePath(this.Navigation.Uri);
-		return relativePath.StartsWith(this.AuthenticationBasePath, StringComparison.OrdinalIgnoreCase);
-	}
-
-	/// <summary>
-	/// Pure function that evaluates the current state and returns the matching
-	/// <see cref="ViewState"/>. Evaluated top-to-bottom; first match wins.
+	/// Pure function — no side effects. Evaluates the current state and returns
+	/// the matching <see cref="ViewState"/>. Evaluated top-to-bottom; first match wins.
 	/// </summary>
 	private ViewState ComputeViewState() {
 
-		// 1. Authentication callback path — route normally with pending layout
+		// 1. Authentication callback — let the auth page process the IdP response
+		//    while the splash screen (PendingLayout) stays visible behind it.
 		if (this.IsAuthenticationPath()) {
 			return ViewState.AuthenticationPath;
 		}
 
-		// 2. Route requires auth + not authenticated — redirect to login, no layout or DOM rendered
+		// 2. Route requires auth + user not authenticated — redirect inside the
+		//    PendingLayout so the splash remains visible during the MSAL/OIDC redirect.
 		if (RouteRequiresAuthorization(this.RouteData.PageType) && !this.UserState.IsAuthenticated) {
 			return ViewState.RedirectToLogin;
 		}
 
-		// 3. Initialization not yet complete — render the pending layout. The splash
-		//    screen (typically hosted by the layout) covers application user loading,
-		//    profile enrichment, and any registered initializable services, including
-		//    remote state. We gate on HasCompleted rather than IsActive to avoid
-		//    brief flickers when the activity state transitions between tasks.
+		// 3. Initialization not yet complete — render the PendingLayout (splash).
+		//    Gates on HasCompleted (not IsActive) to avoid brief flickers when
+		//    the activity state transitions between tasks.
 		if (!this.Orchestrator.HasCompleted) {
 			return ViewState.Pending;
 		}
 
-		// 4–5. Application user checks (only when a factory is registered)
+		// 4–5. Application user checks (only when IApplicationUserFactory is registered).
 		if (this._requiresApplicationUser) {
 
 			if (this.UserState.ApplicationUser is null) {
@@ -264,9 +289,18 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 
 		}
 
-		// 6. All checks pass
+		// 6. All checks pass — render the target page with the default layout.
 		return ViewState.Ready;
 
+	}
+
+	/// <summary>
+	/// Returns <see langword="true"/> when the current URI starts with
+	/// <see cref="AuthenticationBasePath"/> (e.g. <c>/authentication/login-callback</c>).
+	/// </summary>
+	private bool IsAuthenticationPath() {
+		var relativePath = this.Navigation.ToBaseRelativePath(this.Navigation.Uri);
+		return relativePath.StartsWith(this.AuthenticationBasePath, StringComparison.OrdinalIgnoreCase);
 	}
 
 	/// <summary>
@@ -293,12 +327,22 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// Types
 	// -------------------------------------------------------------------------
 
+	/// <summary>
+	/// The possible states of the <see cref="AppRouteView"/> state machine.
+	/// Evaluated top-to-bottom by <see cref="ComputeViewState"/>; first match wins.
+	/// </summary>
 	private enum ViewState {
+		/// <summary>URI matches <see cref="AuthenticationBasePath"/> — render auth callback page.</summary>
 		AuthenticationPath,
+		/// <summary>Route requires auth, user not authenticated — redirect to login.</summary>
 		RedirectToLogin,
+		/// <summary>Orchestrator has not completed — show splash screen.</summary>
 		Pending,
+		/// <summary>Authenticated but no application user account found.</summary>
 		NotProvisioned,
+		/// <summary>Application user exists but is disabled.</summary>
 		Disabled,
+		/// <summary>All checks pass — render the target page.</summary>
 		Ready
 	}
 

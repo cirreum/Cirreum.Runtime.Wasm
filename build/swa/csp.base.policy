@@ -1,0 +1,5 @@
+default-src 'self';
+frame-ancestors 'self';
+script-src 'self' 'wasm-unsafe-eval';
+style-src 'self' 'unsafe-inline' https://fonts.cdnfonts.com;
+font-src 'self' https://fonts.cdnfonts.com;

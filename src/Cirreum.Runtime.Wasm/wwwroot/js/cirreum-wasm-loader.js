@@ -12,7 +12,6 @@
  *  - Persist the selected color scheme for future browser sessions
  *  - Load custom fonts, vendor libraries, and application resources
  *  - Handle authentication library loading (MSAL/OIDC)
- *  - Pre-authenticate before Blazor downloads when auth-mode="always"
  *  - Register PWA service workers when configured
  *  - Bootstrap the Blazor Error UI with Cirreum styling
  *  - Provide helper utilities for diagnostics and fallback loading
@@ -25,62 +24,43 @@
  *  {
  *    "app":   { "name": string, "assembly": string (required) },
  *    "theme": { "scheme": string, "font": string },
- *    "auth":  { "mode": string, "preAuth": string, "authority": string,
- *               "clientId": string, "redirectUri": string,
- *               "modeUrl": string },
+ *    "auth":  { "mode": string, "modeUrl": string },
  *    "pwa":   { "script": string }
  *  }
  *
  * Examples:
  *
- *  1. Entra ID (MSAL) with session warmer
+ *  1. MSAL authentication (Entra ID / Entra External ID)
  *     -----------------------------------------------------------------
  *     <script type="application/json" id="cirreum-config">
  *     {
  *       "app":   { "name": "My App", "assembly": "My.App.Wasm" },
  *       "theme": { "scheme": "default" },
- *       "auth":  { "mode": "msal", "preAuth": "always",
- *                  "authority": "https://login.microsoftonline.com/{tenantId}",
- *                  "clientId": "00000000-0000-0000-0000-000000000000" }
+ *       "auth":  { "mode": "msal" }
  *     }
  *     </script>
  *
- *  2. Entra External ID (CIAM)
- *     -----------------------------------------------------------------
- *     <script type="application/json" id="cirreum-config">
- *     {
- *       "app":   { "name": "Customer Portal", "assembly": "Portal.Wasm" },
- *       "theme": { "scheme": "aqua", "font": "Inter" },
- *       "auth":  { "mode": "msal", "preAuth": "always",
- *                  "authority": "https://mytenant.ciamlogin.com/",
- *                  "clientId": "00000000-0000-0000-0000-000000000000",
- *                  "redirectUri": "/authentication/login-callback" }
- *     }
- *     </script>
- *
- *  3. Generic OIDC provider
+ *  2. Generic OIDC provider
  *     -----------------------------------------------------------------
  *     <script type="application/json" id="cirreum-config">
  *     {
  *       "app":   { "name": "My App", "assembly": "My.App.Wasm" },
- *       "auth":  { "mode": "oidc",
- *                  "authority": "https://auth.example.com/",
- *                  "clientId": "my-client-id" }
+ *       "auth":  { "mode": "oidc" }
  *     }
  *     </script>
  *
- *  4. Multi-tenant (dynamic auth resolution)
+ *  3. Multi-tenant (dynamic auth resolution)
  *     -----------------------------------------------------------------
  *     <script type="application/json" id="cirreum-config">
  *     {
  *       "app":   { "name": "SaaS Platform", "assembly": "Platform.Wasm" },
  *       "theme": { "scheme": "office" },
- *       "auth":  { "mode": "dynamic", "preAuth": "always",
+ *       "auth":  { "mode": "dynamic",
  *                  "modeUrl": "https://api.example.com/tenants/{tenant}/auth" }
  *     }
  *     </script>
  *
- *  5. No authentication (dev / public app)
+ *  4. No authentication (dev / public app)
  *     -----------------------------------------------------------------
  *     <script type="application/json" id="cirreum-config">
  *     {
@@ -89,14 +69,12 @@
  *     }
  *     </script>
  *
- *  6. PWA with service worker
+ *  5. PWA with service worker
  *     -----------------------------------------------------------------
  *     <script type="application/json" id="cirreum-config">
  *     {
  *       "app":   { "name": "Offline App", "assembly": "Offline.Wasm" },
- *       "auth":  { "mode": "msal",
- *                  "authority": "https://login.microsoftonline.com/{tenantId}",
- *                  "clientId": "00000000-0000-0000-0000-000000000000" },
+ *       "auth":  { "mode": "msal" },
  *       "pwa":   { "script": "service-worker.js" }
  *     }
  *     </script>
@@ -109,10 +87,6 @@
  *      font-name     : Custom font name (from cdnfonts) or "default"
  *      auth-mode     : Authentication mode (msal | oidc | dynamic | none)
  *      auth-mode-url : URL template when auth-mode is 'dynamic'
- *      auth-pre-auth : Pre-auth enforcement (always | optional)
- *      auth-authority: OIDC/MSAL authority URL
- *      auth-client-id: OAuth client ID
- *      auth-redirect-uri: OAuth redirect URI
  *      pwa-script    : Service worker file for PWA scenarios
  *
  * Cirreum's JavaScript API:
@@ -189,12 +163,6 @@
 
 	const authMode = (cfg("auth", "mode") ?? currentScript.getAttribute("auth-mode") ?? "none").toLowerCase();
 	const authModeUrl = cfg("auth", "modeUrl") ?? currentScript.getAttribute("auth-mode-url");
-	const authPreAuth = (cfg("auth", "preAuth") ?? currentScript.getAttribute("auth-pre-auth") ?? "optional").toLowerCase();
-	const authAuthority = cfg("auth", "authority") ?? currentScript.getAttribute("auth-authority");
-	const authClientId = cfg("auth", "clientId") ?? currentScript.getAttribute("auth-client-id");
-	const authRedirectUri = cfg("auth", "redirectUri")
-		?? currentScript.getAttribute("auth-redirect-uri")
-		?? (window.location.origin + "/authentication/login-callback");
 
 	let appTheme = (cfg("theme", "scheme") ?? currentScript.getAttribute("app-theme")?.trim() ?? "default");
 
@@ -628,157 +596,6 @@
 
 
 	// =====================================================================
-	// Session Warmer (experimental)
-	// Establishes an IdP session cookie before WASM downloads when
-	// auth.mode="always" and no valid MSAL session exists. This avoids
-	// the redirect-after-download penalty. Best-effort - any failure
-	// falls through to normal Blazor boot.
-	// =====================================================================
-
-	const WARMER_KEY = "cirreum.session-warmer";
-	const WARMER_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-	async function sessionWarmer() {
-		if (authPreAuth !== "always" || authMode === "none") {
-			return false;
-		}
-
-		const clientId = authClientId ?? window.cirreum.tenant.getConfig()?.clientId;
-		const authority = authAuthority ?? window.cirreum.tenant.getConfig()?.authority;
-
-		if (!clientId || !authority) {
-			console.warn("[cirreum] auth.preAuth=always requires auth.clientId and auth.authority. Skipping session warmer.");
-			return false;
-		}
-
-		// Check if this is a session warmer return. We match our stored state
-		// against the query param to distinguish from MSAL-initiated callbacks.
-		// On match: the IdP session cookie is now set — redirect to the original
-		// page and let MSAL handle auth normally (near-instant with cookie).
-		const params = new URLSearchParams(window.location.search);
-		if (params.has("code") && params.has("state")) {
-			try {
-				const warmerState = sessionStorage.getItem("cirreum.warmer.state");
-				if (warmerState && warmerState === params.get("state")) {
-					const returnUrl = sessionStorage.getItem("cirreum.warmer.returnUrl") || "/";
-					sessionStorage.removeItem(WARMER_KEY);
-					sessionStorage.removeItem("cirreum.warmer.state");
-					sessionStorage.removeItem("cirreum.warmer.returnUrl");
-					console.debug("[cirreum] Session warmer complete — cookie established. Redirecting to:", returnUrl);
-					window.location.replace(returnUrl);
-					return true; // redirecting — don't boot Blazor
-				}
-			} catch {
-				// sessionStorage unavailable — fall through
-			}
-			// State doesn't match — this is a real MSAL callback, let Blazor handle it
-			return false;
-		}
-
-		if (hasValidMsalSession(clientId)) {
-			console.debug("[cirreum] Valid MSAL session found - resuming boot.");
-			return false;
-		}
-
-		// TTL guard - don't redirect again if we already tried recently
-		try {
-			const marker = sessionStorage.getItem(WARMER_KEY);
-			if (marker && (Date.now() - parseInt(marker, 10)) < WARMER_TTL_MS) {
-				console.debug("[cirreum] Session warmer already attempted recently. Falling through to Blazor.");
-				return false;
-			}
-			sessionStorage.setItem(WARMER_KEY, Date.now().toString());
-		} catch {
-			// sessionStorage unavailable - skip guard, attempt redirect anyway
-		}
-
-		console.debug("[cirreum] No valid session found. Redirecting to Entra before Blazor loads.");
-		await redirectToEntra(clientId, authority);
-		return true;
-	}
-
-	function hasValidMsalSession(clientId) {
-		try {
-			const prefix = `msal.${clientId}`;
-			const now = Math.floor(Date.now() / 1000);
-
-			return Object.keys(sessionStorage).some(key => {
-				if (!key.startsWith(prefix)) return false;
-				if (!key.includes("accesstoken") && !key.includes("idtoken")) return false;
-
-				try {
-					const entry = JSON.parse(sessionStorage.getItem(key));
-					if (entry?.expiresOn) {
-						return parseInt(entry.expiresOn, 10) > now;
-					}
-					// Can't determine expiry - assume valid, let MSAL decide
-					return true;
-				} catch {
-					// Can't parse entry - assume valid, fall through to boot
-					return true;
-				}
-			});
-		} catch {
-			// sessionStorage unavailable or enumeration failed - assume valid, fall through to boot
-			return true;
-		}
-	}
-
-	async function redirectToEntra(clientId, authority) {
-		try {
-			const verifier = generateRandomString(64);
-			const challenge = await generateCodeChallenge(verifier);
-			const state = generateRandomString(32);
-			const nonce = generateRandomString(32);
-
-			// Store warmer state for return detection. We use our own namespace
-			// (cirreum.warmer.*) — never MSAL's — so we don't interfere with
-			// MSAL's internal state management.
-			sessionStorage.setItem("cirreum.warmer.state", state);
-			sessionStorage.setItem("cirreum.warmer.returnUrl", window.location.href);
-
-			const baseUrl = authority.replace(/\/$/, "");
-			const authorizeUrl = `${baseUrl}/oauth2/v2.0/authorize`;
-
-			const queryParams = new URLSearchParams({
-				client_id: clientId,
-				response_type: "code",
-				redirect_uri: authRedirectUri,
-				scope: "openid profile offline_access",
-				response_mode: "query",
-				state: state,
-				nonce: nonce,
-				code_challenge: challenge,
-				code_challenge_method: "S256",
-			});
-
-			window.location.replace(`${authorizeUrl}?${queryParams.toString()}`);
-
-		} catch (err) {
-			// PKCE generation or redirect failed - fall through, Blazor handles auth normally
-			console.warn("[cirreum] Pre-auth redirect failed, falling through to Blazor:", err);
-		}
-	}
-
-	function generateRandomString(length) {
-		const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-		const array = new Uint8Array(length);
-		crypto.getRandomValues(array);
-		return Array.from(array, b => chars[b % chars.length]).join("");
-	}
-
-	async function generateCodeChallenge(verifier) {
-		const encoder = new TextEncoder();
-		const data = encoder.encode(verifier);
-		const digest = await crypto.subtle.digest("SHA-256", data);
-		return btoa(String.fromCharCode(...new Uint8Array(digest)))
-			.replace(/\+/g, "-")
-			.replace(/\//g, "_")
-			.replace(/=/g, "");
-	}
-
-
-	// =====================================================================
 	// Application Initialization
 	// =====================================================================
 
@@ -806,13 +623,6 @@
 				return;
 			}
 		}
-
-		//
-		// Session warmer: redirect before Blazor downloads if no valid session
-		// Best-effort - any failure falls through to normal boot
-		//
-		const redirecting = await sessionWarmer();
-		if (redirecting) return;
 
 		//
 		// HTML - Blazor Error UI

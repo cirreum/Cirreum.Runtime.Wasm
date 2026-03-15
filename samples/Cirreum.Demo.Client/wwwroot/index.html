@@ -18,6 +18,13 @@
 	<noscript>You need to enable JavaScript to run this app.</noscript>
 
 	<div id="app">
+		<script type="application/json" id="cirreum-config">
+			{
+				"app":   { "name": "Cirreum Demo Client", "assembly": "Cirreum.Demo.Client" },
+				"theme": { "scheme": "aqua", "font": "default" },
+				"auth":  { "mode": "none" }
+			}
+		</script>
 		<style id="splash-style">
 
 			*, ::after, ::before {
@@ -194,18 +201,7 @@
 		</div>
 	</div>
 
-	<!--asm-name= [client assembly name]-->
-	<!--app-name= [friendly public name]-->
-	<!--app-theme= theme name [default | aqua | aspire | excel | office | outlook | windows ]-->
-	<!--font-name= [null | default | valid package name from cdnfonts.com]-->
-	<!--auth-type= [null | none | msal | oidc | dynamic ]-->
-	<!--pwa-script= [null | none | service-worker.js | service-worker.published.js]-->
-	<script src="_content/Cirreum.Runtime.Wasm/js/cirreum-wasm-loader#[.{fingerprint}].js"
-			asm-name="Cirreum.Demo.Client"
-			app-name="Cirreum Demo Client"
-			app-theme="aqua"
-			auth-type="none"
-			async></script>
+	<script src="_content/Cirreum.Runtime.Wasm/js/cirreum-wasm-loader#[.{fingerprint}].min.js" async></script>
 
 	<script>
 		window.getFormattedSamples = function () {

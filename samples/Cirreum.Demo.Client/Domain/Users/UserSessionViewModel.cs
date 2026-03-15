@@ -62,7 +62,7 @@ public class UserSessionViewModel(
 	/// value should automatically update related state.
 	/// </remarks>
 	public async Task SetBirthday(DateOnly value) {
-		await using var scope = this.CreateNotificationScope();
+		using var scope = this.CreateNotificationScope();
 		await this.SetIsMinor(value.IsMinorAge());
 		await this.Set(value);
 	}

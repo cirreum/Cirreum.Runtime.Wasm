@@ -107,7 +107,7 @@
 		<ItemGroup>
 			<_JsToMinify Include="wwwroot\js\**\*.js" Exclude="wwwroot\js\**\*.min.js" />
 		</ItemGroup>
-		<MinifyJavaScript Files="@(_JsToMinify)" Condition="@(_JsToMinify->Count()) > 0" />
+		<MinifyJavaScript Files="@(_JsToMinify)" Condition="@(_JsToMinify-&gt;Count()) &gt; 0" />
 		<!-- Generated .min.js files miss the SDK's initial wwwroot glob (evaluated
 		     before targets run). Remove stale entries then re-add so the static
 		     web asset pipeline serves them alongside the originals. -->
@@ -117,4 +117,12 @@
 		</ItemGroup>
 	</Target>
 
+	<ItemGroup>
+		<None Include="..\..\build\swa\Cirreum.Runtime.Wasm.targets" Pack="true" PackagePath="build\" />
+		<None Include="..\..\build\swa\SwaConfig-CspGen.ps1" Pack="true" PackagePath="build\" />
+		<None Include="..\..\build\swa\staticwebapp.config.template.json" Pack="true" PackagePath="build\" />
+		<None Include="..\..\build\swa\csp.base.policy" Pack="true" PackagePath="build\" />
+	</ItemGroup>
+	
+	
 </Project>

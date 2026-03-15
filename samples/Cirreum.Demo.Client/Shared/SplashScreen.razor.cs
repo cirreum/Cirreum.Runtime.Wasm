@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Components;
 public partial class SplashScreen {
 
 	string activityMessage = "";
-	bool isIndeterminate = true;
 
 	[Parameter]
 	public string ActivityMessage { get; set; } = "";
@@ -18,9 +17,11 @@ public partial class SplashScreen {
 	[Parameter]
 	public string AppSplashLogoUrl { get; set; } = "/splash-screen-icon.png";
 	[Parameter]
-	public bool IsVisible { get; set; } = true;
+	public bool Visible { get; set; } = false;
 	[Parameter]
 	public bool DisplayProgress { get; set; } = true;
+
+	private bool IsVisible => this.Visible || this.State.IsActive;
 
 	protected override void OnInitialized() {
 		this.activityMessage = this.ActivityMessage;
@@ -33,11 +34,7 @@ public partial class SplashScreen {
 	}
 
 	private void UpdateFromState() {
-		if (!string.IsNullOrWhiteSpace(this.State.DisplayStatus)) {
-			this.activityMessage = this.State.DisplayStatus;
-		}
-		// Deterministic progress when orchestrator has multiple tasks running
-		this.isIndeterminate = this.State.TotalTasks <= 1;
+		this.activityMessage = this.State.DisplayStatus ?? "";
 	}
 
 }

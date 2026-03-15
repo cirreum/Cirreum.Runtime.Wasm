@@ -1,4 +1,4 @@
-﻿@using Cirreum.Runtime.Components
+﻿@using Cirreum.Components
 
 <HeadContent>
 	<meta name="description" content="Cirreum Demo Client Application.">
@@ -10,49 +10,8 @@
 	<meta name="apple-mobile-web-app-title" content="Cirreum Demo Client">
 	<meta name="application-name" content="Cirreum Demo Client">
 	<meta name="msapplication-TileColor" content="#2d89ef">
-	<ContentSecurityPolicyMetaTag />
 </HeadContent>
 
-@* <Router AppAssembly="@typeof(App).Assembly">
-	<Found Context="routeData">
-		<AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
-			<NotAuthorized>
-				@if (context.User.Identity?.IsAuthenticated == true) {
-					<RedirectToUnauthorized UnauthorizedPage="/unauthorized" />
-				} else {
-					<RedirectToLogin />
-				}
-			</NotAuthorized>
-			<Authorizing>
-				<div style="position:absolute; top:30vh; width:70%; text-align:center">
-					<div class="p-3">authorizing...</div>
-					<PulseSpinner Color="#ccc" Center="true" />
-				</div>
-				<div class="modal-overlay"></div>
-			</Authorizing>
-		</AuthorizeRouteView>
-	</Found>
-	<NotFound>
-		<LayoutView Layout="@typeof(MainLayout)">
-			<Custom404 />
-		</LayoutView>
-	</NotFound>
-</Router> *@
-
-@* For use with no-auth
-<Router AppAssembly="@typeof(App).Assembly">
-	<Found Context="routeData">
-		<RouteView RouteData="@routeData" DefaultLayout="@typeof(MinimalLayout)" />
-	</Found>
-	<NotFound>
-		<LayoutView Layout="@typeof(MinimalLayout)">
-			<Custom404 />
-		</LayoutView>
-	</NotFound>
-</Router>
-*@
-
-@* For use with auth and no-auth *@
 <Router AppAssembly="@typeof(App).Assembly">
 	<Found Context="routeData">
 		<AppRouteView RouteData="@routeData"
@@ -69,7 +28,6 @@
 		</LayoutView>
 	</NotFound>
 </Router>
-
 
 <DialogContainer DefaultOptions="@(DialogOptions.Default)" />
 <MenuContainer />
