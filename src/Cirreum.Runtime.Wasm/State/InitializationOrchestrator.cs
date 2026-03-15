@@ -80,9 +80,10 @@ internal sealed partial class InitializationOrchestrator(
 			// Replace the initial indeterminate task with deterministic tracked work.
 			// The notification scope prevents an intermediate UI update that would
 			// briefly make the application appear inactive.
+			activityState.SetDisplayStatus("Initializing application...");
 			using (activityState.CreateNotificationScope()) {
 				activityState.ResetTasks();
-				activityState.BeginTasks(totalTasks, "Initializing application...");
+				activityState.BeginTasks(totalTasks);
 			}
 
 			// Phase 1 — Cirreum-controlled: app user + profile enrichment

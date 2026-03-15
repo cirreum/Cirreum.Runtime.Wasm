@@ -134,7 +134,7 @@ builder.AddClientState(state => state
 builder.Services.AddScoped<UserSessionViewModel>();
 builder.Services.AddScoped<IMermaidService, MermaidService>();
 
-builder.Services.AddScoped<IInitializable, TestInit>();
+//builder.Services.AddScoped<IInitializable, TestInit>();
 
 // ******************************************************************************
 // Add AppInsights
