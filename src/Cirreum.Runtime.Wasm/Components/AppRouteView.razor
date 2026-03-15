@@ -5,19 +5,7 @@
 
 	case ViewState.Pending:
 		@if (_hasAuthenticationRouting) {
-			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout">
-				<NotAuthorized>
-					@if (NotAuthorizedContent is not null) {
-						@NotAuthorizedContent
-					} else {
-						<RedirectToLogin LoginPath="@LoginPath"
-										 LoginHint="@LoginHint"
-										 LoginPrompt="@LoginPrompt"
-										 DomainHint="@DomainHint"
-										 ReturnUrl="@_redirectReturnUrl" />
-					}
-				</NotAuthorized>
-			</AuthorizeRouteView>
+			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout" />
 		} else {
 			<LayoutView Layout="@ResolvedPendingLayout" />
 		}

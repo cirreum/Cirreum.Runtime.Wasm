@@ -197,6 +197,18 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 
 	}
 
+	/// <summary>
+	/// Handles parameter updates and triggers a component re-render if the state has changed.
+	/// </summary>
+	/// <remarks>This method is called by the Blazor framework when component parameters are set. Override this
+	/// method to respond to parameter changes. If the component's state changes as a result of new parameters, a re-render
+	/// is requested.</remarks>
+	protected override void OnParametersSet() {
+		if (this.EvaluateState()) {
+			this.StateHasChanged();
+		}
+	}
+
 	// -------------------------------------------------------------------------
 	// Event Handlers
 	// -------------------------------------------------------------------------
