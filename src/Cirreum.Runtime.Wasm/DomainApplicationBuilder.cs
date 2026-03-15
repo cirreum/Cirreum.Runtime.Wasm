@@ -198,11 +198,13 @@ public sealed class DomainApplicationBuilder : IClientDomainApplicationBuilder {
 		this.Services
 			.AddCoreServices();
 
-
 		// ******************************************************************************
 		// IUserState
 		//
 		var clientUser = new ClientUser();
+		if (this.Services.Any(d => d.ServiceType == typeof(NoAuthRegistrationMarker))) {
+			clientUser.SetAnonymous();
+		}
 		this.Services
 			.AddSingleton(clientUser)
 			.AddSingleton<IUserState>(clientUser);

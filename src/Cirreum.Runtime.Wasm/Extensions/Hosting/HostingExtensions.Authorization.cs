@@ -55,6 +55,7 @@ public static partial class HostingExtensions {
 
 		if (!builder.Services.Any(d => d.ServiceType == typeof(AuthenticationStateProvider))) {
 			// allow all users when no-auth is configured
+			builder.Services.AddSingleton<NoAuthRegistrationMarker>();
 			builder.Services.AddScoped<AuthenticationStateProvider, NoAuthStateProvider>();
 			builder.Services.AddScoped<IAuthorizationPolicyProvider, NoAuthPolicyProvider>();
 			builder.Services.AddScoped<IAuthorizationService, NoAuthAuthenticationService>();
