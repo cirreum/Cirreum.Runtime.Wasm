@@ -325,7 +325,9 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		}
 
 		// 4–5. Application user checks (only when IApplicationUserFactory is registered).
-		if (this._requiresApplicationUser) {
+		if (this._requiresApplicationUser
+			&& this.UserState.IsAuthenticationComplete
+			&& this.UserState.IsAuthenticated) {
 
 			if (this.UserState.ApplicationUser is null) {
 				return ViewState.NotProvisioned;

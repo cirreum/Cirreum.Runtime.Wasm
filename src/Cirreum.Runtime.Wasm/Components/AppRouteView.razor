@@ -46,10 +46,10 @@
 		break;
 
 	case ViewState.NotProvisioned:
-		@if (NotProvisioned is not null) {
-			@NotProvisioned
-		} else {
-			<LayoutView Layout="@ResolvedPendingLayout">
+		<LayoutView Layout="@ResolvedPendingLayout">
+			@if (NotProvisioned is not null) {
+				@NotProvisioned
+			} else {
 				<div class="container py-5">
 					<div class="row justify-content-center">
 						<div class="col-12 col-md-10 col-lg-8 col-xl-6">
@@ -67,15 +67,15 @@
 						</div>
 					</div>
 				</div>
-			</LayoutView>
-		}
+			}
+		</LayoutView>
 		break;
 
 	case ViewState.Disabled:
-		@if (Disabled is not null) {
-			@Disabled
-		} else {
-			<LayoutView Layout="@ResolvedPendingLayout">
+		<LayoutView Layout="@ResolvedPendingLayout">
+			@if (Disabled is not null) {
+				@Disabled
+			} else {
 				<div class="container py-5">
 					<div class="row justify-content-center">
 						<div class="col-12 col-md-10 col-lg-8 col-xl-6">
@@ -93,8 +93,8 @@
 						</div>
 					</div>
 				</div>
-			</LayoutView>
-		}
+			}
+		</LayoutView>
 		break;
 
 }
