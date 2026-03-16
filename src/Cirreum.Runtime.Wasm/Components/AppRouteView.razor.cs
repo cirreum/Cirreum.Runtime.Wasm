@@ -29,9 +29,9 @@ using System.Reflection;
 /// States are evaluated top-to-bottom; first match wins:
 /// </para>
 /// <list type="number">
-///   <item><description><see cref="ViewState.Pending"/> — Initialization not yet complete → <see cref="LayoutView"/> with <see cref="PendingLayout"/> (no page component instantiated). Covers authentication, application user loading, profile enrichment, and any registered <see cref="IInitializable"/> services.</description></item>
-///   <item><description><see cref="ViewState.AuthenticationPath"/> — URI matches <see cref="AuthenticationBasePath"/> → <see cref="AuthorizeRouteView"/> with <see cref="PendingLayout"/> so the authentication callback page can process the response.</description></item>
-///   <item><description><see cref="ViewState.RedirectToLogin"/> — Route requires auth and user is not authenticated → <see cref="AuthorizeRouteView"/> with <see cref="PendingLayout"/> and <see cref="RedirectToLogin"/> in the <c>NotAuthorized</c> slot. The splash screen remains visible during the redirect.</description></item>
+///   <item><description><see cref="ViewState.AuthenticationPath"/> — URI matches <see cref="AuthenticationBasePath"/> → <see cref="AuthorizeRouteView"/> with <see cref="PendingLayout"/> so the authentication callback page can process the IdP response.</description></item>
+///   <item><description><see cref="ViewState.RedirectToLogin"/> — Route requires auth and user is not authenticated → fires <see cref="RedirectToLogin"/> to navigate to the identity provider. The splash screen remains visible during the redirect.</description></item>
+///   <item><description><see cref="ViewState.Pending"/> — Orchestrator has not completed → <see cref="AuthorizeRouteView"/> (auth apps) or <see cref="LayoutView"/> (no-auth apps) with <see cref="PendingLayout"/>. No page component is instantiated. Covers the full startup sequence: redirect to IdP, auth callback processing, application user loading, profile enrichment, and registered <see cref="IInitializable"/> services.</description></item>
 ///   <item><description><see cref="ViewState.NotProvisioned"/> — Authenticated identity has no application account (only when <see cref="IApplicationUserFactory"/> is registered).</description></item>
 ///   <item><description><see cref="ViewState.Disabled"/> — Application user exists but <see cref="IApplicationUser.IsEnabled"/> is <see langword="false"/>.</description></item>
 ///   <item><description><see cref="ViewState.Ready"/> — All checks pass → <see cref="AuthorizeRouteView"/> (when auth registered) or <see cref="RouteView"/> with <see cref="DefaultLayout"/>.</description></item>
@@ -148,6 +148,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// State
 	// -------------------------------------------------------------------------
 
+	private readonly CancellationTokenSource _cts = new();
 	private IDisposable? _userStateSubscription;
 	private IDisposable? _activityStateSubscription;
 	private ViewState _viewState = ViewState.Pending;
@@ -206,7 +207,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		// once IsAuthenticationComplete flips to true — ensuring Phase 1 (app user loading,
 		// profile enrichment) runs with the correct identity.
 		if (!this._hasAuthenticationRouting || this.UserState.IsAuthenticationComplete) {
-			this.Orchestrator.Start();
+			this.Orchestrator.Start(_cts.Token);
 		}
 
 	}
@@ -263,18 +264,21 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	}
 
 	/// <summary>
-	/// Attempts to start the orchestrator if all required authentication and routing conditions are met.
+	/// Attempts to start the <see cref="IInitializationOrchestrator"/> if all preconditions are met.
 	/// </summary>
-	/// <remarks>This method checks whether the orchestrator has already started, whether user authentication is
-	/// complete, and whether the current route requires authorization. The orchestrator is only started if all these
-	/// conditions are satisfied. This method does not throw exceptions if the orchestrator cannot be started; it simply
-	/// performs no action.</remarks>
+	/// <remarks>
+	/// The orchestrator is started only once — guarded by <see cref="IInitializationOrchestrator.HasStarted"/>.
+	/// Preconditions: authentication must be complete, the current path must not be an authentication
+	/// callback, and the route must not require auth for an unauthenticated user (which would indicate
+	/// a pending redirect rather than a settled auth state). The component's <see cref="CancellationToken"/>
+	/// is passed to the orchestrator so initialization is cancelled if the component is disposed.
+	/// </remarks>
 	private void TryStartOrchestrator() {
 		if (!this.Orchestrator.HasStarted
 			&& this.UserState.IsAuthenticationComplete
 			&& !this.IsAuthenticationPath()
 			&& !(RouteRequiresAuthorization(this.RouteData.PageType) && !this.UserState.IsAuthenticated)) {
-			this.Orchestrator.Start();
+			this.Orchestrator.Start(_cts.Token);
 		}
 	}
 
@@ -366,6 +370,8 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		this.Navigation.LocationChanged -= this.OnLocationChanged;
 		this._userStateSubscription?.Dispose();
 		this._activityStateSubscription?.Dispose();
+		this._cts.Cancel();
+		this._cts.Dispose();
 	}
 
 	// -------------------------------------------------------------------------

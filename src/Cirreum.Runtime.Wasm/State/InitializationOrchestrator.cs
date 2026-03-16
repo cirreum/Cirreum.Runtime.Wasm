@@ -42,18 +42,26 @@ internal sealed partial class InitializationOrchestrator(
 	public bool HasCompleted => this._hasCompleted == 1;
 
 	/// <inheritdoc />
-	public void Start() {
+	public void Start(CancellationToken cancellationToken = default) {
 		if (Interlocked.Exchange(ref this._hasStarted, 1) == 1) {
 			return;
 		}
-		_ = this.RunAsync();
+
+		_ = this.RunAsync(cancellationToken)
+			.ContinueWith(
+				t => Log.InitializationPipelineFailed(logger, t.Exception!.GetBaseException()),
+				CancellationToken.None,
+				TaskContinuationOptions.OnlyOnFaulted,
+				TaskScheduler.Current);
 	}
 
-	private async Task RunAsync() {
+	private async Task RunAsync(CancellationToken cancellationToken) {
 		try {
 
 			// Resolve Phase 1 services only when authenticated — these services
 			// depend on a valid identity. Skipped entirely for anonymous users.
+			// Invariant: orchestrator only starts after IsAuthenticationComplete is true,
+			// so clientUser.IsAuthenticated reflects the final settled auth state.
 			IApplicationUserFactory? userFactory = null;
 			IUserProfileEnricher? enricher = null;
 
@@ -77,9 +85,9 @@ internal sealed partial class InitializationOrchestrator(
 				return;
 			}
 
-			// Replace the initial indeterminate task with deterministic tracked work.
-			// The notification scope prevents an intermediate UI update that would
-			// briefly make the application appear inactive.
+			// Replace the initial indeterminate task started by AppRouteView with
+			// deterministic tracked work. The notification scope prevents an intermediate
+			// UI update that would briefly make the application appear inactive.
 			activityState.SetDisplayStatus("Initializing application...");
 			using (activityState.CreateNotificationScope()) {
 				activityState.ResetTasks();
@@ -88,15 +96,15 @@ internal sealed partial class InitializationOrchestrator(
 
 			// Phase 1 — Cirreum-controlled: app user + profile enrichment
 			if (userFactory is not null || enricher is not null) {
-				await this.RunPhase1Async(userFactory, enricher);
+				await this.RunPhase1Async(userFactory, enricher, cancellationToken);
 			}
 
 			// Phase 2 — App-registered initializers
 			if (phase2Items.Count > 0) {
-				await this.RunPhase2Async(phase2Items);
+				await this.RunPhase2Async(phase2Items, cancellationToken);
 			}
 
-		} catch (Exception ex) {
+		} catch (Exception ex) when (ex is not OperationCanceledException) {
 			Log.InitializationPipelineFailed(logger, ex);
 
 			activityState.LogError(
@@ -111,12 +119,8 @@ internal sealed partial class InitializationOrchestrator(
 
 		} finally {
 			Interlocked.Exchange(ref this._hasCompleted, 1);
-			await Task.Delay(300);
-			// Reset tasks after marking completion. In single-threaded Blazor WASM,
-			// the last CompleteTask() notification fires synchronously — AppRouteView
-			// processes it before _hasCompleted is set, so it still sees Pending.
-			// This final ResetTasks() gives AppRouteView one more notification where
-			// HasCompleted is already true, allowing the transition to Ready.
+			// ResetTasks() notifies AppRouteView one final time with HasCompleted = true,
+			// allowing the transition from Pending to Ready.
 			activityState.ResetTasks();
 		}
 	}
@@ -127,7 +131,8 @@ internal sealed partial class InitializationOrchestrator(
 
 	private async Task RunPhase1Async(
 		IApplicationUserFactory? userFactory,
-		IUserProfileEnricher? enricher) {
+		IUserProfileEnricher? enricher,
+		CancellationToken cancellationToken) {
 
 		// 1. Application user loading
 		if (userFactory is not null) {
@@ -135,10 +140,10 @@ internal sealed partial class InitializationOrchestrator(
 			activityState.SetDisplayStatus("Loading application user...");
 
 			try {
-				var result = await userFactory.CreateUserAsync(clientUser);
-				clientUser.SetAppUser(result.IsSuccess ? result.Value : null);
+				var result = await userFactory.CreateUserAsync(clientUser, cancellationToken);
+				clientUser.SetAppUser(result.Value);
 				Log.ApplicationUserLoaded(logger, result.IsSuccess);
-			} catch (Exception ex) {
+			} catch (Exception ex) when (ex is not OperationCanceledException) {
 				Log.ApplicationUserLoadFailed(logger, ex);
 				activityState.LogError(
 					sourceName: "Application User",
@@ -163,7 +168,7 @@ internal sealed partial class InitializationOrchestrator(
 				await enricher.EnrichProfileAsync(clientUser.Profile, clientUser.Identity);
 				clientUser.SetEnrichmentCompleted();
 				Log.ProfileEnrichmentComplete(logger);
-			} catch (Exception ex) {
+			} catch (Exception ex) when (ex is not OperationCanceledException) {
 				Log.ProfileEnrichmentFailed(logger, ex);
 				activityState.LogError(
 					sourceName: "Profile Enrichment",
@@ -185,10 +190,12 @@ internal sealed partial class InitializationOrchestrator(
 	// Phase 2 — App-registered initializers
 	// -------------------------------------------------------------------------
 
-	private async Task RunPhase2Async(List<IInitializable> items) {
+	private async Task RunPhase2Async(List<IInitializable> items, CancellationToken cancellationToken) {
 		Log.BeginningPhase2(logger, items.Count);
 
 		foreach (var item in items) {
+
+			cancellationToken.ThrowIfCancellationRequested();
 
 			// Evaluate late — Phase 1 may have mutated IUserState (e.g., SetAppUser)
 			// which downstream initializables may depend on.
@@ -206,9 +213,9 @@ internal sealed partial class InitializationOrchestrator(
 			activityState.SetDisplayStatus(statusMessage);
 
 			try {
-				await item.InitializeAsync(activityState.SetDisplayStatus);
+				await item.InitializeAsync(activityState.SetDisplayStatus, cancellationToken);
 				Log.ServiceInitialized(logger, item.DisplayName);
-			} catch (Exception ex) {
+			} catch (Exception ex) when (ex is not OperationCanceledException) {
 				Log.ServiceInitializationFailed(logger, item.DisplayName, ex);
 				activityState.LogError(
 					sourceName: item.DisplayName,
