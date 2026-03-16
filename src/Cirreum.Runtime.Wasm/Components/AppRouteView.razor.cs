@@ -172,7 +172,15 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		await base.SetParametersAsync(parameters);
 	}
 
-	/// <inheritdoc />
+	/// <summary>
+	/// Initializes the component and sets up state subscriptions, navigation event handlers, and application startup
+	/// logic.
+	/// </summary>
+	/// <remarks>This method configures the component's dependencies and subscribes to relevant state changes
+	/// required for view transitions. It ensures that the application does not render page components until authentication
+	/// and orchestration are complete, providing a consistent startup experience. The orchestrator is started immediately
+	/// if authentication is already resolved, or deferred until authentication completes for applications requiring
+	/// authentication.</remarks>
 	protected override void OnInitialized() {
 
 		// Detect optional services that influence the state machine.
@@ -226,12 +234,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	/// only when the view state changed.
 	/// </summary>
 	private void OnUserStateChanged(IUserState _) {
-		if (!this.Orchestrator.HasStarted
-			&& this.UserState.IsAuthenticationComplete
-			&& !this.IsAuthenticationPath()
-			&& !(RouteRequiresAuthorization(this.RouteData.PageType) && !this.UserState.IsAuthenticated)) {
-			this.Orchestrator.Start();
-		}
+		this.TryStartOrchestrator();
 		if (this.EvaluateState()) {
 			this.InvokeAsync(this.StateHasChanged);
 		}
@@ -253,8 +256,25 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	/// <param name="sender">The source of the event. This is typically the object that raised the event.</param>
 	/// <param name="e">The event data containing information about the location change.</param>
 	private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
+		this.TryStartOrchestrator();
 		if (this.EvaluateState()) {
 			this.InvokeAsync(this.StateHasChanged);
+		}
+	}
+
+	/// <summary>
+	/// Attempts to start the orchestrator if all required authentication and routing conditions are met.
+	/// </summary>
+	/// <remarks>This method checks whether the orchestrator has already started, whether user authentication is
+	/// complete, and whether the current route requires authorization. The orchestrator is only started if all these
+	/// conditions are satisfied. This method does not throw exceptions if the orchestrator cannot be started; it simply
+	/// performs no action.</remarks>
+	private void TryStartOrchestrator() {
+		if (!this.Orchestrator.HasStarted
+			&& this.UserState.IsAuthenticationComplete
+			&& !this.IsAuthenticationPath()
+			&& !(RouteRequiresAuthorization(this.RouteData.PageType) && !this.UserState.IsAuthenticated)) {
+			this.Orchestrator.Start();
 		}
 	}
 
