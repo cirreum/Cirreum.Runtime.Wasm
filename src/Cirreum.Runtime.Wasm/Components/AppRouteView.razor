@@ -1,14 +1,14 @@
 @namespace Cirreum.Components
+@using Cirreum.Components.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @switch (_viewState) {
 
 	case ViewState.Pending:
 		@if (_hasAuthenticationRouting) {
-			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout" />
-		} else {
-			<LayoutView Layout="@ResolvedPendingLayout" />
+			<AuthenticationStateInitializer />
 		}
+		<LayoutView Layout="@ResolvedPendingLayout" />
 		break;
 
 	case ViewState.AuthenticationPath:

@@ -129,5 +129,8 @@
 		<None Include="..\..\build\swa\staticwebapp.config.template.json" Pack="true" PackagePath="buildTransitive\" Visible="false" />
 		<None Include="..\..\build\swa\csp.base.policy" Pack="true" PackagePath="buildTransitive\" Visible="false" />
 	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="Properties\" />
+	</ItemGroup>
 
 </Project>

@@ -81,14 +81,16 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 		this._lastProcessedId = null;
 		this._lastProcessedName = null;
 
-		var clientUser = serviceProvider.GetService<ClientUser>();
-		if (clientUser?.IsAuthenticated == true) {
-			clientUser.SetAnonymous();
-			// Anonymous transition is sync — lightweight, no app user concern
+		var clientUser = serviceProvider.GetRequiredService<ClientUser>();
+
+		var wasAuthComplete = clientUser.IsAuthenticationComplete;
+		var wasAuthenticated = clientUser.IsAuthenticated;
+		clientUser.SetAnonymous();
+
+		if (!wasAuthComplete || wasAuthenticated) {
+			// First time auth settled — notify so AppRouteView can start orchestrator
 			var stateManager = serviceProvider.GetService<IStateManager>();
 			stateManager?.NotifySubscribers<IUserState>(clientUser);
-		} else {
-			clientUser?.SetAnonymous();
 		}
 
 		return AnonymousUser.Shared;

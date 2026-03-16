@@ -79,9 +79,9 @@ internal sealed partial class InitializationOrchestrator(
 				+ (enricher is not null ? 1 : 0);
 
 			if (totalTasks == 0) {
-				Interlocked.Exchange(ref this._hasCompleted, 1);
+				Interlocked.Exchange(ref this._hasCompleted, 1); // Set Completed = true
+				activityState.ResetTasks(); // reset activity and ensure AppRouteView get notified
 				Log.NoInitializationWork(logger);
-				activityState.CompleteTask();
 				return;
 			}
 
