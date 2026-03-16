@@ -182,6 +182,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		// Subscribe to state changes that drive view transitions.
 		this._userStateSubscription = this.StateManager.Subscribe<IUserState>(this.OnUserStateChanged);
 		this._activityStateSubscription = this.StateManager.Subscribe<IActivityState>(this.OnActivityStateChanged);
+		this.Navigation.LocationChanged += this.OnLocationChanged;
 
 		// Hold in Pending until authentication is resolved and orchestration completes.
 		// This prevents any page component from rendering before the app is ready.
@@ -241,6 +242,17 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	/// Re-evaluates the state machine and triggers a render only when the view state changed.
 	/// </summary>
 	private void OnActivityStateChanged(IActivityState _) {
+		if (this.EvaluateState()) {
+			this.InvokeAsync(this.StateHasChanged);
+		}
+	}
+
+	/// <summary>
+	/// Handles the event that occurs when the location has changed.
+	/// </summary>
+	/// <param name="sender">The source of the event. This is typically the object that raised the event.</param>
+	/// <param name="e">The event data containing information about the location change.</param>
+	private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
 		if (this.EvaluateState()) {
 			this.InvokeAsync(this.StateHasChanged);
 		}
@@ -331,6 +343,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// -------------------------------------------------------------------------
 
 	public void Dispose() {
+		this.Navigation.LocationChanged -= this.OnLocationChanged;
 		this._userStateSubscription?.Dispose();
 		this._activityStateSubscription?.Dispose();
 	}
