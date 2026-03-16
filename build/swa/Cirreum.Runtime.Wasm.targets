@@ -23,8 +23,10 @@
 	</PropertyGroup>
 
 	<Target Name="GenerateStaticWebAppConfig"
-		BeforeTargets="Build"
-		Condition="'$(CirreumGenerateSwaConfig)' == 'true' And '$(_HasCspPolicyFiles)' == 'true'">
+			BeforeTargets="Build"
+			Condition="'$(CirreumGenerateSwaConfig)' == 'true' 
+				And '$(_HasCspPolicyFiles)' == 'true'
+				And '$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
 
 		<Error Condition="!Exists('$(SwaCspGenerator)')" Text="[Cirreum] SwaCspGenerator not found: $(SwaCspGenerator)" />
 		<Error Condition="!Exists('$(CspBasePolicy)')" Text="[Cirreum] CspBasePolicy not found: $(CspBasePolicy)" />

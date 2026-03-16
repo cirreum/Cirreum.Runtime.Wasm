@@ -109,8 +109,8 @@
 		</ItemGroup>
 		<MinifyJavaScript Files="@(_JsToMinify)" Condition="@(_JsToMinify-&gt;Count()) &gt; 0" />
 		<!-- Generated .min.js files miss the SDK's initial wwwroot glob (evaluated
-		     before targets run). Remove stale entries then re-add so the static
-		     web asset pipeline serves them alongside the originals. -->
+			 before targets run). Remove stale entries then re-add so the static
+			 web asset pipeline serves them alongside the originals. -->
 		<ItemGroup>
 			<Content Remove="wwwroot\js\**\*.min.js" />
 			<Content Include="wwwroot\js\**\*.min.js" />
@@ -118,14 +118,16 @@
 	</Target>
 
 	<!-- NuGet build assets - auto-imported by NuGet into consuming projects.
-	     Visible="false" hides these from Solution Explorer since they live
-	     outside the project directory in the shared build/swa/ folder.
-	     PackagePath="build\" ensures NuGet auto-import convention is satisfied. -->
+	 Visible="false" hides these from Solution Explorer since they live
+	 outside the project directory in the shared build/swa/ folder.
+	 PackagePath="buildTransitive\" ensures targets are imported into all
+	 projects in the dependency chain, not just direct references.
+	 Target condition guards against running in non-BlazorWebAssembly projects. -->
 	<ItemGroup>
-		<None Include="..\..\build\swa\Cirreum.Runtime.Wasm.targets" Pack="true" PackagePath="build\" Visible="false" />
-		<None Include="..\..\build\swa\SwaConfig-CspGen.ps1" Pack="true" PackagePath="build\" Visible="false" />
-		<None Include="..\..\build\swa\staticwebapp.config.template.json" Pack="true" PackagePath="build\" Visible="false" />
-		<None Include="..\..\build\swa\csp.base.policy" Pack="true" PackagePath="build\" Visible="false" />
+		<None Include="..\..\build\swa\Cirreum.Runtime.Wasm.targets" Pack="true" PackagePath="buildTransitive\" Visible="false" />
+		<None Include="..\..\build\swa\SwaConfig-CspGen.ps1" Pack="true" PackagePath="buildTransitive\" Visible="false" />
+		<None Include="..\..\build\swa\staticwebapp.config.template.json" Pack="true" PackagePath="buildTransitive\" Visible="false" />
+		<None Include="..\..\build\swa\csp.base.policy" Pack="true" PackagePath="buildTransitive\" Visible="false" />
 	</ItemGroup>
 
 </Project>
