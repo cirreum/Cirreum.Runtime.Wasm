@@ -19,7 +19,7 @@ using System.Text.Json;
 /// after setting the authenticated principal so the login-callback flow is unblocked.
 /// </para>
 /// <para>
-/// Application user loading (<see cref="IApplicationUserFactory"/>), profile enrichment
+/// Application user loading (<see cref="IApplicationUserResolver"/>), profile enrichment
 /// (<see cref="IUserProfileEnricher"/>), and remote state initialization are handled
 /// separately by the <see cref="IInitializationOrchestrator"/> once <c>AppRouteView</c>
 /// triggers initialization after authentication settles.

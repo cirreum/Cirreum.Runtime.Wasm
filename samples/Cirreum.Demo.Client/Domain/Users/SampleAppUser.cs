@@ -7,4 +7,5 @@ public record SampleAppUser(
 	string Email
 ) : IApplicationUser {
 	public bool IsEnabled => true;
+	public IReadOnlyList<string> Roles { get; init; } = [];
 }

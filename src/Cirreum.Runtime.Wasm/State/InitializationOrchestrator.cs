@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 /// <remarks>
 /// <para>
 /// <strong>Phase 1 — Cirreum-controlled (fixed order):</strong>
-/// Application user loading via <see cref="IApplicationUserFactory"/> and profile
+/// Application user loading via <see cref="IApplicationUserResolver"/> and profile
 /// enrichment via <see cref="IUserProfileEnricher"/>. These run first, in a fixed
 /// order, only when the user is authenticated and the respective services are registered.
 /// </para>
@@ -62,11 +62,11 @@ internal sealed partial class InitializationOrchestrator(
 			// depend on a valid identity. Skipped entirely for anonymous users.
 			// Invariant: orchestrator only starts after IsAuthenticationComplete is true,
 			// so clientUser.IsAuthenticated reflects the final settled auth state.
-			IApplicationUserFactory? userFactory = null;
+			IApplicationUserResolver? userResolver = null;
 			IUserProfileEnricher? enricher = null;
 
 			if (clientUser.IsAuthenticated) {
-				userFactory = serviceProvider.GetService<IApplicationUserFactory>();
+				userResolver = serviceProvider.GetService<IApplicationUserResolver>();
 				enricher = serviceProvider.GetService<IUserProfileEnricher>();
 			}
 
@@ -75,7 +75,7 @@ internal sealed partial class InitializationOrchestrator(
 				.ToList();
 
 			var totalTasks = phase2Items.Count
-				+ (userFactory is not null ? 1 : 0)
+				+ (userResolver is not null ? 1 : 0)
 				+ (enricher is not null ? 1 : 0);
 
 			if (totalTasks == 0) {
@@ -95,8 +95,8 @@ internal sealed partial class InitializationOrchestrator(
 			}
 
 			// Phase 1 — Cirreum-controlled: app user + profile enrichment
-			if (userFactory is not null || enricher is not null) {
-				await this.RunPhase1Async(userFactory, enricher, cancellationToken);
+			if (userResolver is not null || enricher is not null) {
+				await this.RunPhase1Async(userResolver, enricher, cancellationToken);
 			}
 
 			// Phase 2 — App-registered initializers
@@ -130,19 +130,19 @@ internal sealed partial class InitializationOrchestrator(
 	// -------------------------------------------------------------------------
 
 	private async Task RunPhase1Async(
-		IApplicationUserFactory? userFactory,
+		IApplicationUserResolver? userResolver,
 		IUserProfileEnricher? enricher,
 		CancellationToken cancellationToken) {
 
-		// 1. Application user loading
-		if (userFactory is not null) {
+		// 1. Application user resolution
+		if (userResolver is not null) {
 			Log.LoadingApplicationUser(logger);
 			activityState.SetDisplayStatus("Loading application user...");
 
 			try {
-				var result = await userFactory.CreateUserAsync(clientUser, cancellationToken);
-				clientUser.SetAppUser(result.Value);
-				Log.ApplicationUserLoaded(logger, result.IsSuccess);
+				var applicationUser = await userResolver.ResolveAsync(clientUser.Id, cancellationToken);
+				clientUser.SetAppUser(applicationUser);
+				Log.ApplicationUserLoaded(logger, applicationUser is not null);
 			} catch (Exception ex) when (ex is not OperationCanceledException) {
 				Log.ApplicationUserLoadFailed(logger, ex);
 				activityState.LogError(
@@ -245,7 +245,7 @@ internal sealed partial class InitializationOrchestrator(
 		public static partial void NoInitializationWork(ILogger logger);
 
 		[LoggerMessage(Level = LogLevel.Debug,
-			Message = "Loading application user via IApplicationUserFactory")]
+			Message = "Resolving application user via IApplicationUserResolver")]
 		public static partial void LoadingApplicationUser(ILogger logger);
 
 		[LoggerMessage(Level = LogLevel.Debug,

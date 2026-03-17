@@ -9,44 +9,44 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 public static partial class HostingExtensions {
 
 	/// <summary>
-	/// Registers the <typeparamref name="TApplicationUserFactory"/> as the
-	/// <see cref="IApplicationUserFactory"/> used to load application users during initialization.
+	/// Registers the <typeparamref name="TResolver"/> as the
+	/// <see cref="IApplicationUserResolver"/> used to resolve application users during initialization.
 	/// </summary>
-	/// <typeparam name="TApplicationUserFactory">
-	/// The factory implementation that creates <see cref="IApplicationUser"/> instances
-	/// from <see cref="IUserState"/>.
+	/// <typeparam name="TResolver">
+	/// The resolver implementation that resolves <see cref="IApplicationUser"/> instances
+	/// from an external user identifier.
 	/// </typeparam>
 	/// <param name="services">The <see cref="IServiceCollection"/> to add services to.</param>
 	/// <returns>The <see cref="IServiceCollection"/> so that additional calls can be chained.</returns>
 	/// <remarks>
-	/// The registered factory is invoked by the <see cref="IInitializationOrchestrator"/>
+	/// The registered resolver is invoked by the <see cref="IInitializationOrchestrator"/>
 	/// during Phase 1 of application initialization, after authentication has settled.
 	/// </remarks>
-	public static IServiceCollection AddApplicationUser<TApplicationUserFactory>(
+	public static IServiceCollection AddApplicationUserResolver<TResolver>(
 		this IServiceCollection services)
-		where TApplicationUserFactory : class, IApplicationUserFactory {
+		where TResolver : class, IApplicationUserResolver {
 
-		services.TryAddScoped<IApplicationUserFactory, TApplicationUserFactory>();
+		services.TryAddScoped<IApplicationUserResolver, TResolver>();
 		return services;
 
 	}
 
 	/// <summary>
-	/// Registers an <see cref="IApplicationUserFactory"/> using a custom factory function.
+	/// Registers an <see cref="IApplicationUserResolver"/> using a custom factory function.
 	/// </summary>
 	/// <param name="services">The <see cref="IServiceCollection"/> to add services to.</param>
 	/// <param name="factory">
-	/// A factory function that creates an <see cref="IApplicationUserFactory"/> instance
+	/// A factory function that creates an <see cref="IApplicationUserResolver"/> instance
 	/// using the service provider.
 	/// </param>
 	/// <returns>The <see cref="IServiceCollection"/> so that additional calls can be chained.</returns>
 	/// <remarks>
-	/// The registered factory is invoked by the <see cref="IInitializationOrchestrator"/>
+	/// The registered resolver is invoked by the <see cref="IInitializationOrchestrator"/>
 	/// during Phase 1 of application initialization, after authentication has settled.
 	/// </remarks>
-	public static IServiceCollection AddApplicationUser(
+	public static IServiceCollection AddApplicationUserResolver(
 		this IServiceCollection services,
-		Func<IServiceProvider, IApplicationUserFactory> factory) {
+		Func<IServiceProvider, IApplicationUserResolver> factory) {
 
 		services.TryAddScoped(factory);
 		return services;

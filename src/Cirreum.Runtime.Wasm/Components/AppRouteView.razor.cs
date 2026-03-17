@@ -32,7 +32,7 @@ using System.Reflection;
 ///   <item><description><see cref="ViewState.AuthenticationPath"/> — URI matches <see cref="AuthenticationBasePath"/> → <see cref="AuthorizeRouteView"/> with <see cref="PendingLayout"/> so the authentication callback page can process the IdP response.</description></item>
 ///   <item><description><see cref="ViewState.RedirectToLogin"/> — Route requires auth and user is not authenticated → fires <see cref="RedirectToLogin"/> to navigate to the identity provider. The splash screen remains visible during the redirect.</description></item>
 ///   <item><description><see cref="ViewState.Pending"/> — Orchestrator has not completed → <see cref="AuthorizeRouteView"/> (auth apps) or <see cref="LayoutView"/> (no-auth apps) with <see cref="PendingLayout"/>. No page component is instantiated. Covers the full startup sequence: redirect to IdP, auth callback processing, application user loading, profile enrichment, and registered <see cref="IInitializable"/> services.</description></item>
-///   <item><description><see cref="ViewState.NotProvisioned"/> — Authenticated identity has no application account (only when <see cref="IApplicationUserFactory"/> is registered).</description></item>
+///   <item><description><see cref="ViewState.NotProvisioned"/> — Authenticated identity has no application account (only when <see cref="IApplicationUserResolver"/> is registered).</description></item>
 ///   <item><description><see cref="ViewState.Disabled"/> — Application user exists but <see cref="IApplicationUser.IsEnabled"/> is <see langword="false"/>.</description></item>
 ///   <item><description><see cref="ViewState.Ready"/> — All checks pass → <see cref="AuthorizeRouteView"/> (when auth registered) or <see cref="RouteView"/> with <see cref="DefaultLayout"/>.</description></item>
 /// </list>
@@ -86,7 +86,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	/// the identity is authenticated but has no account in this application.
 	/// </summary>
 	/// <remarks>
-	/// Only evaluated when an <see cref="IApplicationUserFactory"/> is registered.
+	/// Only evaluated when an <see cref="IApplicationUserResolver"/> is registered.
 	/// When no factory is registered, transitions directly from initialized to ready.
 	/// </remarks>
 	[Parameter]
@@ -185,7 +185,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	protected override void OnInitialized() {
 
 		// Detect optional services that influence the state machine.
-		this._requiresApplicationUser = this.ServiceProvider.GetService<IApplicationUserFactory>() is not null;
+		this._requiresApplicationUser = this.ServiceProvider.GetService<IApplicationUserResolver>() is not null;
 		this._hasAuthenticationRouting = this.ServiceProvider.GetService<AuthenticationStateProvider>() is not null;
 
 		// Subscribe to state changes that drive view transitions.
@@ -324,7 +324,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 			return ViewState.Pending;
 		}
 
-		// 4–5. Application user checks (only when IApplicationUserFactory is registered).
+		// 4–5. Application user checks (only when IApplicationUserResolver is registered).
 		if (this._requiresApplicationUser
 			&& this.UserState.IsAuthenticationComplete
 			&& this.UserState.IsAuthenticated) {
