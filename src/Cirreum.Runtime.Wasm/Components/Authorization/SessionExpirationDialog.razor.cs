@@ -17,9 +17,6 @@ public partial class SessionExpirationDialog : ComponentBase, IDisposable {
 	[Inject] private NavigationManager NavigationManager { get; set; } = default!;
 	[Inject] private SessionOptions Options { get; set; } = default!;
 	[Inject] private ISessionManager SessionManager { get; set; } = default!;
-#if DEBUG
-	[Inject] private IUserState CurrentUser { get; set; } = default!;
-#endif
 
 	/// <summary>
 	/// Gets or sets the message displayed when the session expires.
@@ -139,17 +136,8 @@ public partial class SessionExpirationDialog : ComponentBase, IDisposable {
 	// -------------------------------------------------------------------------
 
 	private async Task HandleContinue() {
-#if DEBUG
-		Console.WriteLine($"[DIALOG] Before continue - Time remaining: {this.SessionManager.TimeRemaining}");
-		Console.WriteLine($"[DIALOG] Current stage: {this.SessionManager.CurrentStage?.Name}");
-		Console.WriteLine($"[DIALOG] User authenticated: {this.CurrentUser?.IsAuthenticated}");
-#endif
 		await this.HideDialog();
 		this.SessionManager.ExtendSession();
-#if DEBUG
-		Console.WriteLine($"[DIALOG] After ExtendSession - Time remaining: {this.SessionManager.TimeRemaining}");
-		Console.WriteLine($"[DIALOG] New current stage: {this.SessionManager.CurrentStage?.Name}");
-#endif
 		await this.OnSessionContinued.InvokeAsync();
 	}
 

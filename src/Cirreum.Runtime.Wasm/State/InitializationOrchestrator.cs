@@ -30,7 +30,11 @@ internal sealed partial class InitializationOrchestrator(
 	IServiceProvider serviceProvider,
 	INotificationState notificationState,
 	ILogger<InitializationOrchestrator> logger
-) : IInitializationOrchestrator {
+) : IInitializationOrchestrator, IAutoInitialize {
+
+	private IApplicationUserResolver? userResolver = null;
+	private IUserProfileEnricher? enricher = null;
+	private readonly List<IInitializable> phase2Items = [.. initializables.OrderBy(i => i.Order)];
 
 	private int _hasStarted;
 	private int _hasCompleted;
@@ -41,13 +45,35 @@ internal sealed partial class InitializationOrchestrator(
 	/// <inheritdoc />
 	public bool HasCompleted => this._hasCompleted == 1;
 
+	public ValueTask InitializeAsync() {
+		this.userResolver = serviceProvider.GetService<IApplicationUserResolver>();
+		this.enricher = serviceProvider.GetService<IUserProfileEnricher>();
+		return default;
+	}
+
 	/// <inheritdoc />
 	public void Start(CancellationToken cancellationToken = default) {
 		if (Interlocked.Exchange(ref this._hasStarted, 1) == 1) {
 			return;
 		}
 
-		_ = this.RunAsync(cancellationToken)
+		var totalTasks = this.phase2Items.Count
+			+ (this.userResolver is not null ? 1 : 0)
+			+ (this.enricher is not null ? 1 : 0);
+
+		if (totalTasks == 0) {
+			Interlocked.Exchange(ref this._hasCompleted, 1); // Set Completed = true
+			Log.NoInitializationWork(logger);
+			return;
+		}
+
+		if (activityState.IsActive) {
+			activityState.SetDisplayStatus("Initializing application...");
+		} else {
+			activityState.StartTask("Initializing application...");
+		}
+
+		_ = this.RunAsync(totalTasks, cancellationToken)
 			.ContinueWith(
 				t => Log.InitializationPipelineFailed(logger, t.Exception!.GetBaseException()),
 				CancellationToken.None,
@@ -55,53 +81,25 @@ internal sealed partial class InitializationOrchestrator(
 				TaskScheduler.Current);
 	}
 
-	private async Task RunAsync(CancellationToken cancellationToken) {
+	private async Task RunAsync(int totalTask, CancellationToken cancellationToken) {
 		try {
-
-			// Resolve Phase 1 services only when authenticated — these services
-			// depend on a valid identity. Skipped entirely for anonymous users.
-			// Invariant: orchestrator only starts after IsAuthenticationComplete is true,
-			// so clientUser.IsAuthenticated reflects the final settled auth state.
-			IApplicationUserResolver? userResolver = null;
-			IUserProfileEnricher? enricher = null;
-
-			if (clientUser.IsAuthenticated) {
-				userResolver = serviceProvider.GetService<IApplicationUserResolver>();
-				enricher = serviceProvider.GetService<IUserProfileEnricher>();
-			}
-
-			var phase2Items = initializables
-				.OrderBy(i => i.Order)
-				.ToList();
-
-			var totalTasks = phase2Items.Count
-				+ (userResolver is not null ? 1 : 0)
-				+ (enricher is not null ? 1 : 0);
-
-			if (totalTasks == 0) {
-				Interlocked.Exchange(ref this._hasCompleted, 1); // Set Completed = true
-				activityState.ResetTasks(); // reset activity and ensure AppRouteView get notified
-				Log.NoInitializationWork(logger);
-				return;
-			}
 
 			// Replace the initial indeterminate task started by AppRouteView with
 			// deterministic tracked work. The notification scope prevents an intermediate
 			// UI update that would briefly make the application appear inactive.
-			activityState.SetDisplayStatus("Initializing application...");
 			using (activityState.CreateNotificationScope()) {
 				activityState.ResetTasks();
-				activityState.BeginTasks(totalTasks);
+				activityState.BeginTasks(totalTask, "Initializing application...");
 			}
 
 			// Phase 1 — Cirreum-controlled: app user + profile enrichment
-			if (userResolver is not null || enricher is not null) {
-				await this.RunPhase1Async(userResolver, enricher, cancellationToken);
+			if (this.userResolver is not null || this.enricher is not null) {
+				await this.RunPhase1Async(cancellationToken);
 			}
 
 			// Phase 2 — App-registered initializers
-			if (phase2Items.Count > 0) {
-				await this.RunPhase2Async(phase2Items, cancellationToken);
+			if (this.phase2Items.Count > 0) {
+				await this.RunPhase2Async(cancellationToken);
 			}
 
 		} catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -129,18 +127,15 @@ internal sealed partial class InitializationOrchestrator(
 	// Phase 1 — Cirreum-controlled
 	// -------------------------------------------------------------------------
 
-	private async Task RunPhase1Async(
-		IApplicationUserResolver? userResolver,
-		IUserProfileEnricher? enricher,
-		CancellationToken cancellationToken) {
+	private async Task RunPhase1Async(CancellationToken cancellationToken) {
 
 		// 1. Application user resolution
-		if (userResolver is not null) {
+		if (this.userResolver is not null) {
 			Log.LoadingApplicationUser(logger);
 			activityState.SetDisplayStatus("Loading application user...");
 
 			try {
-				var applicationUser = await userResolver.ResolveAsync(clientUser.Id, cancellationToken);
+				var applicationUser = await this.userResolver.ResolveAsync(clientUser.Id, cancellationToken);
 				clientUser.SetAppUser(applicationUser);
 				Log.ApplicationUserLoaded(logger, applicationUser is not null);
 			} catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -160,12 +155,12 @@ internal sealed partial class InitializationOrchestrator(
 		}
 
 		// 2. Profile enrichment
-		if (enricher is not null) {
+		if (this.enricher is not null) {
 			Log.EnrichingProfile(logger);
 			activityState.SetDisplayStatus("Enriching user profile...");
 
 			try {
-				await enricher.EnrichProfileAsync(clientUser.Profile, clientUser.Identity);
+				await this.enricher.EnrichProfileAsync(clientUser.Profile, clientUser.Identity);
 				clientUser.SetEnrichmentCompleted();
 				Log.ProfileEnrichmentComplete(logger);
 			} catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -190,10 +185,10 @@ internal sealed partial class InitializationOrchestrator(
 	// Phase 2 — App-registered initializers
 	// -------------------------------------------------------------------------
 
-	private async Task RunPhase2Async(List<IInitializable> items, CancellationToken cancellationToken) {
-		Log.BeginningPhase2(logger, items.Count);
+	private async Task RunPhase2Async(CancellationToken cancellationToken) {
+		Log.BeginningPhase2(logger, this.phase2Items.Count);
 
-		foreach (var item in items) {
+		foreach (var item in this.phase2Items) {
 
 			cancellationToken.ThrowIfCancellationRequested();
 

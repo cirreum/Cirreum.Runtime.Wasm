@@ -5,22 +5,16 @@
 @switch (_viewState) {
 
 	case ViewState.Pending:
-		@if (_hasAuthenticationRouting) {
-			<AuthenticationStateInitializer />
-		}
-		<LayoutView Layout="@ResolvedPendingLayout" />
-		break;
-
-	case ViewState.AuthenticationPath:
-		<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout" />
-		break;
-
 	case ViewState.Ready:
 		@if (_hasAuthenticationRouting) {
-			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout">
+			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout">
 				<NotAuthorized>
-					@if (NotAuthorizedContent is not null) {
-						@NotAuthorizedContent
+					@if (context.User.Identity?.IsAuthenticated == true) {
+						@if (NotAuthorizedContent is not null) {
+							@NotAuthorizedContent
+						} else {
+							@DefaultNotAuthorizedFragment
+						}
 					} else {
 						<RedirectToLogin LoginPath="@LoginPath"
 										 LoginHint="@LoginHint"
@@ -31,18 +25,16 @@
 				</NotAuthorized>
 			</AuthorizeRouteView>
 		} else {
-			<RouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout" />
+			if (_viewState == ViewState.Ready) {
+				<RouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout" />
+			} else {
+				if (AllowEarlyPageInstantiation) {
+					<RouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout" />
+				} else {
+					<LayoutView Layout="@ResolvedPendingLayout" />
+				}
+			}
 		}
-		break;
-
-	case ViewState.RedirectToLogin:
-		<LayoutView Layout="@ResolvedPendingLayout">
-			<RedirectToLogin LoginPath="@LoginPath"
-							 LoginHint="@LoginHint"
-							 LoginPrompt="@LoginPrompt"
-							 DomainHint="@DomainHint"
-							 ReturnUrl="@_redirectReturnUrl" />
-		</LayoutView>
 		break;
 
 	case ViewState.NotProvisioned:
@@ -50,23 +42,9 @@
 			@if (NotProvisioned is not null) {
 				@NotProvisioned
 			} else {
-				<div class="container py-5">
-					<div class="row justify-content-center">
-						<div class="col-12 col-md-10 col-lg-8 col-xl-6">
-							<div class="card shadow-sm border-warning">
-								<div class="card-body p-4">
-									<h1 class="h4 mb-3">Account Not Provisioned</h1>
-									<div class="alert alert-warning mb-3" role="alert">
-										Your identity was authenticated successfully, but no application account was found.
-									</div>
-									<p class="mb-0 text-body-secondary">
-										Contact your administrator if you believe you should have access.
-									</p>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
+				@DisabledOrNoAccount(
+					"Account Not Provisioned", 
+					"Your identity was authenticated successfully, but no application account was found.")
 			}
 		</LayoutView>
 		break;
@@ -76,25 +54,53 @@
 			@if (Disabled is not null) {
 				@Disabled
 			} else {
-				<div class="container py-5">
-					<div class="row justify-content-center">
-						<div class="col-12 col-md-10 col-lg-8 col-xl-6">
-							<div class="card shadow-sm border-warning">
-								<div class="card-body p-4">
-									<h1 class="h4 mb-3">Account Disabled</h1>
-									<div class="alert alert-warning mb-3" role="alert">
-										Your account is currently disabled and cannot access this application.
-									</div>
-									<p class="mb-0 text-body-secondary">
-										Contact your administrator for assistance.
-									</p>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
+				@DisabledOrNoAccount(
+					"Account Disabled", 
+					"Your account is currently disabled and cannot access this application.")
 			}
 		</LayoutView>
 		break;
+
+}
+
+@code{
+
+	 private RenderFragment DefaultNotAuthorizedFragment =>
+		@<div class="container py-5">
+			<div class="row justify-content-center">
+				<div class="col-12 col-md-10 col-lg-8 col-xl-6">
+					<div class="card shadow-sm border-warning">
+						<div class="card-body p-4">
+							<h1 class="h4 mb-3">Not Authorized</h1>
+							<div class="alert alert-warning mb-3" role="alert">
+								Your identity was authenticated successfully, but you do not have access to the requested page.
+							</div>
+							<p class="mb-0 text-body-secondary">
+								Contact your administrator if you believe you should have access.
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>;
+
+	private RenderFragment DisabledOrNoAccount(string title, string message) =>
+		@<div class="container py-5">
+			<div class="row justify-content-center">
+				<div class="col-12 col-md-10 col-lg-8 col-xl-6">
+					<div class="card shadow-sm border-warning">
+						<div class="card-body p-4">
+							<h1 class="h4 mb-3">@title</h1>
+							<div class="alert alert-warning mb-3" role="alert">
+								@message
+							</div>
+							<p class="mb-0 text-body-secondary">
+								Contact your administrator for assistance.
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>;
 
 }
