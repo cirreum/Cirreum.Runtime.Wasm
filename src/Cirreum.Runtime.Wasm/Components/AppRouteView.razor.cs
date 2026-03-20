@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
@@ -262,7 +263,21 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	/// </summary>
 	private void OnUserStateChanged(IUserState _) {
 		// Post-Render
+
+		// During Pending, protected routes render behind a LayoutView rather than
+		// AuthorizeRouteView, so the built-in NotAuthorized → RedirectToLogin path
+		// never fires. When auth settles as unauthenticated on a protected route,
+		// we must redirect to login directly rather than relying on the razor to handle it.
+		if (this._hasAuthenticationRouting
+			&& this.UserState.IsAuthenticationComplete
+			&& !this.UserState.IsAuthenticated
+			&& RouteRequiresAuthorization(this.RouteData.PageType)) {
+			this.RedirectToLoginDirect();
+			return;
+		}
+
 		this.TryStartOrchestrator();
+
 		if (this.EvaluateState()) {
 			// Snapshot the current URI as the post-login return URL at the moment we detect
 			// the user is unauthenticated on a protected route — the same condition that will
@@ -273,6 +288,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 			}
 			this.InvokeAsync(this.StateHasChanged);
 		}
+
 	}
 
 	/// <summary>
@@ -432,6 +448,38 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		} else if (TerminalAuthActions.Contains(action)) {
 			this.Activity.ResetTasks();
 		}
+	}
+
+	private void RedirectToLoginDirect() {
+
+		InteractiveRequestOptions requestOptions = new() {
+			Interaction = InteractionType.SignIn,
+			ReturnUrl = this.Navigation.Uri
+		};
+
+		if (!string.IsNullOrWhiteSpace(this.LoginHint)) {
+			requestOptions.TryAddAdditionalParameter("loginHint", this.LoginHint);
+		}
+
+		if (!string.IsNullOrWhiteSpace(this.DomainHint)) {
+			requestOptions.TryAddAdditionalParameter("domainHint", this.DomainHint);
+		}
+
+		if (this.LoginPrompt.HasValue) {
+			var promptValue = this.LoginPrompt.Value switch {
+				OidcPrompt.None => "none",
+				OidcPrompt.Login => "login",
+				OidcPrompt.Consent => "consent",
+				OidcPrompt.SelectAccount => "select_account",
+				_ => null
+			};
+
+			if (promptValue is not null) {
+				requestOptions.TryAddAdditionalParameter("prompt", promptValue);
+			}
+		}
+
+		this.Navigation.NavigateToLogin(this.LoginPath ?? "authentication/login", requestOptions);
 	}
 
 	// -------------------------------------------------------------------------

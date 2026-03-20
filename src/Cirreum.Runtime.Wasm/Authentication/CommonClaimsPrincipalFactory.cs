@@ -88,7 +88,9 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 		clientUser.SetAnonymous();
 
 		if (!wasAuthComplete || wasAuthenticated) {
-			// First time auth settled — notify so AppRouteView can start orchestrator
+			// First time auth settled — notify subscribers
+			// Specifically, AppRouteView, so it can either Redirect
+			// to the login page or trigger initialization for anonymous users.
 			var stateManager = serviceProvider.GetService<IStateManager>();
 			stateManager?.NotifySubscribers<IUserState>(clientUser);
 		}
