@@ -121,6 +121,15 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	public RenderFragment? NotAuthorizedContent { get; set; }
 
 	/// <summary>
+	/// Gets or sets the content to display while authorization is in progress.
+	/// </summary>
+	/// <remarks>Use this property to provide custom UI or messages that are shown to the user during the
+	/// authorization process. This content is rendered only when the authorization state is being determined and is not
+	/// yet complete.</remarks>
+	[Parameter]
+	public RenderFragment? AuthorizingContent { get; set; }
+
+	/// <summary>
 	/// When <see langword="true"/>, the page component is instantiated during
 	/// <see cref="ViewState.Pending"/> activity and rendered in the <see cref="PendingLayout"/>.
 	/// When <see langword="false"/> (default), a <see cref="LayoutView"/>
@@ -176,6 +185,11 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	// State
 	// -------------------------------------------------------------------------
 
+	private static readonly HashSet<string> TerminalAuthActions = new(StringComparer.OrdinalIgnoreCase) {
+		"login-failed",
+		"logout-failed",
+		"logged-out"
+	};
 	private readonly CancellationTokenSource _cts = new();
 	private IDisposable? _userStateSubscription;
 	private IDisposable? _activityStateSubscription;
@@ -184,10 +198,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	private bool _hasAuthenticationRouting;
 	private string? _redirectReturnUrl;
 
-	private Type ResolvedPendingLayout =>
-		this._viewState == ViewState.Pending
-			? this.PendingLayout ?? this.DefaultLayout
-			: this.DefaultLayout;
+	private Type ResolvedPendingLayout => this.PendingLayout ?? this.DefaultLayout;
 
 	// -------------------------------------------------------------------------
 	// Lifecycle
@@ -212,7 +223,6 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		// Subscribe to state changes that drive view transitions.
 		this._userStateSubscription = this.StateManager.Subscribe<IUserState>(this.OnUserStateChanged);
 		this._activityStateSubscription = this.StateManager.Subscribe<IActivityState>(this.OnActivityStateChanged);
-		this.Navigation.LocationChanged += this.OnLocationChanged;
 
 		// Kick of an activity for auth apps on cold start to ensure the splash screen
 		// is shown while authentication is in-flight.
@@ -234,14 +244,10 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	}
 
 	protected override void OnParametersSet() {
-		// Pre-Render
-
-		// When the route changes to a new page, capture the return URL for post-login redirection if we need to redirect.
 		this._redirectReturnUrl = this.Navigation.Uri;
-
-		// Re-evaluate the state machine to determine the correct view to render for the route.
+		this.StartAuthPathActivityIfNeeded();
+		this.TryStartOrchestrator();
 		this.EvaluateState();
-
 	}
 
 	// -------------------------------------------------------------------------
@@ -280,52 +286,6 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		}
 	}
 
-	/// <summary>
-	/// Handles the event that occurs when the location has changed.
-	/// </summary>
-	/// <param name="sender">The source of the event. This is typically the object that raised the event.</param>
-	/// <param name="e">The event data containing information about the location change.</param>
-	private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
-		// Post-Render
-		// Navigation has completed to a new page
-		// Re-evaluate the state machine to determine if we need to
-		// transition views (e.g. show splash during redirect, auth
-		// callback processing, etc.)
-		if (this.EvaluateState()) {
-			this.TryStartOrchestrator();
-			this.InvokeAsync(this.StateHasChanged);
-		}
-	}
-
-	/// <summary>
-	/// Attempts to start the <see cref="IInitializationOrchestrator"/> if all preconditions are met.
-	/// </summary>
-	/// <remarks>
-	/// The orchestrator is started only once — guarded by <see cref="IInitializationOrchestrator.HasStarted"/>.
-	/// Preconditions intentionally mirror the <see cref="ViewState.Pending"/> checks in
-	/// <see cref="ComputeViewState"/>: authentication must be complete, the current path must
-	/// not be an authentication callback, and the route must not require auth for an
-	/// unauthenticated user. This ensures the orchestrator only starts when the same conditions
-	/// that would allow a transition out of <see cref="ViewState.Pending"/> are true —
-	/// preventing Phase 1 from running against an unsettled identity.
-	/// The component's <see cref="CancellationToken"/> is passed to the orchestrator so
-	/// initialization is cancelled if the component is disposed.
-	/// </remarks>
-	private void TryStartOrchestrator() {
-
-		var isReady = !this.Orchestrator.HasStarted
-			&& this.UserState.IsAuthenticationComplete
-			&& !this.IsAuthenticationPath();
-
-		var isRouteAccessible = !RouteRequiresAuthorization(this.RouteData.PageType)
-			|| this.UserState.IsAuthenticated;
-
-		if (isReady && isRouteAccessible) {
-			this.Orchestrator.Start(this._cts.Token);
-		}
-
-	}
-
 	// -------------------------------------------------------------------------
 	// State Evaluation
 	// -------------------------------------------------------------------------
@@ -349,14 +309,14 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	/// </summary>
 	private ViewState ComputeViewState() {
 
-		// 1. Auth in-flight — stay on splash.
+		// 1. Auth in-flight — stay on Pending layout.
 		if (this._hasAuthenticationRouting
 			&& (this.IsAuthenticationPath()
 				|| (RouteRequiresAuthorization(this.RouteData.PageType) && !this.UserState.IsAuthenticationComplete))) {
 			return ViewState.Pending;
 		}
 
-		// 2. Initialization not yet complete — render the PendingLayout (splash).
+		// 2. Initialization not yet complete — render the PendingLayout.
 		//    Gates on HasCompleted (not IsActive) to avoid brief flickers when
 		//    the activity state transitions between tasks.
 		if (!this.Orchestrator.HasCompleted) {
@@ -406,12 +366,79 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 		return pageType.GetCustomAttributes<AuthorizeAttribute>(true).Any();
 	}
 
+	/// <summary>
+	/// Attempts to start the <see cref="IInitializationOrchestrator"/> if all preconditions are met.
+	/// </summary>
+	/// <remarks>
+	/// The orchestrator is started only once — guarded by <see cref="IInitializationOrchestrator.HasStarted"/>.
+	/// Preconditions intentionally mirror the <see cref="ViewState.Pending"/> checks in
+	/// <see cref="ComputeViewState"/>: authentication must be complete, the current path must
+	/// not be an authentication callback, and the route must not require auth for an
+	/// unauthenticated user. This ensures the orchestrator only starts when the same conditions
+	/// that would allow a transition out of <see cref="ViewState.Pending"/> are true —
+	/// preventing Phase 1 from running against an unsettled identity.
+	/// The component's <see cref="CancellationToken"/> is passed to the orchestrator so
+	/// initialization is cancelled if the component is disposed.
+	/// </remarks>
+	private void TryStartOrchestrator() {
+
+		var isReady = !this.Orchestrator.HasStarted
+			&& this.UserState.IsAuthenticationComplete
+			&& !this.IsAuthenticationPath();
+
+		var isRouteAccessible = !RouteRequiresAuthorization(this.RouteData.PageType)
+			|| this.UserState.IsAuthenticated;
+
+		if (isReady && isRouteAccessible) {
+			this.Orchestrator.Start(this._cts.Token);
+		}
+
+	}
+
+	/// <summary>
+	/// Initiates an activity to display a splash screen when navigating to authentication-related routes, ensuring
+	/// appropriate user feedback during authentication callbacks.
+	/// </summary>
+	/// <remarks>This method is typically used in authentication flows such as OpenID Connect (OIDC) where external
+	/// redirects may result in longer processing times. By starting an activity with a relevant status message, it
+	/// provides visual feedback to users during login, logout, and their respective callback routes. The method only
+	/// triggers the activity if authentication routing is enabled and the current navigation path matches a recognized
+	/// authentication route.</remarks>
+	private void StartAuthPathActivityIfNeeded() {
+		if (!this._hasAuthenticationRouting) {
+			return;
+		}
+
+		var relativePath = this.Navigation.ToBaseRelativePath(this.Navigation.Uri);
+		var basePath = this.AuthenticationBasePath.TrimEnd('/');
+		var action = relativePath.StartsWith(basePath + "/", StringComparison.OrdinalIgnoreCase)
+			? relativePath[(basePath.Length + 1)..]
+			: null;
+
+		if (action is null) {
+			return;
+		}
+
+		var message = action switch {
+			var a when a.Equals("login", StringComparison.OrdinalIgnoreCase) => "Logging in...",
+			var a when a.Equals("login-callback", StringComparison.OrdinalIgnoreCase) => "Signing in...",
+			var a when a.Equals("logout", StringComparison.OrdinalIgnoreCase) => "Logging out...",
+			var a when a.Equals("logout-callback", StringComparison.OrdinalIgnoreCase) => "Logging out...",
+			_ => null
+		};
+
+		if (message is not null) {
+			this.Activity.StartTask(message);
+		} else if (TerminalAuthActions.Contains(action)) {
+			this.Activity.ResetTasks();
+		}
+	}
+
 	// -------------------------------------------------------------------------
 	// Disposal
 	// -------------------------------------------------------------------------
 
 	public void Dispose() {
-		this.Navigation.LocationChanged -= this.OnLocationChanged;
 		this._userStateSubscription?.Dispose();
 		this._activityStateSubscription?.Dispose();
 		this._cts.Cancel();

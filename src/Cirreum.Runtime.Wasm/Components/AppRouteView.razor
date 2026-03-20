@@ -5,16 +5,26 @@
 @switch (_viewState) {
 
 	case ViewState.Pending:
+		@if (this.IsAuthenticationPath()) {
+			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout">
+				<Authorizing>
+					@AuthorizingContent
+				</Authorizing>
+			</AuthorizeRouteView>
+		} else {
+			if (this._hasAuthenticationRouting) {
+				<AuthenticationStateInitializer/>
+			}
+			<LayoutView Layout="@ResolvedPendingLayout" />
+		}
+	break;
+
 	case ViewState.Ready:
 		@if (_hasAuthenticationRouting) {
-			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout">
+			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout">
 				<NotAuthorized>
 					@if (context.User.Identity?.IsAuthenticated == true) {
-						@if (NotAuthorizedContent is not null) {
-							@NotAuthorizedContent
-						} else {
-							@DefaultNotAuthorizedFragment
-						}
+						@(NotAuthorizedContent ?? DefaultNotAuthorizedFragment)
 					} else {
 						<RedirectToLogin LoginPath="@LoginPath"
 										 LoginHint="@LoginHint"
@@ -25,15 +35,7 @@
 				</NotAuthorized>
 			</AuthorizeRouteView>
 		} else {
-			if (_viewState == ViewState.Ready) {
-				<RouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout" />
-			} else {
-				if (AllowEarlyPageInstantiation) {
-					<RouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout" />
-				} else {
-					<LayoutView Layout="@ResolvedPendingLayout" />
-				}
-			}
+			<RouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout" />
 		}
 		break;
 
