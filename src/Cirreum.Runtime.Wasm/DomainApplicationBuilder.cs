@@ -246,7 +246,7 @@ public sealed class DomainApplicationBuilder : IClientDomainApplicationBuilder {
 		// Domain Authorization Related Services
 		//
 		this.Services.AddDefaultAuthorizationEvaluator();
-		this.Services.AddDefaultAuthorizationDocumenter(ServiceLifetime.Scoped);
+		this.Services.AddDefaultDomainDocumenter(ServiceLifetime.Scoped);
 
 
 		// ******************************************************************************
