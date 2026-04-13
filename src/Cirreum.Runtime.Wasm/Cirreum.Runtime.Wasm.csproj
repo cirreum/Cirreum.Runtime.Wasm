@@ -22,7 +22,7 @@
 
 	<ItemGroup Condition="'$(UseLocalComponents)' != 'true'">
 		<PackageReference Include="Cirreum.Components.WebAssembly" Version="1.0.33" />
-		<PackageReference Include="Cirreum.Services.Wasm" Version="1.0.17" />
+		<PackageReference Include="Cirreum.Services.Wasm" Version="1.0.18" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(UseLocalComponents)' == 'true'">
 		<ProjectReference Include="..\..\..\..\Infrastructure\Cirreum.Services.Wasm\src\Cirreum.Services.Wasm\Cirreum.Services.Wasm.csproj" />
