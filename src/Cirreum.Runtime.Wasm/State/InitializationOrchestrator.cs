@@ -57,12 +57,14 @@ internal sealed partial class InitializationOrchestrator(
 			return;
 		}
 
+		var includePhase1 = clientUser.IsAuthenticated;
 		var totalTasks = this.phase2Items.Count
-			+ (this.userResolver is not null ? 1 : 0)
-			+ (this.enricher is not null ? 1 : 0);
+			+ (includePhase1 && this.userResolver is not null ? 1 : 0)
+			+ (includePhase1 && this.enricher is not null ? 1 : 0);
 
 		if (totalTasks == 0) {
 			Interlocked.Exchange(ref this._hasCompleted, 1); // Set Completed = true
+			activityState.ResetTasks();
 			Log.NoInitializationWork(logger);
 			return;
 		}
@@ -93,7 +95,7 @@ internal sealed partial class InitializationOrchestrator(
 			}
 
 			// Phase 1 — Cirreum-controlled: app user + profile enrichment
-			if (this.userResolver is not null || this.enricher is not null) {
+			if (clientUser.IsAuthenticated && (this.userResolver is not null || this.enricher is not null)) {
 				await this.RunPhase1Async(cancellationToken);
 			}
 
