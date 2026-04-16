@@ -20,6 +20,16 @@
 		<_CspProdPolicy>$(MSBuildProjectDirectory)\Properties\csp.Production.policy</_CspProdPolicy>
 		<_HasCspPolicyFiles Condition="Exists('$(CspEnvPolicy)') Or Exists('$(_CspProdPolicy)')">true</_HasCspPolicyFiles>
 		<_HasCspPolicyFiles Condition="'$(_HasCspPolicyFiles)' == ''">false</_HasCspPolicyFiles>
+
+		<!-- PowerShell executable selection for cross-platform builds:
+		     - Windows:    'powershell' (Windows PowerShell 5.1) — always present in System32.
+		     - Linux/macOS: 'pwsh' (PowerShell 7+) — pre-installed on Microsoft-hosted
+		                   Azure Pipelines Linux agents and standard in cross-platform CI.
+		     The SwaConfig-CspGen.ps1 script is fully portable (only .NET BCL + cmdlets
+		     that exist on both runtimes). '-ExecutionPolicy Bypass' is accepted by pwsh
+		     as a harmless no-op on non-Windows platforms. -->
+		<_CirreumPwshExecutable Condition="'$(OS)' == 'Windows_NT'">powershell</_CirreumPwshExecutable>
+		<_CirreumPwshExecutable Condition="'$(OS)' != 'Windows_NT'">pwsh</_CirreumPwshExecutable>
 	</PropertyGroup>
 
 	<Target Name="GenerateStaticWebAppConfig"
@@ -37,7 +47,7 @@
 		<Message Importance="Normal" Text="[Cirreum] Base policy: $(CspBasePolicy)" />
 		<Message Importance="Normal" Text="[Cirreum] Env policy: $(CspEnvPolicy)" />
 
-		<Exec Command='powershell -NoProfile -ExecutionPolicy Bypass -File "$(SwaCspGenerator)" -Template "$(SwaConfigTemplate)" -BasePolicy "$(CspBasePolicy)" -EnvPolicy "$(CspEnvPolicy)" -Output "$(SwaConfigOutput)"' />
+		<Exec Command='$(_CirreumPwshExecutable) -NoProfile -ExecutionPolicy Bypass -File "$(SwaCspGenerator)" -Template "$(SwaConfigTemplate)" -BasePolicy "$(CspBasePolicy)" -EnvPolicy "$(CspEnvPolicy)" -Output "$(SwaConfigOutput)"' />
 	</Target>
 
 </Project>
