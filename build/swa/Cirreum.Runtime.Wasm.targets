@@ -1,25 +1,38 @@
 <Project>
 
 	<PropertyGroup>
-		<CspEnvironmentName Condition="'$(Configuration)' == 'Debug' And '$(CspEnvironmentName)' == ''">Development</CspEnvironmentName>
-		<CspEnvironmentName Condition="'$(CspEnvironmentName)' == ''">Production</CspEnvironmentName>
-
 		<CirreumGenerateSwaConfig Condition="'$(CirreumGenerateSwaConfig)' == ''">true</CirreumGenerateSwaConfig>
 
-		<CspBasePolicy Condition="'$(CspBasePolicy)' == ''">$(MSBuildThisFileDirectory)csp.base.policy</CspBasePolicy>
-		<CspEnvPolicy Condition="'$(CspEnvPolicy)' == ''">$(MSBuildProjectDirectory)\Properties\csp.$(CspEnvironmentName).policy</CspEnvPolicy>
+		<!-- Resolve the deployment environment for CSP overlay selection.
+		     Precedence:
+		       1. $(CspEnvironmentName) — explicit escape hatch for unusual cases
+		          (e.g. shared CSP across multiple ASPNETCORE_ENVIRONMENT values).
+		       2. $(EnvironmentName)    — the standard ASP.NET Core / .NET SDK
+		          property, set by pipelines via -p:EnvironmentName=Staging.
+		       3. empty                 — no env overlay, just base + app policy.
+		     Build configuration (Debug/Release) is intentionally NOT consulted —
+		     a Release build can be deployed to any environment. -->
+		<_CspEnv Condition="'$(CspEnvironmentName)' != ''">$(CspEnvironmentName)</_CspEnv>
+		<_CspEnv Condition="'$(_CspEnv)' == ''">$(EnvironmentName)</_CspEnv>
 
-		<!-- Option 2: Use consuming app's template if it exists, otherwise fall back to package default -->
+		<!-- Policy file paths.
+		     csp.base.policy : framework-shipped defaults (always loaded if any app policy exists)
+		     csp.policy      : the app's primary policy (always loaded if present)
+		     csp.{Env}.policy: optional deployment-environment overlay -->
+		<CspBasePolicy Condition="'$(CspBasePolicy)' == ''">$(MSBuildThisFileDirectory)csp.base.policy</CspBasePolicy>
+		<CspAppPolicy  Condition="'$(CspAppPolicy)'  == ''">$(MSBuildProjectDirectory)\Properties\csp.policy</CspAppPolicy>
+		<CspEnvPolicy  Condition="'$(CspEnvPolicy)'  == '' And '$(_CspEnv)' != ''">$(MSBuildProjectDirectory)\Properties\csp.$(_CspEnv).policy</CspEnvPolicy>
+
+		<!-- Use consuming app's template if it exists, otherwise fall back to package default -->
 		<SwaConfigTemplate Condition="'$(SwaConfigTemplate)' == '' And Exists('$(MSBuildProjectDirectory)\wwwroot\staticwebapp.config.template.json')">$(MSBuildProjectDirectory)\wwwroot\staticwebapp.config.template.json</SwaConfigTemplate>
 		<SwaConfigTemplate Condition="'$(SwaConfigTemplate)' == ''">$(MSBuildThisFileDirectory)staticwebapp.config.template.json</SwaConfigTemplate>
 
-		<SwaConfigOutput Condition="'$(SwaConfigOutput)' == ''">$(MSBuildProjectDirectory)\wwwroot\staticwebapp.config.json</SwaConfigOutput>
 		<SwaCspGenerator Condition="'$(SwaCspGenerator)' == ''">$(MSBuildThisFileDirectory)SwaConfig-CspGen.ps1</SwaCspGenerator>
 
-		<!-- Option 3: Opt-in by convention — skip if no policy files exist -->
-		<_CspProdPolicy>$(MSBuildProjectDirectory)\Properties\csp.Production.policy</_CspProdPolicy>
-		<_HasCspPolicyFiles Condition="Exists('$(CspEnvPolicy)') Or Exists('$(_CspProdPolicy)')">true</_HasCspPolicyFiles>
-		<_HasCspPolicyFiles Condition="'$(_HasCspPolicyFiles)' == ''">false</_HasCspPolicyFiles>
+		<!-- Opt-in additional inline <script id="..."> elements to hash (comma/space separated).
+		     The importmap script is always hashed; this is for any other inline scripts the
+		     consuming app needs covered without having to fork the policy generator. -->
+		<CspInlineScriptIds Condition="'$(CspInlineScriptIds)' == ''"></CspInlineScriptIds>
 
 		<!-- PowerShell executable selection for cross-platform builds:
 		     - Windows:    'powershell' (Windows PowerShell 5.1) — always present in System32.
@@ -32,22 +45,40 @@
 		<_CirreumPwshExecutable Condition="'$(OS)' != 'Windows_NT'">pwsh</_CirreumPwshExecutable>
 	</PropertyGroup>
 
+	<!-- Generate staticwebapp.config.json into the publish output. SWA only consumes
+	     the published artifacts, so the source wwwroot is intentionally untouched
+	     (avoids polluting source control / requiring .gitignore entries).
+	     Always runs for Blazor WASM publish; if neither csp.policy nor csp.{Env}.policy
+	     exists in the consuming app's Properties folder, the Content-Security-Policy
+	     header is omitted from the generated config but the rest (routes, navigation
+	     fallback, other security headers) is still emitted.
+	     Inline-script hashes are computed from the published index.html, after the
+	     Blazor SDK has populated the <script type="importmap"> body. -->
 	<Target Name="GenerateStaticWebAppConfig"
-			BeforeTargets="Build"
-			Condition="'$(CirreumGenerateSwaConfig)' == 'true' 
-				And '$(_HasCspPolicyFiles)' == 'true'
+			AfterTargets="Publish"
+			Condition="'$(CirreumGenerateSwaConfig)' == 'true'
 				And '$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
+
+		<PropertyGroup>
+			<_SwaPublishedIndexHtml>$(PublishDir)wwwroot\index.html</_SwaPublishedIndexHtml>
+			<_SwaConfigOutput>$(PublishDir)wwwroot\staticwebapp.config.json</_SwaConfigOutput>
+		</PropertyGroup>
 
 		<Error Condition="!Exists('$(SwaCspGenerator)')" Text="[Cirreum] SwaCspGenerator not found: $(SwaCspGenerator)" />
 		<Error Condition="!Exists('$(CspBasePolicy)')" Text="[Cirreum] CspBasePolicy not found: $(CspBasePolicy)" />
 		<Error Condition="!Exists('$(SwaConfigTemplate)')" Text="[Cirreum] SwaConfigTemplate not found: $(SwaConfigTemplate)" />
+		<Error Condition="!Exists('$(_SwaPublishedIndexHtml)')" Text="[Cirreum] Published index.html not found: $(_SwaPublishedIndexHtml). The Publish target must run before CSP generation." />
 
-		<Message Importance="High" Text="[Cirreum] Generating staticwebapp.config.json ($(CspEnvironmentName))" />
+		<Message Importance="High" Text="[Cirreum] Generating staticwebapp.config.json (env: '$(_CspEnv)')" />
 		<Message Importance="Normal" Text="[Cirreum] Template: $(SwaConfigTemplate)" />
 		<Message Importance="Normal" Text="[Cirreum] Base policy: $(CspBasePolicy)" />
-		<Message Importance="Normal" Text="[Cirreum] Env policy: $(CspEnvPolicy)" />
+		<Message Importance="Normal" Text="[Cirreum] App policy: $(CspAppPolicy)" />
+		<Message Importance="Normal" Condition="'$(CspEnvPolicy)' != ''" Text="[Cirreum] Env policy: $(CspEnvPolicy)" />
+		<Message Importance="Normal" Text="[Cirreum] Published index.html: $(_SwaPublishedIndexHtml)" />
+		<Message Importance="Normal" Text="[Cirreum] Output: $(_SwaConfigOutput)" />
+		<Message Importance="Normal" Condition="'$(CspInlineScriptIds)' != ''" Text="[Cirreum] Additional inline script ids to hash: $(CspInlineScriptIds)" />
 
-		<Exec Command='$(_CirreumPwshExecutable) -NoProfile -ExecutionPolicy Bypass -File "$(SwaCspGenerator)" -Template "$(SwaConfigTemplate)" -BasePolicy "$(CspBasePolicy)" -EnvPolicy "$(CspEnvPolicy)" -Output "$(SwaConfigOutput)"' />
+		<Exec Command='$(_CirreumPwshExecutable) -NoProfile -ExecutionPolicy Bypass -File "$(SwaCspGenerator)" -Template "$(SwaConfigTemplate)" -BasePolicy "$(CspBasePolicy)" -AppPolicy "$(CspAppPolicy)" -EnvPolicy "$(CspEnvPolicy)" -Output "$(_SwaConfigOutput)" -PublishedIndexHtml "$(_SwaPublishedIndexHtml)" -InlineScriptIds "$(CspInlineScriptIds)"' />
 	</Target>
 
 </Project>
