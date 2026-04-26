@@ -13,9 +13,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="AspNetCore.SassCompiler" Version="1.97.1" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.5" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.5" PrivateAssets="all" />
+		<PackageReference Include="AspNetCore.SassCompiler" Version="1.99.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.6" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.6" PrivateAssets="all" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -58,7 +58,6 @@
 	<!-- SWA config generation is provided automatically via the Cirreum.Runtime.Wasm NuGet package.
 	     This explicit Import is only needed when referencing the project directly (local development).
 	     NuGet package consumers do not need this — build/*.targets are auto-imported by NuGet. -->
-	<Import Project="..\..\build\swa\Cirreum.Runtime.Wasm.targets"
-		Condition="Exists('..\..\build\swa\Cirreum.Runtime.Wasm.targets')" />
+	<Import Project="..\..\build\swa\Cirreum.Runtime.Wasm.targets" Condition="Exists('..\..\build\swa\Cirreum.Runtime.Wasm.targets')" />
 
 </Project>

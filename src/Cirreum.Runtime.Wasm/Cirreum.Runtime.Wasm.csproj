@@ -16,13 +16,13 @@
 
 	<ItemGroup>
 		<PackageReference Include="AspNetCore.SassCompiler" Version="1.99.0" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.6" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.7" />
 		<PackageReference Include="NUglify" Version="1.21.17" PrivateAssets="all" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' != 'true'">
-		<PackageReference Include="Cirreum.Components.WebAssembly" Version="1.0.34" />
-		<PackageReference Include="Cirreum.Services.Wasm" Version="1.0.19" />
+		<PackageReference Include="Cirreum.Components.WebAssembly" Version="1.0.35" />
+		<PackageReference Include="Cirreum.Services.Wasm" Version="1.0.20" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(UseLocalComponents)' == 'true'">
 		<ProjectReference Include="..\..\..\..\Infrastructure\Cirreum.Services.Wasm\src\Cirreum.Services.Wasm\Cirreum.Services.Wasm.csproj" />
