@@ -46,6 +46,11 @@ internal sealed partial class InitializationOrchestrator(
 	public bool HasCompleted => this._hasCompleted == 1;
 
 	public ValueTask InitializeAsync() {
+		// WASM follows the single-IdP-client invariant: AddApplicationUserResolver fails
+		// fast on a second registration, so at most one resolver is ever registered.
+		// GetService is sufficient — no IEnumerable / scheme dispatch needed on the
+		// client side. Per-scheme dispatch is a server-side concern, where multi-IdP
+		// fan-in is the common case.
 		this.userResolver = serviceProvider.GetService<IApplicationUserResolver>();
 		this.enricher = serviceProvider.GetService<IUserProfileEnricher>();
 		return default;
@@ -58,6 +63,7 @@ internal sealed partial class InitializationOrchestrator(
 		}
 
 		var includePhase1 = clientUser.IsAuthenticated;
+
 		var totalTasks = this.phase2Items.Count
 			+ (includePhase1 && this.userResolver is not null ? 1 : 0)
 			+ (includePhase1 && this.enricher is not null ? 1 : 0);
