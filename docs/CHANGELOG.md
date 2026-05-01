@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.41] - 2026-05-01
+
 Explicitly enforces the **single-IdP-client invariant** at registration
 time — Cirreum WASM hosts bind to exactly one IdP, so only one
 `IApplicationUserResolver` may be registered. Pairs with the
