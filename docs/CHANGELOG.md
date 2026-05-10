@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Updated
-
-- Updated NuGet packages.
-
 ## [1.0.41] - 2026-05-01
 
 Explicitly enforces the **single-IdP-client invariant** at registration
