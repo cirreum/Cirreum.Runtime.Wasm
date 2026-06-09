@@ -3,13 +3,12 @@
 using System.Threading.Tasks;
 
 internal class StartPresenceMonitoring(
-	IUserPresenceMonitor monitor,
-	IUserState userState) : IStartupTask {
+	IUserPresenceMonitor monitor) : IStartupTask {
 
 	public int Order => int.MaxValue;
 
 	public async ValueTask ExecuteAsync() {
-		if (userState.AuthenticationType == AuthenticationLibraryType.MSAL) {
+		if (DynamicAuthInterop.GetAuthLibraryType() == AuthenticationLibraryType.MSAL) {
 			await monitor.StartMonitoringPresence();
 		}
 	}

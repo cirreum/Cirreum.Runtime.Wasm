@@ -47,10 +47,6 @@ internal sealed class ClientUser : UserStateBase {
 		this._authenticationComplete = true;
 	}
 
-	internal void SetAuthenticationLibrary(AuthenticationLibraryType authenticationLibraryType) {
-		this._authenticationType = authenticationLibraryType;
-	}
-
 	internal void SetAppUser(IApplicationUser? applicationUser) {
 		this.SetApplicationUser(applicationUser);
 	}
