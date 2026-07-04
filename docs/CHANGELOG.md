@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.45] - 2026-07-04
+
 ### Fixed
 
 - **Dropped the `Cirreum.AuthenticationProvider` reference in favor of a direct `Cirreum.Domain` reference.** `IUserProfileEnrichmentBuilder`/`ClaimsUserProfileEnricher` (used by `HostingExtensions.ProfileEnrichment.cs`) relocated to `Cirreum.Contracts`/`Cirreum.Domain` (host-agnostic profile enrichment, not an Authentication-track concern). Referencing `Cirreum.Domain 1.2.0` directly (rather than relying transitively on `Cirreum.Services.Wasm`'s older pin) ensures the resolved version actually carries these types. No `using` changes needed — both types live in the root `Cirreum` namespace, already visible from `Cirreum.Runtime` without qualification.
