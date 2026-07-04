@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.44] - 2026-07-04
+
 ### Fixed
 
 - **Added the missing explicit `Cirreum.AuthenticationProvider` reference.** This repo's own source (`HostingExtensions.ProfileEnrichment.cs`: `IUserProfileEnrichmentBuilder`, `ClaimsUserProfileEnricher`) has always used `Cirreum.AuthenticationProvider` types, but only ever compiled by riding transitively on legacy `Cirreum.Core` through an old `Cirreum.Services.Wasm` pin. Now that `Cirreum.Services.Wasm`/`Cirreum.Components.WebAssembly` have cut over to the foundation-reset packages (Core-free), this repo needs — and now has — its own direct reference.
