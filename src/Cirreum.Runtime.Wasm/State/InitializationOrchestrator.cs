@@ -4,6 +4,7 @@ using Cirreum.Runtime.Security;
 using Cirreum.State;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Security.Claims;
 
 /// <summary>
 /// Orchestrates application initialization in two phases, coordinating Cirreum-controlled
@@ -168,7 +169,7 @@ internal sealed partial class InitializationOrchestrator(
 			activityState.SetDisplayStatus("Enriching user profile...");
 
 			try {
-				await this.enricher.EnrichProfileAsync(clientUser.Profile, clientUser.Identity);
+				await this.enricher.EnrichProfileAsync(clientUser.Profile, (ClaimsIdentity)clientUser.Principal.Identity!);
 				clientUser.SetEnrichmentCompleted();
 				Log.ProfileEnrichmentComplete(logger);
 			} catch (Exception ex) when (ex is not OperationCanceledException) {

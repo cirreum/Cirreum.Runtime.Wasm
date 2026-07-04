@@ -1,5 +1,7 @@
 namespace Cirreum.Runtime;
 
+using Cirreum.AuthenticationProvider;
+using Cirreum.AuthenticationProvider.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 

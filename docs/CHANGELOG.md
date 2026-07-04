@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Added the missing explicit `Cirreum.AuthenticationProvider` reference.** This repo's own source (`HostingExtensions.ProfileEnrichment.cs`: `IUserProfileEnrichmentBuilder`, `ClaimsUserProfileEnricher`) has always used `Cirreum.AuthenticationProvider` types, but only ever compiled by riding transitively on legacy `Cirreum.Core` through an old `Cirreum.Services.Wasm` pin. Now that `Cirreum.Services.Wasm`/`Cirreum.Components.WebAssembly` have cut over to the foundation-reset packages (Core-free), this repo needs — and now has — its own direct reference.
+- **`InitializationOrchestrator` no longer calls the removed `IUserState.Identity`.** That property was deliberately dropped from the reset's `UserStateBase`/`IUserState` in favor of casting `Principal.Identity` (documented on `IUserState.Principal`) — this repo's profile-enrichment call site hadn't been updated to the new pattern. Switched to `(ClaimsIdentity)clientUser.Principal.Identity!`.
+
+### Updated
+
+- Updated NuGet packages (`Cirreum.Components.WebAssembly` → 1.0.40, `Cirreum.Services.Wasm` → 1.0.27 — completes this repo's transitive Tier-2 foundation cutover; `AspNetCore.SassCompiler` → 1.101.0; `Microsoft.AspNetCore.Components.WebAssembly` → 10.0.9).
+
 ## [1.0.43] - 2026-05-10
 
 ### Updated
