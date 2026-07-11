@@ -124,17 +124,17 @@
 		</ItemGroup>
 	</Target>
 
-	<!-- NuGet build assets - auto-imported by NuGet into consuming projects.
-	 Visible="false" hides these from Solution Explorer since they live
-	 outside the project directory in the shared build/swa/ folder.
-	 PackagePath="buildTransitive\" ensures targets are imported into all
-	 projects in the dependency chain, not just direct references.
-	 Target condition guards against running in non-BlazorWebAssembly projects. -->
-	<!-- Explicit forward-slash PackagePath per file (including the filename): a trailing
-	     "buildTransitive\" resolves to a "buildTransitive//file" double-slash on the Linux
-	     packer, which lands the .targets off the canonical path and defeats NuGet's
-	     build-asset auto-import convention (NU5129). All four assets must sit next to the
-	     .targets — it resolves them via $(MSBuildThisFileDirectory) at consumer build time. -->
+	<!-- NuGet build assets — auto-imported by NuGet into consuming projects (and transitively
+	     down the dependency chain) because the .targets is named {PackageId}.targets and lands
+	     under buildTransitive/. Visible="false" hides them from Solution Explorer since they
+	     live outside the project directory in the shared build/swa/ folder.
+
+	     Each PackagePath is an explicit forward-slash path INCLUDING the filename. Do NOT use a
+	     trailing-separator directory path (e.g. "buildTransitive\"): the backslash is not a path
+	     separator on the Linux packer and produces a "buildTransitive//file" double-slash, which
+	     lands the .targets off its canonical path and silently defeats the auto-import (NU5129).
+	     All four assets must sit next to the .targets — it resolves them via
+	     $(MSBuildThisFileDirectory) at consumer build time. -->
 	<ItemGroup>
 		<None Include="..\..\build\swa\Cirreum.Runtime.Wasm.targets" Pack="true" PackagePath="buildTransitive/Cirreum.Runtime.Wasm.targets" Visible="false" />
 		<None Include="..\..\build\swa\SwaConfig-CspGen.ps1" Pack="true" PackagePath="buildTransitive/SwaConfig-CspGen.ps1" Visible="false" />
