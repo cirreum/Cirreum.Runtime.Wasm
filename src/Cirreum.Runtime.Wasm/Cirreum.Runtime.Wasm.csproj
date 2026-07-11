@@ -20,7 +20,7 @@
 		 1.2.0+ regardless of what version Cirreum.Services.Wasm brings in transitively. -->
 		<PackageReference Include="Cirreum.Domain" Version="1.2.5" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.9" />
-		<PackageReference Include="NUglify" Version="1.21.18" PrivateAssets="all" />
+		<PackageReference Include="NUglify" Version="1.21.18" PrivateAssets="all" GeneratePathProperty="true" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' != 'true'">
@@ -85,7 +85,7 @@
 			<Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
 		</ParameterGroup>
 		<Task>
-			<Reference Include="$(NuGetPackageRoot)nuglify/1.21.17/lib/netstandard2.0/NUglify.dll" />
+			<Reference Include="$(PkgNUglify)\lib\netstandard2.0\NUglify.dll" />
 			<Using Namespace="NUglify" />
 			<Code Type="Fragment" Language="cs"><![CDATA[
 				foreach (var file in Files) {
