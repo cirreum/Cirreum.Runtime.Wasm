@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.50] - 2026-07-11
+
 ### Fixed
 
 - Corrected packaging of the Static Web Apps build assets so the `buildTransitive/Cirreum.Runtime.Wasm.targets` auto-import actually fires for consumers. The `PackagePath="buildTransitive\"` trailing separator packed the assets under a `buildTransitive//` double-slash path on the Linux packer, so NuGet did not recognize the conventionally-named `.targets` (NU5129) — consumers silently received no `staticwebapp.config.json`/CSP generation. Each asset now uses an explicit forward-slash package path. Also suppressed NU5110/NU5111 for `SwaConfig-CspGen.ps1`, which is invoked by the targets via `<Exec>` at consumer build time (not a NuGet install-time hook).
