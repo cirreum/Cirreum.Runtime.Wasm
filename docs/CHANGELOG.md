@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.49] - 2026-07-11
+
 ### Fixed
 
 - Made the `MinifyJavaScript` build task's `NUglify.dll` reference version-independent by deriving it from the NuGet-generated `$(PkgNUglify)` path property (via `GeneratePathProperty`) instead of a hardcoded package-version path. The hardcoded `1.21.17` path did not track the `NUglify` `PackageReference` when it was bumped to `1.21.18`, so the CI build failed to resolve the assembly on a clean package cache — **no NuGet artifact landed for 1.0.48**; this release (1.0.49) is the first published since 1.0.47.
