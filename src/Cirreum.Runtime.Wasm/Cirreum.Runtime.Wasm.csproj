@@ -4,6 +4,10 @@
 		<RootNamespace>Cirreum.Runtime</RootNamespace>
 		<Description>The Cirreum Runtime Client.</Description>
 		<PackageTags>cirreum;runtime;client;wasm;blazor</PackageTags>
+		<!-- SwaConfig-CspGen.ps1 is a build-time script invoked by the packed .targets via
+		     <Exec> at consumer build (not a legacy install-time hook), so it stays in
+		     buildTransitive/ next to the targets. Suppress NuGet's install-script warnings. -->
+		<NoWarn>$(NoWarn);NU5110;NU5111</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -126,11 +130,16 @@
 	 PackagePath="buildTransitive\" ensures targets are imported into all
 	 projects in the dependency chain, not just direct references.
 	 Target condition guards against running in non-BlazorWebAssembly projects. -->
+	<!-- Explicit forward-slash PackagePath per file (including the filename): a trailing
+	     "buildTransitive\" resolves to a "buildTransitive//file" double-slash on the Linux
+	     packer, which lands the .targets off the canonical path and defeats NuGet's
+	     build-asset auto-import convention (NU5129). All four assets must sit next to the
+	     .targets — it resolves them via $(MSBuildThisFileDirectory) at consumer build time. -->
 	<ItemGroup>
-		<None Include="..\..\build\swa\Cirreum.Runtime.Wasm.targets" Pack="true" PackagePath="buildTransitive\" Visible="false" />
-		<None Include="..\..\build\swa\SwaConfig-CspGen.ps1" Pack="true" PackagePath="buildTransitive\" Visible="false" />
-		<None Include="..\..\build\swa\staticwebapp.config.template.json" Pack="true" PackagePath="buildTransitive\" Visible="false" />
-		<None Include="..\..\build\swa\csp.base.policy" Pack="true" PackagePath="buildTransitive\" Visible="false" />
+		<None Include="..\..\build\swa\Cirreum.Runtime.Wasm.targets" Pack="true" PackagePath="buildTransitive/Cirreum.Runtime.Wasm.targets" Visible="false" />
+		<None Include="..\..\build\swa\SwaConfig-CspGen.ps1" Pack="true" PackagePath="buildTransitive/SwaConfig-CspGen.ps1" Visible="false" />
+		<None Include="..\..\build\swa\staticwebapp.config.template.json" Pack="true" PackagePath="buildTransitive/staticwebapp.config.template.json" Visible="false" />
+		<None Include="..\..\build\swa\csp.base.policy" Pack="true" PackagePath="buildTransitive/csp.base.policy" Visible="false" />
 	</ItemGroup>
 	<ItemGroup>
 	  <Folder Include="Properties\" />
