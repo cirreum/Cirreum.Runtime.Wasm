@@ -19,7 +19,7 @@
   </Folder>
   <Folder Name="/ref/">
     <Project Path="../../../Core/Cirreum.Components.WebAssembly/src/Cirreum.Components.WebAssembly/Cirreum.Components.WebAssembly.csproj" />
-    <Project Path="../../../Core/Cirreum.Core/src/Cirreum.Core/Cirreum.Core.csproj" />
+    <Project Path="../../../Core/Cirreum.Domain/src/Cirreum.Domain/Cirreum.Domain.csproj" />
     <Project Path="../../../Infrastructure/Cirreum.Services.Wasm/src/Cirreum.Services.Wasm/Cirreum.Services.Wasm.csproj" />
   </Folder>
   <Folder Name="/sample/">

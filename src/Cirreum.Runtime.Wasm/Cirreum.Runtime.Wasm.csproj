@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
 	<PropertyGroup>
 		<RootNamespace>Cirreum.Runtime</RootNamespace>
@@ -22,7 +22,7 @@
 		<PackageReference Include="AspNetCore.SassCompiler" Version="1.101.0" />
 		<!-- Direct reference so IUserProfileEnrichmentBuilder/ClaimsUserProfileEnricher resolve at
 		 1.2.0+ regardless of what version Cirreum.Services.Wasm brings in transitively. -->
-		<PackageReference Include="Cirreum.Domain" Version="1.2.6" />
+		<PackageReference Include="Cirreum.Domain" Version="1.2.7" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
 		<PackageReference Include="NUglify" Version="1.22.0" PrivateAssets="all" GeneratePathProperty="true" />
 	</ItemGroup>
