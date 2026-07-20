@@ -4,35 +4,49 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is **Cirreum.Runtime.Wasm**, a Blazor WebAssembly runtime client library that provides comprehensive client-side infrastructure for .NET applications. The project is built on .NET 10.0 and follows the Cirreum foundation framework architecture.
+This is **Cirreum.Runtime.Wasm**, the Blazor WebAssembly runtime client for Cirreum
+applications (Runtime layer). It provides the client-side `DomainApplication`
+bootstrap, remote-service clients, authentication plumbing, state/ViewModel
+infrastructure, and reusable runtime components, built on .NET 10.0.
 
 ## Architecture
 
 ### Core Structure
-- **src/Cirreum.Runtime.Wasm/**: Main library containing runtime client components
-- **samples/Cirreum.Demo.Client/**: Demo Blazor WebAssembly application showcasing the library
-- **build/**: MSBuild configuration files for packaging and CI/CD
+- **src/Cirreum.Runtime.Wasm/**: the runtime client library
+  (`Authentication/`, `Components/`, `Extensions/`, `Security/`, `StartupTasks/`,
+  `State/`, `SystemInitializers/`, `wwwroot/`)
+- **samples/Cirreum.Demo.Client/**: demo Blazor WebAssembly application
+- **build/**: MSBuild configuration, including `build/swa/` static-web-app assets
+  (CSP policy generation)
 
 ### Key Architectural Patterns
-- **Domain-Driven Design**: Built around `DomainApplication` and `DomainApplicationBuilder` patterns
-- **State Management Pattern**: ViewModels with multiple persistence backends (Memory, Session, Local Storage, Container)
-- **Component Inheritance Hierarchy**: Base classes for pages and components with state management
-- **Dependency Injection**: Heavy use of DI with service registration via `HostingExtensions` methods (e.g., `AddRemoteClient()`, `AddClientState()`, `AddEntraAuth()`)
-- **Builder Pattern**: Configuration through fluent APIs for domain applications
-- **Notification Scoping**: Coalescing multiple state changes into single notifications
+- **Domain bootstrap**: `DomainApplication.CreateBuilder(args)` →
+  `DomainApplicationBuilder` (implements `IClientDomainApplicationBuilder`) →
+  `await builder.BuildAndRunAsync()` / `BuildAndRunAsync<TDomainType>()`
+- **State Management Pattern**: ViewModels with multiple persistence backends
+  (Memory, Session, Local Storage, Container), building on `Cirreum.Services.Wasm`
+- **Component Inheritance Hierarchy**: base classes for pages and components with
+  state management
+- **Dependency Injection**: registration via `HostingExtensions` verbs — this repo
+  ships `AddRemoteClient()`, `AddApplicationUserResolver()`,
+  `AddDefaultAuthorization()`; `AddClientState()` / `AddSessionMonitoring()` come
+  from `Cirreum.Services.Wasm`
+- **Notification Scoping**: coalescing multiple state changes into single
+  notifications (see the `Cirreum.Services.Wasm` CLAUDE.md for the rules)
 
-### Key Components
-- **Authentication**: Custom authentication services with claims processing and no-auth fallback
-- **Components**: Reusable Blazor components including authorization, presence, profile, theme management, and validation
-- **State Management**: ViewModels and state components for local, memory, session, and container state
-- **Security**: Client user management and authorization infrastructure
-- **Startup Tasks**: Application initialization and configuration
+### Authentication
+
+This package ships the common client-side pieces: `CommonClaimsPrincipalFactory`,
+claims processing, and the no-auth fallback. **IdP-specific composition lives in the
+Runtime Extensions packages** — `Cirreum.Runtime.Wasm.Msal` (Entra/MSAL, ships
+`MsalClaimsPrincipalFactory`) and `Cirreum.Runtime.Wasm.Oidc` (generic OIDC — e.g.
+Descope — ships `OidcClaimsPrincipalFactory`). Apps install one of those and compose
+auth through its verbs; this repo has no `AddEntraAuth`-style entry points of its own.
 
 ### Technology Stack
 - Blazor WebAssembly with .NET 10.0
-- SCSS compilation via AspNetCore.SassCompiler
-- Component architecture based on Cirreum framework packages
-- Global usings for simplified namespace management
+- SCSS compilation via AspNetCore.SassCompiler; JS minification via NUglify
+- JavaScript interop module system for browser integration
 
 ## Development Commands
 
@@ -41,83 +55,58 @@ This is **Cirreum.Runtime.Wasm**, a Blazor WebAssembly runtime client library th
 dotnet build
 ```
 
-### Run Demo Application
-```bash
-dotnet run --project samples/Cirreum.Demo.Client/Cirreum.Demo.Client.csproj
-```
-or from the demo directory:
-```bash
-cd samples/Cirreum.Demo.Client
-dotnet run
-```
+### Samples solution (local components)
+`samples/Cirreum.Runtime.Wasm.Samples.slnx` builds the library chain from **local
+project references** — `src/Directory.Build.props` flips `UseLocalComponents=true`
+when the solution name is `Cirreum.Runtime.Wasm.Samples`, switching the
+`Cirreum.Domain` / `Cirreum.Components.WebAssembly` / `Cirreum.Services.Wasm`
+package references to project references. The referenced local repos live at
+`Core/Cirreum.Domain`, `Core/Cirreum.Components.WebAssembly`, and
+`Infrastructure/Cirreum.Services.Wasm`.
+
+> The demo app (`Cirreum.Demo.Client`) currently targets pre-reset
+> authorization/introspection APIs and does not compile — the library chain builds;
+> the demo is pending a rehab against the current surface.
 
 ### Testing
-Check the demo application for test patterns - the library itself doesn't include unit tests in the repository.
+The library has no test project yet.
 
 ### SCSS Compilation
-SCSS files are automatically compiled via AspNetCore.SassCompiler during build. Configuration is in `sasscompiler.json` with different compression settings for Debug vs Release builds.
+SCSS files are compiled via AspNetCore.SassCompiler during build; configuration in
+`sasscompiler.json` with different compression settings for Debug vs Release.
 
 ## Configuration
 
-### Global Settings
-- **.editorconfig**: Comprehensive C# coding standards with tab indentation and specific naming conventions
-- **global.json**: .NET 10.0.100 SDK with latest feature rollforward
-- **Directory.Build.props**: CI/CD detection, versioning, and package configuration
-- **sasscompiler.json**: SCSS compilation settings with source map generation
-
 ### Package References
-The library directly depends on:
-- Microsoft.AspNetCore.Components.WebAssembly
-- Cirreum.Components.WebAssembly
-- Cirreum.Services.Wasm
-- AspNetCore.SassCompiler
-
-Note: Microsoft.Graph and FluentValidation may be available as transitive dependencies through the Cirreum packages.
+- `Cirreum.Domain` (direct)
+- `Cirreum.Components.WebAssembly` and `Cirreum.Services.Wasm`
+  (package references; project references under `UseLocalComponents`)
+- `Microsoft.AspNetCore.Components.WebAssembly`
+- `AspNetCore.SassCompiler`, `NUglify` (build-time)
 
 ### CI/CD Configuration
-The build system automatically detects:
-- Azure DevOps (TF_BUILD)
-- GitHub Actions (GITHUB_ACTIONS)  
-- Generic CI (CI)
-- Local development with special versioning for Release builds
+The build system detects Azure DevOps (TF_BUILD), GitHub Actions (GITHUB_ACTIONS),
+and generic CI (CI); CI derives the package version from the release tag, local
+Release builds use the `1.0.100-rc` convention.
 
 ## Development Notes
 
 ### Namespace Convention
 - Root namespace is `Cirreum.Runtime` (not matching folder structure by design)
 - Extensive global usings reduce boilerplate in component files
-- Follow .editorconfig rules for consistent code formatting
+- Follow `.editorconfig` (tabs, K&R) for consistent formatting
 
 ### State Management Pattern
-The library implements a layered state management system:
-- **ViewModels**: Abstract state containers with property change tracking
-- **State Components**: Blazor components that manage specific state types
-- **Page Base Classes**: Common functionality for different state scopes
-- **Property Registration**: Explicit configuration requirements for state properties
-- **Nested ViewModels**: Support for complex object hierarchies
-- **EditContext Integration**: For Blazor form validation
+- **ViewModels**: abstract state containers with property change tracking; state
+  ViewModels require explicit property registration before use
+- **State Components**: components inherit from non-generic base classes like
+  `MemoryStateComponent`, `SessionStateComponent`, `LocalStateComponent`
+- **Nested ViewModels** and **EditContext integration** for Blazor form validation
 
 ### Component Architecture
 - Components follow Blazor best practices with code-behind files
-- SCSS styling with automatic compilation and source maps
-- Presence and profile components for user interaction
-- Theme management with dark/light mode support
-- JavaScript interop module system for browser integration
-- Session activity monitoring with expiration dialogs
-
-### Authentication Patterns
-The demo showcases multiple authentication options (currently commented out):
-- Microsoft Entra (formerly Azure AD)
-- Microsoft Entra External
-- Generic OIDC providers
-- No-auth fallback for development
-
-### Key Implementation Details
-- Use `DomainApplication.CreateBuilder(args)` to create a `DomainApplicationBuilder`, then call `builder.BuildAndRunAsync()` to run the application
-- State ViewModels require explicit property registration before use
-- Components inherit from non-generic base classes like `MemoryStateComponent`, `SessionStateComponent`, `LocalStateComponent` which internally use `ContainerStatePage<TStateService>`
-- SCSS files compile to CSS with the same name in the same directory
-- Theme switching persists to local storage automatically
+- SCSS styling with automatic compilation; theme switching persists to local storage
+- Presence and profile components; session activity monitoring with expiration dialogs
 
 ### DomainApplication Usage Example
 ```csharp
@@ -126,16 +115,15 @@ var builder = DomainApplication.CreateBuilder(args);
 builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.RootComponents.Add<App>("#app");
 
-// Configure remote services
+// Remote services
 builder.AddRemoteClient<MyApiClient>(options => {
     options.ServiceUri = new Uri("https://api.example.com/");
 });
 
-// Configure authentication (choose one)
-builder.AddEntraAuth(tenantId, clientId);
-// or builder.AddEntraExternalAuth(domain, clientId);
+// Authentication — compose via a Runtime Extensions package:
+//   Cirreum.Runtime.Wasm.Msal (Entra) or Cirreum.Runtime.Wasm.Oidc (OIDC IdPs)
 
-// Configure state management
+// Client state (from Cirreum.Services.Wasm)
 builder.AddClientState(state => state
     .RegisterState<IMyState, MyState>()
     .RegisterRemoteState<IMyRemoteState, MyRemoteState>()
