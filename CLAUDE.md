@@ -69,7 +69,15 @@ package references to project references. The referenced local repos live at
 > the demo is pending a rehab against the current surface.
 
 ### Testing
-The library has no test project yet.
+Tests live in the dedicated `tests/Cirreum.Runtime.Wasm.Tests.slnx` solution (xUnit +
+FluentAssertions), never in the main slnx:
+```bash
+dotnet test tests/Cirreum.Runtime.Wasm.Tests.slnx
+```
+Suites cover `CustomClaimCanonicalizer` (aliasing, array-split, idempotency, value policy) and
+`CommonClaimsPrincipalFactory` end-to-end (claim-value conversion, canonicalization through the
+pipeline, and the state-publication deduplication window — a real `ClientUser` in DI, stub
+`IAccessTokenProviderAccessor`).
 
 ### SCSS Compilation
 SCSS files are compiled via AspNetCore.SassCompiler during build; configuration in

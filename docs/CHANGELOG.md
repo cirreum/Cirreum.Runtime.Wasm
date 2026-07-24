@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A repeated `CreateUserAsync` for the same user inside the 30-second deduplication window
+  previously skipped identity mapping and claims extension entirely — but still returned that
+  unprocessed principal as Blazor's authentication state. On MSAL (where role claims exist only
+  through `MapIdentity`) the authentication state silently lost every role until the next call
+  outside the window, and it diverged from the `IUserState` principal. The claim transforms now
+  always run, and the window deduplicates only state publication (rebuilding `UserProfile` and
+  re-notifying `IUserState` subscribers) — atomically, never mutating `ClientUser` without
+  notifying. The deduplication key is now the user id plus a fingerprint of the processed
+  claims, so an identical duplicate call skips re-publication while any content change — a
+  refreshed role, different extender output — publishes in full within the window. The
+  fingerprint (order-insensitive, including the identity's name/role claim-type configuration)
+  records exactly what was published: a persistently failing optional transform dedupes like any
+  other identical content instead of re-publishing on every duplicate call, and a later recovery
+  republishes automatically because the claim content changes. An interrupted publication is
+  never recorded, so the next call retries.
+- A JSON `null` member on the remote user account no longer produces an empty-string claim
+  (the upstream factory copy carried a dead null-check).
+
+### Added
+
+- Provisioned `custom*` claims are now canonicalized to their native names during authentication.
+  `CommonClaimsPrincipalFactory` aliases every `custom*` token claim to its native name before any
+  `IClaimsExtender` runs, splitting a `custom*` array claim (which arrives as a single JSON-array
+  string) into individual claims so `IsInRole` works. `customRoles` / `customName` alias to the
+  identity's configured `RoleClaimType` / `NameClaimType` (so `IsInRole` and `Identity.Name` resolve
+  whatever the provider named them); every other `custom*` claim uses its derived name
+  (`customTenant` → `tenant`). The
+  step is purely additive and idempotent — it never removes a claim and never adds an exact
+  `(type, value)` duplicate, so when both a native claim and its minted `custom*` counterpart are
+  present both survive; resolving that precedence stays the application's decision in its own
+  `IClaimsExtender`. An alias preserves the source claim's issuer, original issuer, and
+  properties (value type pinned to String), and the value policy mirrors the provisioning
+  contract — arrays are non-blank string arrays, so null, empty, and non-string entries are
+  dropped and an empty scalar mints nothing. It is inert when the token carries no `custom*`
+  claims. Pairs with the server-side provisioning mint in `Cirreum.IdentityProvider`
+  2.0.0 and the `Cirreum.Identity.EntraExternalId` / `Cirreum.Identity.Oidc` adapters.
+
 ## [1.0.52] - 2026-07-20
 
 ### Updated

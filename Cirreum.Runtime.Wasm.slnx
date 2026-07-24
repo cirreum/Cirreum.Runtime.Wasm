@@ -14,6 +14,10 @@
     <File Path="build/swa/staticwebapp.config.template.json" />
     <File Path="build/swa/SwaConfig-CspGen.ps1" />
   </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/CHANGELOG.md" />
+    <File Path="docs/RELEASE-NOTES-v1.1.0.md" />
+  </Folder>
   <Folder Name="/publish/">
     <File Path=".github/workflows/publish.yml" />
   </Folder>

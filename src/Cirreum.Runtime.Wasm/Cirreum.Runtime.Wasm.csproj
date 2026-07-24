@@ -67,6 +67,11 @@
 		<InternalsVisibleTo Include="Cirreum.Demo.Client" />
 	</ItemGroup>
 
+	<!-- InternalsVisibleTo: Local Development Only -->
+	<ItemGroup Label="InternalsVisibleTo" Condition="'$(IsLocalBuild)' == 'true'">
+		<InternalsVisibleTo Include="$(AssemblyName).Tests" />
+	</ItemGroup>
+
 	<!-- ================================================================== -->
 	<!-- JS Minification                                                    -->
 	<!-- Generates .min.js alongside source files in wwwroot/js/.           -->

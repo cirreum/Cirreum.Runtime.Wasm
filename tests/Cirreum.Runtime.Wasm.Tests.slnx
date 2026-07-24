@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <File Path="../src/Directory.Build.props" />
+    <Project Path="../src/Cirreum.Runtime.Wasm/Cirreum.Runtime.Wasm.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <File Path="Directory.Build.props" />
+    <Project Path="Cirreum.Runtime.Wasm.Tests/Cirreum.Runtime.Wasm.Tests.csproj" />
+  </Folder>
+</Solution>

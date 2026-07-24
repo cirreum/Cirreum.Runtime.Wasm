@@ -33,9 +33,9 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 ) : AccountClaimsPrincipalFactory<TAccount>(tokenAccessor)
 	where TAccount : RemoteUserAccount {
 
-	private string? _lastProcessedId;
-	private string? _lastProcessedName;
-	private long _lastProcessedTimestamp;
+	private string? _lastPublishedId;
+	private int _lastPublishedFingerprint;
+	private long _lastPublishedTimestamp;
 	private static readonly TimeSpan deduplicationWindow = TimeSpan.FromSeconds(30);
 
 	// -------------------------------------------------------------------------
@@ -77,9 +77,9 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 	// -------------------------------------------------------------------------
 
 	private AnonymousUser SetAnonymous() {
-		this._lastProcessedTimestamp = 0;
-		this._lastProcessedId = null;
-		this._lastProcessedName = null;
+		this._lastPublishedTimestamp = 0;
+		this._lastPublishedId = null;
+		this._lastPublishedFingerprint = 0;
 
 		var clientUser = serviceProvider.GetRequiredService<ClientUser>();
 
@@ -107,24 +107,52 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 		ClaimsIdentity identity,
 		TAccount account) {
 
-		if (!this.ShouldProcessPrincipal(userPrincipal)) {
-#if DEBUG
-			Console.WriteLine($"warn: CommonClaimsPrincipalFactory => SKIPPING CreateUserAsync() - ACCOUNT {account} @ {DateTime.Now} - same user within deduplication window of {deduplicationWindow.TotalSeconds}s");
-#endif
-			return;
-		}
-
+		// Always run the claim transforms against the newly created principal. The returned
+		// principal becomes Blazor's authentication state and must include all available
+		// mapping, canonicalization, and extender output even when an identical state
+		// publication is deduplicated below. Each transform is isolated so one failing
+		// concern does not suppress the others.
 		try {
 			this.MapIdentity(identity, account);
-			this.ExtendClaims(identity, account);
-			this.UpdatePrincipalTracking(userPrincipal);
 		} catch (Exception e) {
 			logger.LogCreateUserError(e);
 		}
 
-		// Set the authenticated principal on ClientUser and notify state subscribers.
-		// App user loading, profile enrichment, and remote state initialization are
-		// handled by IInitializationOrchestrator after AppRouteView triggers init.
+		try {
+			// Alias provisioned custom* claims to their native names (customRoles -> roles, …)
+			// before app extenders run, so IClaimsExtender, IsInRole, and UserProfile read native
+			// claims. Additive only — precedence between a native and a custom claim is left to the
+			// app's own extender (see CustomClaimCanonicalizer).
+			CustomClaimCanonicalizer.Canonicalize(identity);
+		} catch (Exception e) {
+			logger.LogCreateUserError(e);
+		}
+
+		try {
+			// The base implementation isolates each extender individually; this guard covers a
+			// derived override that throws outside that isolation.
+			this.ExtendClaims(identity, account);
+		} catch (Exception e) {
+			logger.LogCreateUserError(e);
+		}
+
+		// Publication dedupes on (user id, claims fingerprint) inside the window: an identical
+		// duplicate call (the login double-fire) skips re-publication entirely, while ANY
+		// content change — refreshed roles, different extender output — publishes in full.
+		if (!this.ShouldPublishPrincipal(identity, out var id, out var fingerprint)) {
+#if DEBUG
+			Console.WriteLine($"warn: CommonClaimsPrincipalFactory => SKIPPING state re-publication - ACCOUNT {account} @ {DateTime.Now} - same user and claims within deduplication window of {deduplicationWindow.TotalSeconds}s");
+#endif
+			return;
+		}
+
+		// ClientUser mutation and subscriber notification form one logical publication and are
+		// always performed together by this factory — rebuilding UserProfile must be paired
+		// with notification so initialization can restore enrichment. The state manager is
+		// optional by composition: when none is registered there are no state subscribers to
+		// notify, and the mutation alone is the whole publication.
+		// App user loading, profile enrichment, and remote state initialization are handled
+		// by IInitializationOrchestrator after AppRouteView triggers init.
 		var clientUser = serviceProvider.GetRequiredService<ClientUser>();
 		clientUser.SetAuthenticatedPrincipal(userPrincipal);
 
@@ -132,49 +160,117 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 		stateManager?.NotifySubscribers<IUserState>(clientUser);
 		logger.LogUserStateChanged(clientUser.Name ?? "unknown");
 
+		// Record the exact principal content that was actually published — including a
+		// partially transformed one. Transforms are re-attempted on every invocation anyway;
+		// if a failed transform later succeeds, the changed fingerprint causes another
+		// publication automatically, while a persistently failing one dedupes like any other
+		// identical content instead of re-publishing on every duplicate call. An interrupted
+		// publication (a throw above) is never recorded, so the next call retries.
+		this.UpdatePrincipalTracking(id, fingerprint);
+
 	}
 
 	// -------------------------------------------------------------------------
 	// Tracking
 	// -------------------------------------------------------------------------
 
-	private bool ShouldProcessPrincipal(ClaimsPrincipal principal) {
-		var id = ClaimsHelper.ResolveId(principal) ?? "";
-		var name = ClaimsHelper.ResolveName(principal) ?? "";
-		return id != this._lastProcessedId ||
-			   name != this._lastProcessedName ||
-			   Stopwatch.GetElapsedTime(this._lastProcessedTimestamp) >= deduplicationWindow;
+	private bool ShouldPublishPrincipal(ClaimsIdentity identity, out string id, out int fingerprint) {
+		id = ClaimsHelper.ResolveId(identity) ?? "";
+		fingerprint = ComputeClaimsFingerprint(identity);
+		return id != this._lastPublishedId ||
+			   fingerprint != this._lastPublishedFingerprint ||
+			   Stopwatch.GetElapsedTime(this._lastPublishedTimestamp) >= deduplicationWindow;
 	}
 
-	private void UpdatePrincipalTracking(ClaimsPrincipal principal) {
-		this._lastProcessedId = ClaimsHelper.ResolveId(principal) ?? "";
-		this._lastProcessedName = ClaimsHelper.ResolveName(principal) ?? "";
-		this._lastProcessedTimestamp = Stopwatch.GetTimestamp();
+	private void UpdatePrincipalTracking(string id, int fingerprint) {
+		this._lastPublishedId = id;
+		this._lastPublishedFingerprint = fingerprint;
+		this._lastPublishedTimestamp = Stopwatch.GetTimestamp();
+	}
+
+	// Content hash over the processed identity. Claims are sorted before hashing, so the
+	// fingerprint is order-insensitive — app-defined transforms may emit the same effective
+	// set in a different order. Effective content is deliberately (type, value) plus the
+	// identity's authentication/name/role claim-type configuration (the same claims behave
+	// differently under a different NameClaimType/RoleClaimType); provenance metadata
+	// (ValueType, Issuer, Properties) is excluded, matching the canonicalizer's own equality.
+	// Any content change — a refreshed role, different extender output — changes the value, so
+	// a same-user call with new claims publishes instead of being deduplicated; a volatile
+	// per-call claim from an app extender disengages deduplication for that user, which is the
+	// correct outcome since content genuinely differs. The 32-bit width is an accepted trade
+	// for this in-memory, window-bounded suppression: a collision could only skip one
+	// republication of changed content for at most the window, after which time republishes.
+	private static int ComputeClaimsFingerprint(ClaimsIdentity identity) {
+		var hash = new HashCode();
+		hash.Add(identity.AuthenticationType, StringComparer.Ordinal);
+		hash.Add(identity.NameClaimType, StringComparer.Ordinal);
+		hash.Add(identity.RoleClaimType, StringComparer.Ordinal);
+
+		foreach (var claim in identity.Claims
+			.OrderBy(static c => c.Type, StringComparer.Ordinal)
+			.ThenBy(static c => c.Value, StringComparer.Ordinal)) {
+			hash.Add(claim.Type, StringComparer.Ordinal);
+			hash.Add(claim.Value, StringComparer.Ordinal);
+		}
+
+		return hash.ToHashCode();
 	}
 
 	private static ClaimsPrincipal CreatePrincipal(
 		TAccount account,
 		RemoteAuthenticationUserOptions options) {
 
-		var identity = account != null ? new ClaimsIdentity(
-		   options.AuthenticationType,
-		   options.NameClaim,
-		   options.RoleClaim) : new ClaimsIdentity();
+		ArgumentNullException.ThrowIfNull(account);
+		ArgumentNullException.ThrowIfNull(options);
 
-		if (account != null) {
-			foreach (var kvp in account.AdditionalProperties) {
-				var name = kvp.Key;
-				var value = kvp.Value;
-				if (value != null ||
-					(value is JsonElement element && element.ValueKind != JsonValueKind.Undefined && element.ValueKind != JsonValueKind.Null)) {
-					identity.AddClaim(new Claim(name, value.ToString()!));
-				}
+		// Deliberate fail-fast (stricter than the stock Blazor factory): a blank
+		// AuthenticationType is a composition bug — the Cirreum auth composition verbs always
+		// set it — and letting it through would surface as an inexplicable anonymous user
+		// instead of a diagnosable configuration error.
+		if (string.IsNullOrWhiteSpace(options.AuthenticationType)) {
+			throw new InvalidOperationException(
+				"Remote authentication type has not been configured. Set RemoteAuthenticationUserOptions.AuthenticationType (the Cirreum authentication composition verbs do this automatically).");
+		}
+
+		var identity = new ClaimsIdentity(
+			options.AuthenticationType,
+			options.NameClaim,
+			options.RoleClaim);
+
+		foreach (var (name, value) in account.AdditionalProperties) {
+			if (value is null) {
+				continue;
 			}
+
+			var claimValue = GetClaimValue(value);
+			if (claimValue is null) {
+				continue;
+			}
+
+			identity.AddClaim(new Claim(name, claimValue));
 		}
 
 		return new ClaimsPrincipal(identity);
-
 	}
+
+	private static string? GetClaimValue(object value) =>
+		value switch {
+			string text => text,
+
+			JsonElement { ValueKind: JsonValueKind.String } json =>
+				json.GetString(),
+
+			JsonElement {
+				ValueKind: JsonValueKind.Null or JsonValueKind.Undefined
+			} => null,
+
+			JsonElement json =>
+				json.GetRawText(),
+
+			// Extension data is always JsonElement, so this arm is a defensive fallback —
+			// kept reflection-free (no JsonSerializer) for trimmed/AOT WASM publishing.
+			_ => value.ToString()
+		};
 
 	// -------------------------------------------------------------------------
 	// Extension Points
