@@ -31,6 +31,10 @@ using System.Text.Json;
 /// whether the native value is stale-and-to-be-replaced or complementary, so it does not guess.
 /// Resolving that precedence is the application's decision, made in its own
 /// <see cref="IClaimsExtender"/> (which runs after this step, with full visibility of every claim).
+/// Until an application decides, the positional default applies: single-valued reads such as
+/// <see cref="System.Security.Principal.IIdentity.Name"/> return the first matching claim, and a
+/// token-native claim precedes its appended alias — so the native value wins by position. An app
+/// that wants the minted value to win asserts it in its extender.
 /// </para>
 /// <para>
 /// Value policy mirrors the provisioning contract — provisioned values are non-blank strings, and
