@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Follows the `IPageState` → `IBrowserDocumentState` rename in `Cirreum.Contracts` 2.0.0.**
+  `ConfigurePageState` becomes `ConfigureDefaultDocumentState`, and `AppPageTitle` injects
+  `IBrowserDocumentState`, reading `DocumentTitlePrefix` / `DocumentTitleSeparator` /
+  `DocumentTitleSuffix` in place of the `PageTitle*` members.
+
+  **Not breaking for this package.** `ConfigureDefaultDocumentState` is `sealed class` with no
+  access modifier — internal — and `AppPageTitle`'s only public member is its `ChildContent`
+  parameter, which is unchanged: `<AppPageTitle>…</AppPageTitle>` renders exactly as before. The
+  renamed interface is public, but it belongs to `Cirreum.Contracts`, which went **2.0.0** to
+  signal it. Applications that inject `IPageState` themselves migrate against the Contracts
+  migration guide, not this one.
+
 ### Updated
 
 - Updated NuGet packages.
