@@ -24,7 +24,7 @@
 		 1.2.0+ regardless of what version Cirreum.Services.Wasm brings in transitively. -->
 		<PackageReference Include="Cirreum.Domain" Version="2.0.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
-		<PackageReference Include="NUglify" Version="1.22.0" PrivateAssets="all" GeneratePathProperty="true" />
+		<PackageReference Include="NUglify" Version="1.22.2" PrivateAssets="all" GeneratePathProperty="true" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' != 'true'">
