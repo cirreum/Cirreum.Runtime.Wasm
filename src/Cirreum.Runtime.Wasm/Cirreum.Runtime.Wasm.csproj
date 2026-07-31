@@ -22,14 +22,14 @@
 		<PackageReference Include="AspNetCore.SassCompiler" Version="1.102.0" />
 		<!-- Direct reference so IUserProfileEnrichmentBuilder/ClaimsUserProfileEnricher resolve at
 		 1.2.0+ regardless of what version Cirreum.Services.Wasm brings in transitively. -->
-		<PackageReference Include="Cirreum.Domain" Version="3.0.0" />
+		<PackageReference Include="Cirreum.Domain" Version="4.0.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
 		<PackageReference Include="NUglify" Version="1.22.3" PrivateAssets="all" GeneratePathProperty="true" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(UseLocalComponents)' != 'true'">
 		<PackageReference Include="Cirreum.Components.WebAssembly" Version="1.0.45" />
-		<PackageReference Include="Cirreum.Services.Wasm" Version="1.1.1" />
+		<PackageReference Include="Cirreum.Services.Wasm" Version="1.1.2" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(UseLocalComponents)' == 'true'">
 		<ProjectReference Include="..\..\..\..\Infrastructure\Cirreum.Services.Wasm\src\Cirreum.Services.Wasm\Cirreum.Services.Wasm.csproj" />
