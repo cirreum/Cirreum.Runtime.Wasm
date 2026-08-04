@@ -13,9 +13,11 @@ using System.Security.Claims;
 /// <remarks>
 /// <para>
 /// <strong>Phase 1 — Cirreum-controlled (fixed order):</strong>
-/// Application user loading via <see cref="IApplicationUserResolver"/> and profile
-/// enrichment via <see cref="IUserProfileEnricher"/>. These run first, in a fixed
-/// order, only when the user is authenticated and the respective services are registered.
+/// Application user loading via the framework's <see cref="ApplicationUserClient"/>
+/// (registered by <c>AddApplicationUser&lt;TUser&gt;</c>, calling the server's bootstrap
+/// endpoint) and profile enrichment via <see cref="IUserProfileEnricher"/>. These run
+/// first, in a fixed order, only when the user is authenticated and the respective
+/// services are registered.
 /// </para>
 /// <para>
 /// <strong>Phase 2 — App-registered (ordered by <see cref="IInitializable.Order"/>):</strong>
@@ -32,7 +34,7 @@ internal sealed partial class InitializationOrchestrator(
 	ILogger<InitializationOrchestrator> logger
 ) : IInitializationOrchestrator, IAutoInitialize {
 
-	private IApplicationUserResolver? userResolver = null;
+	private ApplicationUserClient? userClient = null;
 	private IUserProfileEnricher? enricher = null;
 	private readonly List<IInitializable> phase2Items = [.. initializables.OrderBy(i => i.Order)];
 
@@ -46,12 +48,12 @@ internal sealed partial class InitializationOrchestrator(
 	public bool HasCompleted => this._hasCompleted == 1;
 
 	public ValueTask InitializeAsync() {
-		// WASM follows the single-IdP-client invariant: AddApplicationUserResolver fails
-		// fast on a second registration, so at most one resolver is ever registered.
-		// GetService is sufficient — no IEnumerable / scheme dispatch needed on the
-		// client side. Per-scheme dispatch is a server-side concern, where multi-IdP
-		// fan-in is the common case.
-		this.userResolver = serviceProvider.GetService<IApplicationUserResolver>();
+		// Deliberately the concrete framework anchor, not IApplicationUserResolver: the
+		// bootstrap path belongs to the framework client AddApplicationUser<TUser>
+		// registered, and a hand-registered resolver implementation must not silently
+		// take it over. WASM follows the single-IdP-client invariant — one registration,
+		// no scheme dispatch; per-scheme dispatch is a server-side concern.
+		this.userClient = serviceProvider.GetService<ApplicationUserClient>();
 		this.enricher = serviceProvider.GetService<IUserProfileEnricher>();
 		return default;
 	}
@@ -65,7 +67,7 @@ internal sealed partial class InitializationOrchestrator(
 		var includePhase1 = clientUser.IsAuthenticated;
 
 		var totalTasks = this.phase2Items.Count
-			+ (includePhase1 && this.userResolver is not null ? 1 : 0)
+			+ (includePhase1 && this.userClient is not null ? 1 : 0)
 			+ (includePhase1 && this.enricher is not null ? 1 : 0);
 
 		if (totalTasks == 0) {
@@ -101,7 +103,7 @@ internal sealed partial class InitializationOrchestrator(
 			}
 
 			// Phase 1 — Cirreum-controlled: app user + profile enrichment
-			if (clientUser.IsAuthenticated && (this.userResolver is not null || this.enricher is not null)) {
+			if (clientUser.IsAuthenticated && (this.userClient is not null || this.enricher is not null)) {
 				await this.RunPhase1Async(cancellationToken);
 			}
 
@@ -138,12 +140,12 @@ internal sealed partial class InitializationOrchestrator(
 	private async Task RunPhase1Async(CancellationToken cancellationToken) {
 
 		// 1. Application user resolution
-		if (this.userResolver is not null) {
+		if (this.userClient is not null) {
 			Log.LoadingApplicationUser(logger);
 			activityState.SetDisplayStatus("Loading application user...");
 
 			try {
-				var applicationUser = await this.userResolver.ResolveAsync(clientUser.Id, cancellationToken);
+				var applicationUser = await this.userClient.ResolveAsync(cancellationToken);
 				clientUser.SetAppUser(applicationUser);
 				Log.ApplicationUserLoaded(logger, applicationUser is not null);
 			} catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -248,7 +250,7 @@ internal sealed partial class InitializationOrchestrator(
 		public static partial void NoInitializationWork(ILogger logger);
 
 		[LoggerMessage(Level = LogLevel.Debug,
-			Message = "Resolving application user via IApplicationUserResolver")]
+			Message = "Resolving application user from the framework bootstrap endpoint")]
 		public static partial void LoadingApplicationUser(ILogger logger);
 
 		[LoggerMessage(Level = LogLevel.Debug,

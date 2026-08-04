@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- **`AddApplicationUserResolver<TResolver>()` (both overloads) removed**, replaced by
+  `AddApplicationUser<TUser>(Uri serviceUri)`. Apps no longer write a client-side
+  `IApplicationUserResolver` at all: the framework fetches the caller's own application user
+  from the server's bootstrap endpoint (`GET /_cirreum/application-user`, mapped
+  automatically by `Cirreum.Runtime.Server` 1.2.0). The old client-side path called the
+  app's own authorizable operations, so the disabled gate denied the very read meant to
+  discover disablement — a disabled subscriber was shown the "not provisioned" screen with
+  an error toast. See `MIGRATION-v2.md`.
+- **`InitializationOrchestrator` resolves the framework's bootstrap client**, not
+  `IApplicationUserResolver` — a hand-registered client resolver implementation no longer
+  participates in initialization.
+
+### Added
+
+- **`AddApplicationUser<TUser>(Uri)`** — registers the app's user type and the framework
+  client that calls the bootstrap endpoint. Rides the standard remote-service pipeline
+  (default `AuthorizationMessageHandler`, the app's default token scopes); single
+  registration enforced per the single-IdP-client invariant. `204` from the endpoint maps to
+  a null application user, so "no record" and "disabled record" are finally distinct:
+  `ViewState.Disabled` renders for the first time.
+- **Build-time deferred-log validation.** The WASM builder now fails `Build` when
+  configuration-time checks wrote Warning-or-worse deferred entries — previously the WASM
+  host had no deferred-log flusher or validator, so errors like Domain's dead-operations
+  check (operations that will be denied on every dispatch) were silently dropped and the app
+  started looking healthy. Mirrors the server builder's identical check.
+
+### Updated
+
+- Re-pinned `Cirreum.Domain` `4.1.0` → `4.2.0` (the shared `ApplicationUserEndpoint.Route`
+  constant + the 401/403 problem-details message fix in `RemoteClient`),
+  `Cirreum.Services.Wasm` `1.1.2` → `1.1.3`, `Cirreum.Components.WebAssembly` `1.0.45` →
+  `1.0.46` (Cirreum spine 4.2.0 wave).
+
 ## [1.2.4] - 2026-07-31
 
 ### Updated

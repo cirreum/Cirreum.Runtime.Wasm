@@ -28,7 +28,7 @@ infrastructure, and reusable runtime components, built on .NET 10.0.
 - **Component Inheritance Hierarchy**: base classes for pages and components with
   state management
 - **Dependency Injection**: registration via `HostingExtensions` verbs — this repo
-  ships `AddRemoteClient()`, `AddApplicationUserResolver()`,
+  ships `AddRemoteClient()`, `AddApplicationUser<TUser>()`,
   `AddDefaultAuthorization()`; `AddClientState()` / `AddSessionMonitoring()` come
   from `Cirreum.Services.Wasm`
 - **Notification Scoping**: coalescing multiple state changes into single

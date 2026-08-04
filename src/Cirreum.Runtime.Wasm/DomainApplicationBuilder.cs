@@ -1,6 +1,7 @@
 ﻿namespace Cirreum.Runtime;
 
 using Cirreum.Conductor.Configuration;
+using Cirreum.Logging.Deferred;
 using Cirreum.Runtime.Security;
 using Cirreum.Runtime.State;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -255,10 +256,40 @@ public sealed class DomainApplicationBuilder : IClientDomainApplicationBuilder {
 
 
 		// ******************************************************************************
+		// Ensure no build issues
+		//
+		ValidateDeferredLogs();
+
+
+		// ******************************************************************************
 		// Build the app!
 		//
 		return this._innerBuilder.Build();
 
+	}
+
+	/// <summary>
+	/// Fails the build when configuration-time checks wrote Warning-or-worse deferred log
+	/// entries. The WASM host has no deferred-log flusher, so without this check those
+	/// entries — e.g. Domain's dead-operations error, whose operations will be denied on
+	/// every dispatch — would be silently dropped and the app would start looking healthy.
+	/// Mirrors the server builder's identical check.
+	/// </summary>
+	private static void ValidateDeferredLogs() {
+		var issues = new[] {
+			(Level: LogLevel.Warning, Logs: Logger.GetAll(LogLevel.Warning)),
+			(Level: LogLevel.Error, Logs: Logger.GetAll(LogLevel.Error)),
+			(Level: LogLevel.Critical, Logs: Logger.GetAll(LogLevel.Critical))
+		};
+
+		foreach (var (level, logs) in issues) {
+			if (logs.Any()) {
+				throw new InvalidOperationException(
+					$"Configuration validation failed. The following {level} items were found:\n" +
+					string.Join("\n", logs.Select(l => l.Message))
+				);
+			}
+		}
 	}
 
 }

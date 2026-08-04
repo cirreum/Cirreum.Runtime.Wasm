@@ -1,87 +1,82 @@
 namespace Cirreum.Runtime;
 
+using Cirreum.RemoteServices;
+using Cirreum.Runtime.Security;
 using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
-/// Provides extension methods for configuring application user services in the dependency injection container.
+/// Provides extension methods for configuring the application user in the dependency injection container.
 /// </summary>
 public static partial class HostingExtensions {
 
 	/// <summary>
-	/// Registers the <typeparamref name="TResolver"/> as the
-	/// <see cref="IApplicationUserResolver"/> used to resolve application users during initialization.
+	/// Registers the app's application-user type and the service that hosts the framework
+	/// bootstrap endpoint. During initialization the framework fetches the caller's own
+	/// application user from <c>GET /_cirreum/application-user</c> on
+	/// <paramref name="serviceUri"/> — replacing the client-side
+	/// <c>IApplicationUserResolver</c> an app previously wrote and registered itself.
 	/// </summary>
-	/// <typeparam name="TResolver">
-	/// The resolver implementation that resolves <see cref="IApplicationUser"/> instances
-	/// from an external user identifier.
+	/// <typeparam name="TUser">
+	/// The app's <see cref="IApplicationUser"/> implementation — the type the server-side
+	/// resolver returns, which the endpoint serializes against its runtime type.
 	/// </typeparam>
-	/// <param name="services">The <see cref="IServiceCollection"/> to add services to.</param>
-	/// <returns>The <see cref="IServiceCollection"/> so that additional calls can be chained.</returns>
-	/// <remarks>
-	/// <para>
-	/// Cirreum WASM hosts follow the <strong>single-IdP-client invariant</strong> — each
-	/// WASM client binds to exactly one IdP, so only one <see cref="IApplicationUserResolver"/>
-	/// may be registered. Calling this method twice throws
-	/// <see cref="InvalidOperationException"/> rather than silently overriding the first
-	/// registration or accumulating duplicates.
-	/// </para>
-	/// <para>
-	/// On the server side, multi-IdP hosting is the common case and the matching
-	/// registration extension on <c>CirreumAuthorizationBuilder</c> permits N resolvers
-	/// dispatched by scheme. WASM-side dispatch is structurally a no-op (one candidate);
-	/// see <c>InitializationOrchestrator</c> for the dispatch logic and rationale.
-	/// </para>
-	/// </remarks>
-	/// <exception cref="InvalidOperationException">
-	/// Thrown when an <see cref="IApplicationUserResolver"/> has already been registered.
-	/// </exception>
-	public static IServiceCollection AddApplicationUserResolver<TResolver>(
-		this IServiceCollection services)
-		where TResolver : class, IApplicationUserResolver {
-
-		ThrowIfResolverAlreadyRegistered(services);
-		services.AddScoped<IApplicationUserResolver, TResolver>();
-		return services;
-
-	}
-
-	/// <summary>
-	/// Registers an <see cref="IApplicationUserResolver"/> using a custom factory function.
-	/// </summary>
-	/// <param name="services">The <see cref="IServiceCollection"/> to add services to.</param>
-	/// <param name="factory">
-	/// A factory function that creates an <see cref="IApplicationUserResolver"/> instance
-	/// using the service provider.
+	/// <param name="builder">The <see cref="IClientDomainApplicationBuilder"/>.</param>
+	/// <param name="serviceUri">
+	/// The base URI of the Cirreum server hosting the app's domain (the same service the
+	/// app's remote clients call). The framework owns the route; the app supplies only what
+	/// is genuinely its own — the type and the service.
 	/// </param>
-	/// <returns>The <see cref="IServiceCollection"/> so that additional calls can be chained.</returns>
+	/// <returns>The provided <see cref="IClientDomainApplicationBuilder"/>.</returns>
 	/// <remarks>
-	/// Cirreum WASM hosts follow the single-IdP-client invariant — only one
-	/// <see cref="IApplicationUserResolver"/> may be registered per host. Calling this
-	/// method when a resolver is already registered (via either overload) throws
-	/// <see cref="InvalidOperationException"/>.
+	/// <para>
+	/// The call rides the standard remote-service pipeline: the default
+	/// <c>AuthorizationMessageHandler</c> attaches the caller's access token using the app's
+	/// configured default scopes, exactly as any other remote client for the same service.
+	/// </para>
+	/// <para>
+	/// The bootstrap endpoint requires authentication and nothing else — it is never
+	/// dispatched through the server's operation pipeline — so the record arrives even for a
+	/// disabled caller, letting the router render the disabled experience instead of falling
+	/// through to "not provisioned".
+	/// </para>
+	/// <para>
+	/// Cirreum WASM hosts follow the <strong>single-IdP-client invariant</strong>: calling
+	/// this method twice throws rather than silently overriding the first registration.
+	/// </para>
 	/// </remarks>
 	/// <exception cref="InvalidOperationException">
-	/// Thrown when an <see cref="IApplicationUserResolver"/> has already been registered.
+	/// Thrown when an application user has already been registered.
 	/// </exception>
-	public static IServiceCollection AddApplicationUserResolver(
-		this IServiceCollection services,
-		Func<IServiceProvider, IApplicationUserResolver> factory) {
+	public static IClientDomainApplicationBuilder AddApplicationUser<TUser>(
+		this IClientDomainApplicationBuilder builder,
+		Uri serviceUri)
+		where TUser : class, IApplicationUser {
 
-		ThrowIfResolverAlreadyRegistered(services);
-		services.AddScoped(factory);
-		return services;
+		ArgumentNullException.ThrowIfNull(builder);
+		ArgumentNullException.ThrowIfNull(serviceUri);
+
+		ThrowIfApplicationUserAlreadyRegistered(builder.Services);
+
+		// AuthorizationHeader stays null so the default OIDC/OAuth token-acquisition branch
+		// wires the AuthorizationMessageHandler — the endpoint requires authentication.
+		var options = new RemoteServiceOptions {
+			ServiceUri = serviceUri
+		};
+
+		builder.Services
+			.AddRemoteServiceHttpClient(ApplicationUserClient.ClientName, options)
+			.AddTypedClient<ApplicationUserClient, InternalApplicationUserClient<TUser>>();
+
+		return builder;
 
 	}
 
-	private static void ThrowIfResolverAlreadyRegistered(IServiceCollection services) {
-		if (services.Any(d => d.ServiceType == typeof(IApplicationUserResolver))) {
+	private static void ThrowIfApplicationUserAlreadyRegistered(IServiceCollection services) {
+		if (services.Any(d => d.ServiceType == typeof(ApplicationUserClient))) {
 			throw new InvalidOperationException(
-				"An IApplicationUserResolver is already registered. Cirreum WASM hosts " +
-				"follow the single-IdP-client invariant — each WASM client binds to one " +
-				"IdP, so only one resolver may be registered. If a host genuinely needs " +
-				"multi-IdP dispatch on the client side, set o.UserOptions.AuthenticationType " +
-				"during AddOidcAuthentication / AddMsalAuthentication and compose dispatch " +
-				"inside a single resolver implementation.");
+				"AddApplicationUser has already been called. Cirreum WASM hosts follow the " +
+				"single-IdP-client invariant — each client binds to one IdP and one " +
+				"application-user type, so the application user may only be registered once.");
 		}
 	}
 
