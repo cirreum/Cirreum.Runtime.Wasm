@@ -53,9 +53,38 @@ public static partial class HostingExtensions {
 		where TUser : class, IApplicationUser {
 
 		ArgumentNullException.ThrowIfNull(builder);
+		builder.Services.AddApplicationUser<TUser>(serviceUri);
+		return builder;
+
+	}
+
+	/// <summary>
+	/// Registers the app's application-user type and the service that hosts the framework
+	/// bootstrap endpoint. The <see cref="IServiceCollection"/>-level core of
+	/// <see cref="AddApplicationUser{TUser}(IClientDomainApplicationBuilder, Uri)"/> —
+	/// the surface the IdP composition wrappers (Msal / Oidc) forward to.
+	/// </summary>
+	/// <typeparam name="TUser">
+	/// The app's <see cref="IApplicationUser"/> implementation — the type the server-side
+	/// resolver returns, which the endpoint serializes against its runtime type.
+	/// </typeparam>
+	/// <param name="services">The <see cref="IServiceCollection"/> to add services to.</param>
+	/// <param name="serviceUri">
+	/// The base URI of the Cirreum server hosting the app's domain.
+	/// </param>
+	/// <returns>The provided <see cref="IServiceCollection"/>.</returns>
+	/// <exception cref="InvalidOperationException">
+	/// Thrown when an application user has already been registered.
+	/// </exception>
+	public static IServiceCollection AddApplicationUser<TUser>(
+		this IServiceCollection services,
+		Uri serviceUri)
+		where TUser : class, IApplicationUser {
+
+		ArgumentNullException.ThrowIfNull(services);
 		ArgumentNullException.ThrowIfNull(serviceUri);
 
-		ThrowIfApplicationUserAlreadyRegistered(builder.Services);
+		ThrowIfApplicationUserAlreadyRegistered(services);
 
 		// AuthorizationHeader stays null so the default OIDC/OAuth token-acquisition branch
 		// wires the AuthorizationMessageHandler — the endpoint requires authentication.
@@ -63,11 +92,11 @@ public static partial class HostingExtensions {
 			ServiceUri = serviceUri
 		};
 
-		builder.Services
+		services
 			.AddRemoteServiceHttpClient(ApplicationUserClient.ClientName, options)
 			.AddTypedClient<ApplicationUserClient, InternalApplicationUserClient<TUser>>();
 
-		return builder;
+		return services;
 
 	}
 
