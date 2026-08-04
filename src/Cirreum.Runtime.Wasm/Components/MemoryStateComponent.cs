@@ -57,8 +57,8 @@ public abstract class MemoryStateComponent : ContainerStateComponent<IMemoryStat
 		var task = base.SetParametersAsync(parameters);
 
 		// Then use the injected services
-		if (!memoryStateInitialized) {
-			memoryStateInitialized = true;
+		if (!this.memoryStateInitialized) {
+			this.memoryStateInitialized = true;
 			this.HandleStateChangesFor<IMemoryState>(s => {
 				if (!this.IsDisposing) {
 					this.OnMemoryStateChanged();

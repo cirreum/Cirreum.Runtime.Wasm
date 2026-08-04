@@ -36,8 +36,8 @@ public abstract class MemoryStatePage : ContainerStatePage<IMemoryState> {
 	public override Task SetParametersAsync(ParameterView parameters) {
 		var task = base.SetParametersAsync(parameters);
 
-		if (!memoryInitialized) {
-			memoryInitialized = true;
+		if (!this.memoryInitialized) {
+			this.memoryInitialized = true;
 			this.HandleStateChangesFor<IMemoryState>(s => {
 				if (!this.IsDisposing) {
 					this.OnMemoryStateChanged();

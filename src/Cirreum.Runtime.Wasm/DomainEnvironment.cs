@@ -7,7 +7,7 @@ sealed class DomainEnvironment(
 	IJSAppModule module
 ) : IDomainEnvironment {
 	private string? _appName;
-	public string ApplicationName => _appName ??= module.GetAppName();
+	public string ApplicationName => this._appName ??= module.GetAppName();
 	public string EnvironmentName { get; } = hostEnvironment.Environment;
 	public DomainRuntimeType RuntimeType { get; } = DomainRuntimeType.BlazorWasm;
 }

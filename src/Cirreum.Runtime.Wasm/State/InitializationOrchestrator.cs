@@ -1,7 +1,6 @@
 namespace Cirreum.Runtime.State;
 
 using Cirreum.Runtime.Security;
-using Cirreum.State;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;

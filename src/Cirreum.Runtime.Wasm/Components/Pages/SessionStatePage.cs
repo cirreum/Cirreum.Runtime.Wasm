@@ -53,8 +53,8 @@ public abstract class SessionStatePage : ContainerStatePage<ISessionState> {
 	public override Task SetParametersAsync(ParameterView parameters) {
 		var task = base.SetParametersAsync(parameters);
 
-		if (!sessionInitialized) {
-			sessionInitialized = true;
+		if (!this.sessionInitialized) {
+			this.sessionInitialized = true;
 			this.HandleStateChangesFor<ISessionState>(s => {
 				if (!this.IsDisposing) {
 					this.OnSessionStateChanged();

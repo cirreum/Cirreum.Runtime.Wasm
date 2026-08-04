@@ -13,7 +13,7 @@ public abstract class NestedStateViewModel<TNestedViewModel>() : IViewModel
 	/// <inheritdoc/>
 	[JsonIgnore]
 	public EditContext EditContext =>
-		_parentViewModel?.EditContext
+		this._parentViewModel?.EditContext
 		?? throw new InvalidOperationException("NestedViewModel not initialized");
 
 	/// <summary>
@@ -26,14 +26,14 @@ public abstract class NestedStateViewModel<TNestedViewModel>() : IViewModel
 
 	/// <inheritdoc/>
 	public FieldIdentifier? GetFieldIdentifier(string propertyName) {
-		var nestedPropertyName = $"{_parentKey}.{propertyName}";
-		return _parentViewModel?.GetFieldIdentifier(nestedPropertyName);
+		var nestedPropertyName = $"{this._parentKey}.{propertyName}";
+		return this._parentViewModel?.GetFieldIdentifier(nestedPropertyName);
 	}
 
 
 	internal void Initialize(StateViewModel parentViewModel, string parentKey) {
-		_parentViewModel = parentViewModel;
-		_parentKey = parentKey;
+		this._parentViewModel = parentViewModel;
+		this._parentKey = parentKey;
 	}
 
 
@@ -45,11 +45,11 @@ public abstract class NestedStateViewModel<TNestedViewModel>() : IViewModel
 	/// <param name="propertyName">The name of the property (automatically provided by the compiler).</param>
 	/// <returns>The current value of the property from state, or its default value if not found.</returns>
 	protected TProp Get<TProp>([CallerMemberName] string? propertyName = null) where TProp : notnull {
-		if (_parentViewModel is null) {
+		if (this._parentViewModel is null) {
 			return ViewModelDefaults.GetDefaultValue<TProp>();
 		}
-		var nestedPropertyName = $"{_parentKey}.{propertyName}";
-		return _parentViewModel.Get<TProp>(nestedPropertyName);
+		var nestedPropertyName = $"{this._parentKey}.{propertyName}";
+		return this._parentViewModel.Get<TProp>(nestedPropertyName);
 	}
 
 	/// <summary>
@@ -70,11 +70,11 @@ public abstract class NestedStateViewModel<TNestedViewModel>() : IViewModel
 	/// </remarks>
 	/// <exception cref="ArgumentException">The <paramref name="propertyName"/> is null, empty or white-space.</exception>
 	protected Task Set<TProp>(TProp value, [CallerMemberName] string? propertyName = null) where TProp : notnull {
-		if (_parentViewModel is null) {
+		if (this._parentViewModel is null) {
 			return Task.CompletedTask;
 		}
-		var nestedPropertyName = $"{_parentKey}.{propertyName}";
-		return _parentViewModel.Set(value, nestedPropertyName);
+		var nestedPropertyName = $"{this._parentKey}.{propertyName}";
+		return this._parentViewModel.Set(value, nestedPropertyName);
 	}
 
 	/// <summary>
@@ -82,13 +82,13 @@ public abstract class NestedStateViewModel<TNestedViewModel>() : IViewModel
 	/// </summary>
 	protected TDeepNested GetNested<TDeepNested>([CallerMemberName] string? propertyName = null)
 			where TDeepNested : NestedStateViewModel<TDeepNested>, new() {
-		if (_parentViewModel is null) {
+		if (this._parentViewModel is null) {
 			throw new InvalidOperationException("NestedViewModel not initialized. Ensure Initialize() is called before accessing nested ViewModels.");
 		}
-		var nestedPropertyName = $"{_parentKey}.{propertyName}";
-		return (TDeepNested)_parentViewModel.NestedViewModels.GetOrAdd(nestedPropertyName, _ => {
+		var nestedPropertyName = $"{this._parentKey}.{propertyName}";
+		return (TDeepNested)this._parentViewModel.NestedViewModels.GetOrAdd(nestedPropertyName, _ => {
 			var nested = new TDeepNested();
-			nested.Initialize(_parentViewModel, nestedPropertyName);
+			nested.Initialize(this._parentViewModel, nestedPropertyName);
 			return nested;
 		});
 	}

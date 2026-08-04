@@ -59,8 +59,8 @@ public abstract class SessionStateComponent : ContainerStateComponent<ISessionSt
 		var task = base.SetParametersAsync(parameters);
 
 		// Then use the injected services
-		if (!sessionInitialized) {
-			sessionInitialized = true;
+		if (!this.sessionInitialized) {
+			this.sessionInitialized = true;
 			this.HandleStateChangesFor<ISessionState>(s => {
 				if (!this.IsDisposing) {
 					this.OnSessionStateChanged();

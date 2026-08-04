@@ -490,7 +490,7 @@ public abstract class StateViewModel<TViewModel, TState> : StateViewModel
 	protected TNestedViewModel GetNested<TNestedViewModel>([CallerMemberName] string? propertyName = null)
 		where TNestedViewModel : NestedStateViewModel<TNestedViewModel>, new() {
 		this.EnsureConfigured();
-		return (TNestedViewModel)NestedViewModels.GetOrAdd(propertyName!, _ => {
+		return (TNestedViewModel)this.NestedViewModels.GetOrAdd(propertyName!, _ => {
 			var nested = new TNestedViewModel();
 			nested.Initialize(this, propertyName!);
 			return nested;

@@ -36,8 +36,8 @@ public abstract class LocalStatePage : ContainerStatePage<ILocalState> {
 	public override Task SetParametersAsync(ParameterView parameters) {
 		var task = base.SetParametersAsync(parameters);
 
-		if (!localStateInitialized) {
-			localStateInitialized = true;
+		if (!this.localStateInitialized) {
+			this.localStateInitialized = true;
 			this.HandleStateChangesFor<ILocalState>(s => {
 				if (!this.IsDisposing) {
 					this.OnLocalStateChanged();

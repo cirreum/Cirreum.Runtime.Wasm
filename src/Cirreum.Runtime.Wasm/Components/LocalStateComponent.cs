@@ -59,8 +59,8 @@ public abstract class LocalStateComponent : ContainerStateComponent<ILocalState>
 		var task = base.SetParametersAsync(parameters);
 
 		// Then use the injected services
-		if (!localStateInitialized) {
-			localStateInitialized = true;
+		if (!this.localStateInitialized) {
+			this.localStateInitialized = true;
 			this.HandleStateChangesFor<ILocalState>(s => {
 				if (!this.IsDisposing) {
 					this.OnLocalStateChanged();

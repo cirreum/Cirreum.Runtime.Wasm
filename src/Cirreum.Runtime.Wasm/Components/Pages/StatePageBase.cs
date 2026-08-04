@@ -1,6 +1,5 @@
 ﻿namespace Cirreum.Components.Pages;
 
-using Cirreum;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 

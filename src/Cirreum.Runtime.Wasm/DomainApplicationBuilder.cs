@@ -94,8 +94,8 @@ public sealed class DomainApplicationBuilder : IClientDomainApplicationBuilder {
 	public IDomainApplicationBuilder ConfigureConductor(Action<ConductorOptionsBuilder> configure) {
 		ArgumentNullException.ThrowIfNull(configure);
 
-		var previousConfig = _conductorConfiguration;
-		_conductorConfiguration = options => {
+		var previousConfig = this._conductorConfiguration;
+		this._conductorConfiguration = options => {
 			previousConfig?.Invoke(options);
 			configure(options);
 		};
@@ -251,7 +251,7 @@ public sealed class DomainApplicationBuilder : IClientDomainApplicationBuilder {
 		// ******************************************************************************
 		// App Domain - Conductor/FluentValidation/FluentAuthorization
 		//
-		this.Services.AddDomainServices(this.Configuration, _conductorConfiguration);
+		this.Services.AddDomainServices(this.Configuration, this._conductorConfiguration);
 
 
 		// ******************************************************************************
