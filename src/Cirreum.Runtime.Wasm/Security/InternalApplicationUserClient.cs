@@ -20,8 +20,8 @@ using System.Net.Http.Json;
 internal sealed class InternalApplicationUserClient<TUser>(
 	HttpClient client,
 	ILogger<InternalApplicationUserClient<TUser>> logger,
-	IDomainEnvironment domainEnvironment)
-	: ApplicationUserClient(client, logger, domainEnvironment)
+	IDomainEnvironment domainEnvironment
+) : ApplicationUserClient(client, logger, domainEnvironment)
 	where TUser : class, IApplicationUser {
 
 	/// <inheritdoc/>

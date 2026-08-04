@@ -10,19 +10,16 @@ using Microsoft.Extensions.Logging;
 /// <see cref="IApplicationUserResolver"/> — so a hand-registered client implementation cannot
 /// silently take over the bootstrap path.
 /// </summary>
-internal abstract class ApplicationUserClient : RemoteClient {
+internal abstract class ApplicationUserClient(
+	HttpClient client,
+	ILogger logger,
+	IDomainEnvironment domainEnvironment
+) : RemoteClient(client, logger, domainEnvironment, activitySource: null) {
 
 	/// <summary>
 	/// The named <see cref="HttpClient"/> registration backing this client.
 	/// </summary>
 	internal const string ClientName = "CirreumApplicationUserClient";
-
-	protected ApplicationUserClient(
-		HttpClient client,
-		ILogger logger,
-		IDomainEnvironment domainEnvironment)
-		: base(client, logger, domainEnvironment, activitySource: null) {
-	}
 
 	/// <summary>
 	/// Resolves the caller's own application user from the framework bootstrap endpoint
