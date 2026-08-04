@@ -6,8 +6,20 @@ using Microsoft.Extensions.DependencyInjection;
 
 public static partial class HostingExtensions {
 
-	static readonly Dictionary<string, (IHttpClientBuilder, RemoteServiceOptions)> NamedBuilders =
-		new(StringComparer.OrdinalIgnoreCase);
+	// Keyed by the service collection: the registry exists to dedupe named-client
+	// registration and refuse conflicting options WITHIN one application's composition.
+	// A process-wide registry would make a second container in the same process (a test
+	// host, a second builder) silently skip its own registrations because the first
+	// container already claimed the name.
+	static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
+		IServiceCollection,
+		Dictionary<string, (IHttpClientBuilder Builder, RemoteServiceOptions Options)>> NamedBuildersByCollection = [];
+
+	private static Dictionary<string, (IHttpClientBuilder Builder, RemoteServiceOptions Options)> GetNamedBuilders(
+		IServiceCollection services) =>
+		NamedBuildersByCollection.GetValue(
+			services,
+			static _ => new(StringComparer.OrdinalIgnoreCase));
 
 
 	/// <summary>
@@ -257,7 +269,8 @@ public static partial class HostingExtensions {
 			throw new InvalidOperationException($"ServiceUri must be an absolute URI. Unsupported: {options.ServiceUri}");
 		}
 
-		if (NamedBuilders.TryGetValue(clientName, out var value)) {
+		var namedBuilders = GetNamedBuilders(services);
+		if (namedBuilders.TryGetValue(clientName, out var value)) {
 			(var registeredHttpBuilder, var registeredOptions) = value;
 			if (registeredOptions.Equals(options)) {
 				// no need to re-register the same named instance with the same options
@@ -280,7 +293,7 @@ public static partial class HostingExtensions {
 						options.AuthorizationHeader.Value);
 			});
 
-			NamedBuilders.Add(clientName, (namedBuilderWithToken, options));
+			namedBuilders.Add(clientName, (namedBuilderWithToken, options));
 
 			return namedBuilderWithToken;
 
@@ -295,7 +308,7 @@ public static partial class HostingExtensions {
 				}
 			});
 
-			NamedBuilders.Add(clientName, (namedBuilderNoAuth, options));
+			namedBuilders.Add(clientName, (namedBuilderNoAuth, options));
 			return namedBuilderNoAuth;
 		}
 
@@ -315,7 +328,7 @@ public static partial class HostingExtensions {
 						scopes: options.ServiceScopes);
 			});
 
-		NamedBuilders.Add(clientName, (namedBuilderWithAuth, options));
+		namedBuilders.Add(clientName, (namedBuilderWithAuth, options));
 
 		return namedBuilderWithAuth;
 

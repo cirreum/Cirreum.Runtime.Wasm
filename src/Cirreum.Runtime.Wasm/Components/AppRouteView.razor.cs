@@ -1,5 +1,6 @@
 namespace Cirreum.Components;
 
+using Cirreum.Runtime.Security;
 using Cirreum.Security;
 using Cirreum.State;
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +32,7 @@ using System.Reflection;
 /// States are evaluated top-to-bottom; first match wins:
 /// <list type="number">
 ///   <item><description><see cref="ViewState.Pending"/> - Authentication is in-flight or the orchestrator has not completed → <see cref="PendingLayout"/>. Covers the full startup sequence: auth callback processing, application user loading, profile enrichment, and registered <see cref="IInitializable"/> services.</description></item>
-///   <item><description><see cref="ViewState.NotProvisioned"/> - Authenticated identity has no application account (only when <see cref="IApplicationUserResolver"/> is registered).</description></item>
+///   <item><description><see cref="ViewState.NotProvisioned"/> - Authenticated identity has no application account (only when the application user is registered via <c>AddApplicationUser&lt;TUser&gt;</c>).</description></item>
 ///   <item><description><see cref="ViewState.Disabled"/> - Application user exists but <see cref="IApplicationUser.IsEnabled"/> is <see langword="false"/>.</description></item>
 ///   <item><description><see cref="ViewState.Ready"/> - All checks pass → <see cref="AuthorizeRouteView"/> (when auth registered) or <see cref="RouteView"/>, with <see cref="DefaultLayout"/>.</description></item>
 /// </list>
@@ -100,8 +101,9 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	/// the identity is authenticated but has no account in this application.
 	/// </summary>
 	/// <remarks>
-	/// Only evaluated when an <see cref="IApplicationUserResolver"/> is registered.
-	/// When no factory is registered, transitions directly from initialized to ready.
+	/// Only evaluated when the application user is registered via
+	/// <c>AddApplicationUser&lt;TUser&gt;</c>. When it is not registered, transitions
+	/// directly from initialized to ready.
 	/// </remarks>
 	[Parameter]
 	public RenderFragment? NotProvisioned { get; set; }
@@ -217,8 +219,13 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	protected override void OnInitialized() {
 		// Pre-Render, Single (one-time) execution
 
-		// Detect optional services that influence the state machine.
-		this._requiresApplicationUser = this.ServiceProvider.GetService<IApplicationUserResolver>() is not null;
+		// Detect optional services that influence the state machine. The application user
+		// signal is the framework bootstrap client AddApplicationUser<TUser> registers —
+		// checked via IServiceProviderIsService so no client (or HttpClient) is constructed
+		// just to answer a presence question.
+		this._requiresApplicationUser =
+			this.ServiceProvider.GetService<IServiceProviderIsService>()?.IsService(typeof(ApplicationUserClient))
+			?? this.ServiceProvider.GetService<ApplicationUserClient>() is not null;
 		this._hasAuthenticationRouting = this.ServiceProvider.GetService<AuthenticationStateProvider>() is not null;
 
 		// Subscribe to state changes that drive view transitions.
@@ -339,7 +346,7 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 			return ViewState.Pending;
 		}
 
-		// 3–4. Application user checks (only when IApplicationUserResolver is registered).
+		// 3–4. Application user checks (only when AddApplicationUser<TUser> was called).
 		if (this._requiresApplicationUser
 			&& this.UserState.IsAuthenticationComplete
 			&& this.UserState.IsAuthenticated) {

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`AppRouteView` still probed for the removed `IApplicationUserResolver`** to decide whether
+  the application-user states apply — under the new `AddApplicationUser<TUser>` registration
+  the probe always answered no, so `NotProvisioned` and `Disabled` were unreachable and the
+  router went straight to `Ready` with a null application user — the exact outcome 2.0.0
+  exists to fix. The probe now checks for the framework bootstrap client, via
+  `IServiceProviderIsService` so no client is constructed to answer a presence question.
+  A registration test suite now guards the seam.
+- **The named remote-client registry was process-static.** A second service collection in the
+  same process (a test host, a second builder) found names already claimed by the first and
+  silently skipped its own registrations — `AddRemoteClient`/`AddApplicationUser` bound but
+  reached nothing in that container, and the double-registration guard never fired. The
+  registry is now keyed per service collection; within one application's composition the
+  dedupe and conflicting-options refusal behave exactly as before.
+
 ## [2.0.0] - 2026-08-04
 
 ### Breaking
