@@ -108,9 +108,9 @@ await builder.BuildAndRunAsync();
         <AppRouteView RouteData="@routeData"
                       DefaultLayout="@typeof(MainLayout)"
                       PendingLayout="@typeof(SplashLayout)">
-            <NotAuthorizedContent>
+            <NotAuthorized>
                 <RedirectToUnauthorized UnauthorizedPage="/unauthorized" />
-            </NotAuthorizedContent>
+            </NotAuthorized>
         </AppRouteView>
     </Found>
 </Router>

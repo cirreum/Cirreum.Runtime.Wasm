@@ -22,10 +22,17 @@ one layer above the fix. Same-day, pre-adoption.
   names claimed by the first and silently skipped its own registrations. Within one
   application's composition, dedupe and the conflicting-options refusal are unchanged.
 
+Also riding the same pre-adoption window: **`AppRouteView.NotAuthorizedContent` →
+`NotAuthorized` and `AuthorizingContent` → `Authorizing`** — the pass-through fragments now
+match the `AuthorizeRouteView` parameters they forward to and the bare state-name convention
+of the component's own `NotProvisioned` / `Disabled` states. Old names fail loudly at markup
+compile time.
+
 ## Compatibility
 
-Pure fixes; no surface change. Apps that took 2.0.0 should take 2.0.1 immediately — without
-it, the disabled/not-provisioned experiences the major promises do not render.
+Two fixes plus the parameter rename above (a compile-time markup error where the old names
+were used). Apps that took 2.0.0 should take 2.0.1 immediately — without it, the
+disabled/not-provisioned experiences the major promises do not render.
 
 ## See also
 

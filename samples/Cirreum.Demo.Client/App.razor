@@ -17,9 +17,9 @@
 		<AppRouteView RouteData="@routeData"
 					  DefaultLayout="@typeof(MinimalLayout)"
 					  PendingLayout="@typeof(AuthenticationLayout)">
-			<NotAuthorizedContent>
+			<NotAuthorized>
 				<RedirectToUnauthorized UnauthorizedPage="/unauthorized" />
-			</NotAuthorizedContent>
+			</NotAuthorized>
 		</AppRouteView>
 	</Found>
 	<NotFound>

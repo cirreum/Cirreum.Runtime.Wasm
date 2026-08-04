@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- **`AppRouteView.NotAuthorizedContent` → `NotAuthorized`, `AuthorizingContent` →
+  `Authorizing`.** The two pass-through fragments now match both the `AuthorizeRouteView`
+  parameters they forward to and the bare state-name convention of the component's own
+  `NotProvisioned` / `Disabled` states (Blazor's own idiom for state views:
+  `Authorized` / `NotAuthorized` / `Found` / `NotFound`). Markup using the old names fails
+  at compile time. Shipped in the same-day pre-adoption window as the 2.0.0 major
+  (`-AllowBreakingPatch`).
+
 ### Fixed
 
 - **`AppRouteView` still probed for the removed `IApplicationUserResolver`** to decide whether

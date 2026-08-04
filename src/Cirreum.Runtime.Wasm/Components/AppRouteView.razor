@@ -7,7 +7,7 @@
 		@if (this.IsAuthenticationPath()) {
 			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@ResolvedPendingLayout">
 				<Authorizing>
-					@AuthorizingContent
+					@(this.Authorizing)
 				</Authorizing>
 			</AuthorizeRouteView>
 		} else {
@@ -23,7 +23,7 @@
 			<AuthorizeRouteView RouteData="@RouteData" DefaultLayout="@DefaultLayout">
 				<NotAuthorized>
 					@if (context.User.Identity?.IsAuthenticated == true) {
-						@(NotAuthorizedContent ?? DefaultNotAuthorizedFragment)
+						@(this.NotAuthorized ?? DefaultNotAuthorizedFragment)
 					} else {
 						<RedirectToLogin LoginPath="@LoginPath"
 										 LoginHint="@LoginHint"

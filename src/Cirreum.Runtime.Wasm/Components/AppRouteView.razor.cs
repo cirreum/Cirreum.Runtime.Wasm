@@ -118,19 +118,25 @@ public sealed partial class AppRouteView : ComponentBase, IDisposable {
 	/// <summary>
 	/// Rendered inside <see cref="AuthorizeRouteView"/>'s <c>NotAuthorized</c> section when
 	/// an authenticated user lacks the required authorization policy for a route.
-	/// Defaults to <see cref="RedirectToLogin"/> when not specified.
+	/// Defaults to a built-in not-authorized card; unauthenticated users are redirected
+	/// to login regardless.
 	/// </summary>
+	/// <remarks>
+	/// Named to match the <see cref="AuthorizeRouteView"/> parameter it forwards to, and the
+	/// bare state-name convention of the component's own <see cref="NotProvisioned"/> /
+	/// <see cref="Disabled"/> states.
+	/// </remarks>
 	[Parameter]
-	public RenderFragment? NotAuthorizedContent { get; set; }
+	public RenderFragment? NotAuthorized { get; set; }
 
 	/// <summary>
 	/// Gets or sets the content to display while authorization is in progress.
 	/// </summary>
 	/// <remarks>Use this property to provide custom UI or messages that are shown to the user during the
 	/// authorization process. This content is rendered only when the authorization state is being determined and is not
-	/// yet complete.</remarks>
+	/// yet complete. Named to match the <see cref="AuthorizeRouteView"/> parameter it forwards to.</remarks>
 	[Parameter]
-	public RenderFragment? AuthorizingContent { get; set; }
+	public RenderFragment? Authorizing { get; set; }
 
 	/// <summary>
 	/// When <see langword="true"/>, the page component is instantiated during
