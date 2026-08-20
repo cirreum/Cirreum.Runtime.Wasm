@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Interface-typed remote clients: `AddRemoteClient<TClient, TImplementation>`.** Registers a
+  remote client resolved by service type — typically an interface — and implemented by a
+  concrete typed client, so components inject `IOrdersApi` and tests substitute it without the
+  manual forwarding registration. Added to the two canonical typed forms (configure and
+  pre-built options); the named-only overloads register no typed client and are unchanged. The
+  `HttpClient` name defaults to `TImplementation`, not `TClient`: naming it after the service
+  type would rename the client the moment an app moved from a concrete registration to an
+  interface-typed one, silently detaching any configuration keyed on the old name.
 - **The client user state declares `SubjectKind.Human`.** A WebAssembly session always has a
   person at it — unlike the authentication boundary, that is knowable client-side without
   consulting a scheme declaration — so `IUserState.SubjectKind` now reports `Human` for an

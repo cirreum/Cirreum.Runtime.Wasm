@@ -150,6 +150,101 @@ public static partial class HostingExtensions {
 
 	/// <summary>
 	/// Adds the <see cref="IHttpClientFactory"/> and related services to the <see cref="IServiceCollection"/>
+	/// and configures a binding between <typeparamref name="TClient"/>, implemented by
+	/// <typeparamref name="TImplementation"/>, and a named <see cref="HttpClient"/>.
+	/// </summary>
+	/// <typeparam name="TClient">The service type resolved from the container, typically an interface.</typeparam>
+	/// <typeparam name="TImplementation">The concrete client constructed with the configured <see cref="HttpClient"/>.</typeparam>
+	/// <param name="builder">The current <see cref="IClientDomainApplicationBuilder"/></param>
+	/// <param name="configure">A delegate that is used to configure the <see cref="RemoteServiceOptions"/>.</param>
+	/// <param name="clientName">
+	/// The logical name of the <see cref="HttpClient"/> to configure.
+	/// Defaults to the type name of <typeparamref name="TImplementation"/>.
+	/// </param>
+	/// <param name="applicationName">The name of the application calling the remote service.</param>
+	/// <returns>The provided <see cref="IClientDomainApplicationBuilder"/></returns>
+	/// <remarks>
+	/// <para>
+	/// <typeparamref name="TImplementation"/> instances constructed with the appropriate
+	/// <see cref="HttpClient"/> are retrieved from <see cref="IServiceProvider.GetService(Type)"/>
+	/// (and related methods) by providing <typeparamref name="TClient"/> as the service type.
+	/// </para>
+	/// <para>
+	/// The client name defaults to <typeparamref name="TImplementation"/> rather than
+	/// <typeparamref name="TClient"/>, so a client registered concretely and one registered
+	/// behind an interface resolve the same named <see cref="HttpClient"/>.
+	/// </para>
+	/// </remarks>
+	public static IClientDomainApplicationBuilder AddRemoteClient<TClient, TImplementation>(
+		this IClientDomainApplicationBuilder builder,
+		Action<RemoteServiceOptions> configure,
+		string? clientName = null,
+		string? applicationName = null)
+		where TClient : class
+		where TImplementation : class, TClient {
+
+		ArgumentNullException.ThrowIfNull(builder);
+		ArgumentNullException.ThrowIfNull(configure);
+		clientName ??= typeof(TImplementation).Name;
+
+		RemoteServiceOptions options = applicationName is null ? new() : new(applicationName);
+		configure.Invoke(options);
+
+		builder.Services
+			.AddRemoteServiceHttpClient(clientName, options)
+			.AddTypedClient<TClient, TImplementation>();
+
+		return builder;
+
+	}
+
+	/// <summary>
+	/// Adds the <see cref="IHttpClientFactory"/> and related services to the <see cref="IServiceCollection"/>
+	/// and configures a binding between <typeparamref name="TClient"/>, implemented by
+	/// <typeparamref name="TImplementation"/>, and a named <see cref="HttpClient"/>.
+	/// </summary>
+	/// <typeparam name="TClient">The service type resolved from the container, typically an interface.</typeparam>
+	/// <typeparam name="TImplementation">The concrete client constructed with the configured <see cref="HttpClient"/>.</typeparam>
+	/// <param name="builder">The current <see cref="IClientDomainApplicationBuilder"/></param>
+	/// <param name="options">The <see cref="RemoteServiceOptions"/>.</param>
+	/// <param name="clientName">
+	/// The optional name of the <see cref="HttpClient"/> to configure.
+	/// Defaults to the type name of <typeparamref name="TImplementation"/>.
+	/// </param>
+	/// <returns>The provided <see cref="IClientDomainApplicationBuilder"/></returns>
+	/// <remarks>
+	/// <para>
+	/// <typeparamref name="TImplementation"/> instances constructed with the appropriate
+	/// <see cref="HttpClient"/> are retrieved from <see cref="IServiceProvider.GetService(Type)"/>
+	/// (and related methods) by providing <typeparamref name="TClient"/> as the service type.
+	/// </para>
+	/// <para>
+	/// The client name defaults to <typeparamref name="TImplementation"/> rather than
+	/// <typeparamref name="TClient"/>, so a client registered concretely and one registered
+	/// behind an interface resolve the same named <see cref="HttpClient"/>.
+	/// </para>
+	/// </remarks>
+	public static IClientDomainApplicationBuilder AddRemoteClient<TClient, TImplementation>(
+		this IClientDomainApplicationBuilder builder,
+		RemoteServiceOptions options,
+		string? clientName = null)
+		where TClient : class
+		where TImplementation : class, TClient {
+
+		ArgumentNullException.ThrowIfNull(builder);
+		ArgumentNullException.ThrowIfNull(options);
+		clientName ??= typeof(TImplementation).Name;
+
+		builder.Services
+			.AddRemoteServiceHttpClient(clientName, options)
+			.AddTypedClient<TClient, TImplementation>();
+
+		return builder;
+
+	}
+
+	/// <summary>
+	/// Adds the <see cref="IHttpClientFactory"/> and related services to the <see cref="IServiceCollection"/>
 	/// and configures a named <see cref="HttpClient"/>.
 	/// </summary>
 	/// <param name="builder">The current <see cref="IClientDomainApplicationBuilder"/></param>

@@ -1,4 +1,4 @@
-# Backlog
+﻿# Backlog
 
 Deferred work for **Cirreum.Runtime.Wasm**. Items here are tracked but not yet ready
 to ship — either because the cost outweighs the benefit in isolation, or
@@ -33,22 +33,4 @@ upgrade, a coordinated multi-repo rollout).
 
 ## Queued
 
-### Interface-typed remote clients: `AddRemoteClient<TClient, TImplementation>`
-
-- **SemVer:** Minor
-- **Trigger:** An app wants to inject a remote client by interface (e.g. `IOrdersApi` in
-  components, `OrdersApiClient : RemoteClient, IOrdersApi` behind it) for mockable
-  component tests.
-- **Noted:** 2026-08-04
-
-`AddTypedClient<TClient, TImplementation>` supports an interface/abstract service type with
-a concrete typed-client implementation — the framework itself uses this internally for the
-`ApplicationUserClient` bootstrap anchor. Exposing the same shape on `AddRemoteClient` would
-give apps interface-typed injection without the manual forwarding line
-(`services.AddTransient<IOrdersApi>(sp => sp.GetRequiredService<OrdersApiClient>())`), which
-is today's adequate workaround. Deferred under the dormant-surface rule (no consumer yet),
-and because `AddRemoteClient` already has five overloads — a `<TClient, TImplementation>`
-family mirrors several of them and `Cirreum.Runtime.Serverless`'s remote-client surface
-would warrant matching symmetry, so the shape deserves a deliberate design pass (which
-overloads get the second type parameter, and whether both packages move together) rather
-than a single convenience addition.
+_No queued items._
