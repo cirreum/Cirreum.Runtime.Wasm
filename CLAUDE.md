@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -74,10 +74,11 @@ FluentAssertions), never in the main slnx:
 ```bash
 dotnet test tests/Cirreum.Runtime.Wasm.Tests.slnx
 ```
-Suites cover `CustomClaimCanonicalizer` (aliasing, array-split, idempotency, value policy) and
-`CommonClaimsPrincipalFactory` end-to-end (claim-value conversion, canonicalization through the
-pipeline, and the state-publication deduplication window — a real `ClientUser` in DI, stub
-`IAccessTokenProviderAccessor`).
+Suites cover `CommonClaimsPrincipalFactory` end-to-end (claim-value conversion, canonicalization
+through the pipeline, and the state-publication deduplication window — a real `ClientUser` in DI,
+stub `IAccessTokenProviderAccessor`) and the application-user registration surface. The
+`custom*` canonicalization mechanism itself lives in `Cirreum.Kernel` and is tested there; this
+runtime calls it with the client posture (`excludeRoles: false`).
 
 ### SCSS Compilation
 SCSS files are compiled via AspNetCore.SassCompiler during build; configuration in

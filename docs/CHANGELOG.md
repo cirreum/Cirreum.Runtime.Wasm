@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
+
+- **The client user state declares `SubjectKind.Human`.** A WebAssembly session always has a
+  person at it — unlike the authentication boundary, that is knowable client-side without
+  consulting a scheme declaration — so `IUserState.SubjectKind` now reports `Human` for an
+  authenticated client user instead of `Unknown`. An anonymous client user reports `Unknown`,
+  as before.
+
+### Changed
+
+- **`custom*` canonicalization now runs from `Cirreum.Kernel`.** The local copy relocated to
+  the Kernel in 2.1.0 is deleted, and the principal factory calls
+  `CustomClaimCanonicalizer.Canonicalize(identity, excludeRoles: false)` — the client posture,
+  which aliases minted roles because the token is the only source of roles a browser session
+  has and client role claims gate rendering rather than authorization. Behaviour is unchanged;
+  the type was internal, so no application surface moves. The canonicalizer's test suite ported
+  to the Kernel alongside the type.
+
+### Updated
+
+- Updated NuGet packages (`Cirreum.Domain` 4.2.5, `Cirreum.Services.Wasm` 1.1.6,
+  `Cirreum.Components.WebAssembly` 1.0.49, `AspNetCore.SassCompiler` 1.103.0).
 
 ## [2.0.1] - 2026-08-04
 

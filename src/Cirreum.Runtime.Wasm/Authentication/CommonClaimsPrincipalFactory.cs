@@ -1,6 +1,7 @@
 ﻿namespace Cirreum.Runtime.Authentication;
 
 using Cirreum.Runtime.Security;
+using Cirreum.Security;
 using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.AspNetCore.Components.WebAssembly.Authentication.Internal;
 using Microsoft.Extensions.DependencyInjection;
@@ -123,7 +124,12 @@ public abstract partial class CommonClaimsPrincipalFactory<TAccount>(
 			// before app extenders run, so IClaimsExtender, IsInRole, and UserProfile read native
 			// claims. Additive only — precedence between a native and a custom claim is left to the
 			// app's own extender (see CustomClaimCanonicalizer).
-			CustomClaimCanonicalizer.Canonicalize(identity);
+			//
+			// excludeRoles: false is the client posture. The token is the only source of roles a
+			// browser session has, and client role claims gate rendering rather than authorization —
+			// every operation is re-authorized server-side, where roles come from the scheme's
+			// declared authority instead.
+			CustomClaimCanonicalizer.Canonicalize(identity, excludeRoles: false);
 		} catch (Exception e) {
 			logger.LogCreateUserError(e);
 		}

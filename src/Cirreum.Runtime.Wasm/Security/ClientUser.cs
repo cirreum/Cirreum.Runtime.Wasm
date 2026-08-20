@@ -1,5 +1,6 @@
 ﻿namespace Cirreum.Runtime.Security;
 
+using Cirreum.Security;
 using System.Security.Claims;
 
 internal sealed class ClientUser : UserStateBase {
@@ -30,6 +31,10 @@ internal sealed class ClientUser : UserStateBase {
 
 		this._profile = new UserProfile(this._principal, TimeZoneInfo.Local.Id);
 
+		// A WebAssembly session always has a person at it — unlike the authentication boundary,
+		// this is knowable client-side without consulting a scheme declaration.
+		this.SubjectKind = SubjectKind.Human;
+
 		if (!this.SessionStartTime.HasValue) {
 			this.StartSession();
 		}
@@ -42,6 +47,7 @@ internal sealed class ClientUser : UserStateBase {
 		this._principal = AnonymousUser.Shared;
 		this._identity = AnonymousUser.Shared.Identity;
 		this._profile = UserProfile.Anonymous;
+		this.SubjectKind = SubjectKind.Unknown;
 		this.ClearApplicationUser();
 		this.EndSession();
 		this._authenticationComplete = true;
