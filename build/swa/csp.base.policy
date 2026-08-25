@@ -1,5 +1,42 @@
+# Cirreum framework CSP baseline for Blazor WebAssembly.
+#
+# This baseline always applies. The app's Properties\csp.policy and any
+# Properties\csp.{Env}.policy overlay merge on top of it, and source lists are
+# unioned - an app policy adds sources to a directive, it does not replace them.
+# Set CirreumGenerateCsp=false in the project to emit no policy at all.
+#
+# The baseline permits same-origin resources only. Anything cross-origin an app
+# needs - its API, a CDN, a font host, an analytics endpoint - belongs in the
+# app's own csp.policy.
+
+base-uri 'self';
 default-src 'self';
 frame-ancestors 'self';
+
+# Blocks <object>, <embed> and <applet>, which Blazor never needs. Note that an app
+# policy adding sources here produces "'none' <source>"; per spec a source list
+# containing 'none' alongside other values ignores the 'none'.
+object-src 'none';
+
+# 'data:' covers inline images and icons emitted by the Blazor templates and by most
+# component libraries. Remote image hosts belong in the app's csp.policy.
+img-src 'self' data:;
+
+# 'wasm-unsafe-eval' is required by the Blazor Mono runtime to instantiate the
+# WebAssembly module. It is narrower than 'unsafe-eval': it permits WebAssembly
+# compilation only, not eval() of JavaScript.
 script-src 'self' 'wasm-unsafe-eval';
+
+# 'unsafe-inline' covers inline style ATTRIBUTES (style="..."), which the Blazor
+# templates and most component libraries emit for layout and visibility. Style
+# attributes cannot be allowed by hash or nonce, so there is no stricter equivalent
+# short of eliminating every inline style in the app and its component libraries.
+# Scoped component CSS does NOT require it: .razor.css compiles into the external
+# {Assembly}.styles.css bundle, which 'self' already covers.
 style-src 'self' 'unsafe-inline' https://fonts.cdnfonts.com;
+
 font-src 'self' https://fonts.cdnfonts.com;
+
+# Upgrades http:// subresource requests to https://. Applies to the deployed
+# Static Web App only; the generated config is not used by local development.
+upgrade-insecure-requests;

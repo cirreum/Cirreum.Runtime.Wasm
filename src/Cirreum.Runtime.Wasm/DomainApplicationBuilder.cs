@@ -2,6 +2,8 @@
 
 using Cirreum.Conductor.Configuration;
 using Cirreum.Logging.Deferred;
+using Cirreum.RemoteServices;
+using Cirreum.Runtime.Authentication;
 using Cirreum.Runtime.Security;
 using Cirreum.Runtime.State;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -191,6 +193,17 @@ public sealed class DomainApplicationBuilder : IClientDomainApplicationBuilder {
 		//
 		if (!this.Services.Any(d => d.ServiceType == typeof(AuthenticationStateProvider))) {
 			this.AddDefaultAuthorization();
+		}
+
+		// ******************************************************************************
+		// Ambient credential for outbound remote connections
+		//
+		// Registered only where the host authenticates: a no-auth application has no access
+		// token provider to read. TryAdd, so an application supplying its own source keeps it.
+		//
+		if (!this.Services.Any(d => d.ServiceType == typeof(NoAuthRegistrationMarker))) {
+			this.Services
+				.TryAddScoped<IRemoteConnectionTokenSource, AccessTokenRemoteConnectionTokenSource>();
 		}
 
 		// ******************************************************************************

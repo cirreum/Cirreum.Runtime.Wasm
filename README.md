@@ -19,6 +19,7 @@
   - `AppRouteView` — drop-in route view that gates on auth, initialization, and app user readiness
   - Initialization orchestrator for sequenced startup (auth, app user, enrichment, remote state)
   - No-auth fallback for development scenarios
+  - Session access token supplied to outbound remote connections (`IRemoteConnectionTokenSource`)
   
 - **State Management**
   - Multiple state scopes: Memory, Session, Local Storage, and Container
@@ -32,6 +33,11 @@
   - Theme switcher with dark/light mode support
   - Validation components with FluentValidation integration
   
+- **Deployment**
+  - `staticwebapp.config.json` generated into the publish output for Azure Static Web Apps
+  - Content-Security-Policy composed from a framework baseline, an app policy, and an optional per-environment overlay
+  - Inline-script hashes computed from the published `index.html` (the Blazor importmap, plus any opt-in `<script id="...">`)
+
 - **Developer Experience**
   - Comprehensive base classes for pages and components
   - Startup task infrastructure
@@ -122,6 +128,81 @@ await builder.BuildAndRunAsync();
 <!-- Monitor user activity and session expiration -->
 <SessionActivityMonitor WarningMinutes="5" />
 ```
+
+### Azure Static Web Apps configuration
+
+On `dotnet publish` of a Blazor WebAssembly project, the package generates
+`staticwebapp.config.json` into the publish output. The source `wwwroot` is left untouched.
+
+**A Content-Security-Policy is applied by default.** The framework baseline covers what a
+Blazor WebAssembly app needs to boot and run from its own origin — `'wasm-unsafe-eval'` for
+the Mono runtime, `'unsafe-inline'` on `style-src` for inline style attributes, `data:`
+images, `base-uri`/`object-src`/`frame-ancestors` locked down, and
+`upgrade-insecure-requests`.
+
+The baseline permits **same-origin resources only**, which means an app that calls an API on
+another origin, loads fonts or images from a CDN, or talks to any third-party endpoint must
+declare those itself. Add a policy file to the project's `Properties` folder:
+
+```
+Properties/csp.policy              app policy - your API, CDNs, third-party origins
+Properties/csp.Staging.policy      optional per-environment overlay
+```
+
+```
+connect-src 'self' https://api.myapp.com;
+img-src https://cdn.myapp.com;
+```
+
+Files use the same syntax as a CSP header — `directive source source;` per line, with `#` or
+`//` comment lines. Directives merge baseline → app policy → environment overlay, and source
+lists are **unioned**: an app policy adds sources to a directive rather than replacing them,
+so the baseline's entries cannot be removed by an app policy.
+
+To emit no Content-Security-Policy header at all — the rest of the config, including routes
+and other security headers, is unaffected:
+
+```xml
+<PropertyGroup>
+  <CirreumGenerateCsp>false</CirreumGenerateCsp>
+</PropertyGroup>
+```
+
+Prefer widening the policy in `csp.policy` over disabling it.
+
+The environment overlay is selected by `EnvironmentName`, which **`dotnet publish` does not
+set on its own**:
+
+```bash
+dotnet publish -p:EnvironmentName=Staging
+```
+
+Use `CspEnvironmentName` instead to decouple the overlay from the ASP.NET environment. If
+overlay files are present but no environment is resolved, or an environment is resolved but
+its file is missing, the build warns rather than silently skipping the overlay. Overlay file
+names are matched case-sensitively on Linux build agents.
+
+Inline scripts are hashed from the published `index.html`: the Blazor importmap always, plus
+any elements named in `CspInlineScriptIds`.
+
+```xml
+<PropertyGroup>
+  <CspInlineScriptIds>app-boot,analytics-init</CspInlineScriptIds>
+</PropertyGroup>
+```
+
+Supply `wwwroot/staticwebapp.config.template.json` to replace the built-in template; the
+`__CSP__` placeholder marks where the generated policy is substituted, and the whole entry is
+removed when no policy applies.
+
+| Property | Purpose |
+| --- | --- |
+| `CirreumGenerateSwaConfig` | Set `false` to skip generating the config entirely |
+| `CirreumGenerateCsp` | Set `false` to emit the config with no Content-Security-Policy header |
+| `CspEnvironmentName` | Overlay selector, independent of `EnvironmentName` |
+| `CspInlineScriptIds` | Additional inline `<script id="...">` elements to hash |
+| `SwaConfigTemplate` / `CspBasePolicy` / `CspAppPolicy` / `CspEnvPolicy` | Override the conventional paths |
+| `CirreumPwshExecutable` | PowerShell used to run the generator (`powershell` on Windows, `pwsh` elsewhere) |
 
 ## Architecture
 

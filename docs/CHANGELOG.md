@@ -7,6 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+* **Outbound remote connections receive the session's access token.** A
+  `IRemoteConnectionTokenSource` backed by the host's `IAccessTokenProvider` is registered
+  wherever the application authenticates, so a connection from `Cirreum.RemoteConnections.*`
+  presents the signed-in user's credential without the application wiring one. A no-auth
+  application registers nothing — there is no token provider to read — and an application
+  registering its own source keeps it.
+
+  The source returns no token when one cannot be obtained without user interaction. A
+  connection resolving a credential is mid-handshake, often on a background reconnect, and a
+  redirect raised from there would navigate the application away from what the user was doing.
+
+* **`CirreumPwshExecutable`** — the PowerShell executable used to run the SWA config
+  generator is now an overridable property, defaulting to `powershell` on Windows and `pwsh`
+  elsewhere as before. Apps can force PowerShell 7 on Windows, or point at an absolute path
+  on an agent where neither name is on `PATH`. It was previously private and unconditional,
+  so an app-supplied value was discarded.
+* **The SWA / CSP build feature is documented in the README** — policy file conventions, the
+  environment overlay and how to select it, inline-script hashing, template replacement, and
+  the full property list. The feature shipped without any README coverage.
+
+### Breaking
+
+* **A Content-Security-Policy is now applied to every published Blazor WebAssembly app.**
+  The framework baseline previously applied only when the app had created
+  `Properties\csp.policy` or a `csp.{Env}.policy` overlay; without one the header was omitted
+  entirely. The baseline now always applies, with app and environment policies merging on top
+  as before. **An app that publishes without a policy file and loads anything cross-origin
+  will have those requests blocked after upgrading** — the baseline permits same-origin
+  resources only. Declare the app's API, CDN, font host and any other third-party origin in
+  `Properties\csp.policy`, or set `<CirreumGenerateCsp>false</CirreumGenerateCsp>` to emit no
+  policy at all.
+* **Apps that already supply a policy inherit the hardened baseline.** `object-src 'none'`
+  replaces the previous fallback to `default-src 'self'`, so `<object>`, `<embed>` and
+  `<applet>` are blocked, and `upgrade-insecure-requests` rewrites `http://` subresource
+  requests to `https://`. An app needing objects adds `object-src` sources of its own: source
+  lists union, and per the CSP specification a list containing `'none'` alongside other
+  sources ignores the `'none'`.
+
+### Changed
+
+* **The baseline policy is hardened**, following Microsoft's published CSP guidance for
+  client-side Blazor: adds `base-uri 'self'` (which does not fall back to `default-src`, so it
+  was previously unrestricted), `object-src 'none'`, `img-src 'self' data:` for the inline
+  images Blazor templates and component libraries emit, and `upgrade-insecure-requests`.
+  Microsoft's `connect-src 'none'` is deliberately not adopted — it would block every API
+  call, and Cirreum apps call APIs through `RemoteClient`. The baseline now carries comments
+  explaining why `'wasm-unsafe-eval'` and `'unsafe-inline'` are present and what an app is
+  expected to supply itself.
+
+### Fixed
+
+* **Environment CSP overlays are no longer skipped silently.** `dotnet publish` sets neither
+  `EnvironmentName` nor `CspEnvironmentName`, so an app that had added `csp.{Env}.policy`
+  files published with base + app policy only and no indication its overlays were ignored.
+  The build now warns when overlay files are present but no environment resolved, and
+  separately when an environment resolved but its overlay file is missing — the latter
+  catching filename case mismatches, which pass on Windows and fail on Linux agents. An
+  environment is deliberately not assumed on the app's behalf: applying the wrong overlay is
+  worse than applying none.
+* **The `__CSP__` placeholder no longer survives into the generated config.** When no policy
+  applied, the placeholder entry was stripped by a case-sensitive pattern that also required
+  the placeholder to be the entire header value. A template spelling the header
+  `"content-security-policy"`, or decorating the value (`"__CSP__; report-uri /r"`), matched
+  nothing — and the generator still exited successfully, so the build shipped
+  `Content-Security-Policy: __CSP__`: a header that reads as configured but cannot be parsed.
+  The header name is now matched case-insensitively (including `-Report-Only`) and the value
+  may carry surrounding text. If the placeholder survives anyway, generation fails instead of
+  writing the file. Affects apps supplying their own `staticwebapp.config.template.json`; the
+  built-in template was never affected.
+* **Valueless directives no longer fail the build.** `upgrade-insecure-requests` and
+  `block-all-mixed-content` carry no source list, and the parser read their (absent) sources
+  with an out-of-range index — a terminating error under `Set-StrictMode`, so any policy
+  containing one aborted generation. They now parse, and emit as the bare directive name.
+* **A comment in a `.policy` file no longer deletes the directive beneath it.** The parser
+  recognised `#` and `//` comment lines, but split the file on `;` before testing for them,
+  so a comment and the directive following it formed one chunk that was discarded together.
+  A policy opening with a comment therefore lost its first directive silently — losing
+  `default-src` this way removes the fallback for every directive not otherwise specified.
+  Comment lines are now removed before the file is split. The shipped baseline policy is
+  now commented, explaining why `'wasm-unsafe-eval'` and `'unsafe-inline'` are present.
+* **The SWA config generator runs under Windows PowerShell 5.1 again.** The script contained
+  em-dashes but no byte-order mark, so PowerShell 5.1 decoded it as ANSI, turning one of them
+  into a smart quote that terminated a string literal mid-script and failed the parse. Since
+  the MSBuild target invokes `powershell` on Windows, publish failed outright there while
+  succeeding on `pwsh`. The script is now pure ASCII and carries a BOM.
+
 ## [2.1.0] - 2026-08-20
 
 ### Added
