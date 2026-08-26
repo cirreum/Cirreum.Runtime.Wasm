@@ -19,7 +19,7 @@
   - `AppRouteView` — drop-in route view that gates on auth, initialization, and app user readiness
   - Initialization orchestrator for sequenced startup (auth, app user, enrichment, remote state)
   - No-auth fallback for development scenarios
-  - Session access token supplied to outbound remote connections (`IRemoteConnectionTokenSource`)
+  - Session credential supplied to outbound remote connections (`IRemoteConnectionCredentialSource`), requested for the scopes each connection declares
   
 - **State Management**
   - Multiple state scopes: Memory, Session, Local Storage, and Container

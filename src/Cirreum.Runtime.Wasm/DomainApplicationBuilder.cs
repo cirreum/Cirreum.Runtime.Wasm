@@ -2,7 +2,7 @@
 
 using Cirreum.Conductor.Configuration;
 using Cirreum.Logging.Deferred;
-using Cirreum.RemoteServices;
+using Cirreum.RemoteServices.Connections;
 using Cirreum.Runtime.Authentication;
 using Cirreum.Runtime.Security;
 using Cirreum.Runtime.State;
@@ -203,7 +203,7 @@ public sealed class DomainApplicationBuilder : IClientDomainApplicationBuilder {
 		//
 		if (!this.Services.Any(d => d.ServiceType == typeof(NoAuthRegistrationMarker))) {
 			this.Services
-				.TryAddScoped<IRemoteConnectionTokenSource, AccessTokenRemoteConnectionTokenSource>();
+				.TryAddScoped<IRemoteConnectionCredentialSource, SessionRemoteConnectionCredentialSource>();
 		}
 
 		// ******************************************************************************

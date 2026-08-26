@@ -7,8 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+* **The connection credential source requests the scopes the connection declares, and supplies
+  nothing when it declares none.** In 3.0.0 the source called `RequestAccessToken()` with no
+  options, which returns a token for the host's *default* scopes. On Entra those are
+  `openid`, `profile`, `email`, `offline_access` and `User.Read` — all Microsoft Graph. A
+  Graph-audience token is rejected by a first-party API, so the framework's own default could not
+  authenticate a hub on the application's own backend, and the rejection surfaced at the server as
+  an application authentication fault rather than as a credential aimed at the wrong resource.
+
+  Adding the API scope to the host's defaults does not fix it either: a single token cannot span
+  two resources, so Entra errors rather than degrading.
+
+  A connection now names its audience, and gets a token for it:
+
+  ```csharp
+  builder.AddRemoteConnection<ChatConnection>(options => {
+      options.EndpointUri = new Uri("https://api.contoso.com/hubs/chat");
+      options.Scopes = ["api://contoso/access_as_user"];
+  });
+  ```
+
+  A connection declaring no scopes receives no credential and a warning naming it, so the connect
+  fails with a stated cause instead of presenting a token for an audience nobody asked for. An
+  application that was relying on the host defaults declares them explicitly.
+
+* **`AccessTokenRemoteConnectionTokenSource` becomes `SessionRemoteConnectionCredentialSource`**,
+  implementing `IRemoteConnectionCredentialSource` (`Cirreum.Contracts` 5.0.0). The type is
+  internal; applications registering their own source implement the new interface. Interaction is
+  still never raised from a handshake — a token needing a redirect yields no credential and a
+  warning.
+
 ### Updated
 
+- `Cirreum.Domain` 5.0.0, `Cirreum.Services.Wasm` 1.1.8.
 - Updated NuGet packages.
 
 ## [3.0.0] - 2026-08-25
