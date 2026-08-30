@@ -50,7 +50,7 @@ public class SessionRemoteConnectionCredentialSourceTests {
 				ReturnUrl = "https://localhost/",
 			});
 
-	private static RemoteConnectionTokenRequest Request(params string[] scopes) =>
+	private static RemoteConnectionCredentialRequest Request(params string[] scopes) =>
 		new() {
 			EndpointUri = new Uri("https://api.contoso.com/hubs/chat"),
 			Scopes = scopes,

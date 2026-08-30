@@ -28,7 +28,7 @@ internal sealed partial class SessionRemoteConnectionCredentialSource(
 	private const string BearerScheme = "Bearer";
 
 	public async ValueTask<AuthorizationHeaderSettings?> GetCredentialAsync(
-		RemoteConnectionTokenRequest request,
+		RemoteConnectionCredentialRequest request,
 		CancellationToken cancellationToken = default) {
 
 		ArgumentNullException.ThrowIfNull(request);

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Updated
+
+- Re-pinned `Cirreum.Domain` `5.0.0` → `5.0.1`, which carries `Cirreum.Contracts` 6.0.0. That
+  release renamed `RemoteConnectionTokenRequest` to `RemoteConnectionCredentialRequest`, so
+  `SessionRemoteConnectionCredentialSource` names the new type. Signature and behaviour are
+  otherwise unchanged; an application that implements `IRemoteConnectionCredentialSource` itself
+  takes the rename from `Cirreum.Contracts` directly.
+
 ## [4.0.0] - 2026-08-25
 
 ### Breaking
