@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-08-29
+
 ### Updated
 
 - Re-pinned `Cirreum.Domain` `5.0.0` → `5.0.1`, which carries `Cirreum.Contracts` 6.0.0. That
