@@ -1,7 +1,7 @@
 ﻿@inherits StateComponentBase
 @inject NavigationManager NavigationManager
 @inject INavMenuState NavMenuState
-@inject IPageState PageState
+@inject IBrowserDocumentState DocumentState
 @inject IUserState UserState
 @inject IJSAppModule JS
 @inject IBreakpointMonitor BreakpointMonitor
@@ -16,7 +16,7 @@
 
 		<div class="offcanvas-header border-bottom" style="--bs-offcanvas-padding-x: 1rem;">
 			<span class="offcanvas-title fs-6" id="@NavMenuSelectors.NavMenuOffCanvasLabelId">
-				@PageState.AppName
+				@DocumentState.AppName
 			</span>
 			<button type="button"
 					class="btn-close"

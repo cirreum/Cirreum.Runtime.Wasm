@@ -2,9 +2,9 @@
 
 using FluentValidation;
 
-public record GetCustomer(string CustomerId) : IAuthorizableRequest<Customer>;
+public record GetCustomer(string CustomerId) : IAuthorizableOperation<Customer>;
 
-public class GetCustomerAuthorizor : AuthorizationValidatorBase<GetCustomer> {
+public class GetCustomerAuthorizor : AuthorizerBase<GetCustomer> {
 	public GetCustomerAuthorizor() {
 		this.HasAnyRole(
 			ApplicationRoles.AppAdminRole,

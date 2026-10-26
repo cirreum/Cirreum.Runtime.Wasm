@@ -1,9 +1,8 @@
 ﻿@inject IDomainEnvironment DomainEnvironment
+@inject IDomainModel DomainModel
 @using System.Text
-@using Cirreum.Authorization.Analysis
-@using Cirreum.Authorization.Modeling
-@using Cirreum.Authorization.Modeling.Types
-@using Microsoft.Extensions.DependencyInjection
+@using Cirreum.Introspection.Modeling
+@using Cirreum.Introspection.Modeling.Types
 
 <div class="policy-execution-section">
 	<div class="d-flex justify-content-between align-items-center mb-3">
@@ -126,8 +125,6 @@
 	[Parameter] public int MaxPoliciesInDiagram { get; set; } = 10;
 	[Parameter] public EventCallback<string> OnError { get; set; }
 
-	[Inject] private IServiceProvider Services { get; set; } = default!;
-
 	private string diagramDefinition = string.Empty;
 	private string errorMessage = string.Empty;
 	private List<PolicyRuleTypeInfo> PolicyRules = new();
@@ -149,12 +146,7 @@
 
 	private async Task LoadPolicyData() {
 		try {
-			// Initialize the provider if needed
-			AuthorizationModel.Instance.Initialize(Services);
-
-			// Get policy rules
-			var rules = AuthorizationModel.Instance.GetPolicyRules();
-			PolicyRules = rules.ToList();
+			PolicyRules = [.. DomainModel.GetPolicyRules()];
 		} catch (Exception ex) {
 			errorMessage = $"Failed to load policy data: {ex.Message}";
 			await OnError.InvokeAsync(errorMessage);
@@ -185,8 +177,7 @@
 		if (policy.SupportedRuntimeTypes.Length == 0)
 			return false;
 
-		// Check for bitwise flag support
-		return policy.SupportedRuntimeTypes.Any(rt => (rt & CurrentRuntimeType) == CurrentRuntimeType);
+		return policy.SupportedRuntimeTypes.Contains(CurrentRuntimeType);
 	}
 
 	private string GeneratePolicyExecutionDiagram() {

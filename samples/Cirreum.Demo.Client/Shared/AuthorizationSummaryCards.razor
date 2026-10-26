@@ -1,18 +1,18 @@
-@using Cirreum.Authorization.Analysis
-@using Cirreum.Authorization.Modeling.Export
+@using Cirreum.Introspection
+@using Cirreum.Introspection.Modeling.Export
 
 <div class="row g-3 mb-4 mt-2">
 
 	@MetricCard("Issues", Summary.TotalIssues, GetIssueIcon(Summary), GetIssueColor(Summary))
-	@MetricCard("Severity", Summary.HighestSeverity?.ToShortName() ?? "", "gear", "primary")
+	@MetricCard("Severity", Summary.HighestSeverity?.ToString() ?? "None", "gear", "primary")
 	@MetricCard("Roles", TotalRoles, "people", "warning")
 
 	@if (ShowDomainMetrics && Catalog != null) {
 		@MetricCard("Domains", Catalog.Metrics.TotalDomains, "folder", "secondary")
-		@MetricCard("Resources", Catalog.Metrics.TotalResources, "box", "success")
-		@MetricCard("Resource Kinds", Catalog.Metrics.TotalKinds, "box", "success")
-		@MetricCard("Anonymous Resources", Catalog.Metrics.AnonymousResources, "box", "success")
-		@MetricCard("Protected Resources", Catalog.Metrics.ProtectedResources, "box", "success")
+		@MetricCard("Operations", Catalog.Metrics.TotalOperations, "box", "success")
+		@MetricCard("Operation Kinds", Catalog.Metrics.TotalKinds, "box", "success")
+		@MetricCard("Anonymous Operations", Catalog.Metrics.AnonymousOperations, "box", "success")
+		@MetricCard("Protected Operations", Catalog.Metrics.ProtectedOperations, "box", "success")
 		@MetricCard("Coverage %", $"{Catalog.Metrics.OverallCoveragePercentage}%", "shield-check", GetCoverageColor(Catalog.Metrics.OverallCoveragePercentage))
 	}
 

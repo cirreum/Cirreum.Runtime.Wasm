@@ -11,7 +11,7 @@ public enum AccountMenuAction {
 public partial class Header(
 	IJSAppModule js,
 	INavMenuState navState,
-	IPageState displayState,
+	IBrowserDocumentState displayState,
 	INotificationState notificationState
 ) : StateComponentBase {
 
@@ -98,7 +98,7 @@ public partial class Header(
 
 	protected override void OnInitialized() {
 		this.SubscribeToStateChanges<IUserState>();
-		this.SubscribeToStateChanges<IPageState>();
+		this.SubscribeToStateChanges<IBrowserDocumentState>();
 		this.SubscribeToStateChanges<INotificationState>();
 	}
 

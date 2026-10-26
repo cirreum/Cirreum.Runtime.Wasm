@@ -64,9 +64,10 @@ package references to project references. The referenced local repos live at
 `Core/Cirreum.Domain`, `Core/Cirreum.Components.WebAssembly`, and
 `Infrastructure/Cirreum.Services.Wasm`.
 
-> The demo app (`Cirreum.Demo.Client`) currently targets pre-reset
-> authorization/introspection APIs and does not compile — the library chain builds;
-> the demo is pending a rehab against the current surface.
+> The demo app (`Cirreum.Demo.Client`) builds only through this solution: it uses
+> members of the local components that the published packages do not expose. Its
+> Client Auth page (`/client-authorization`) renders a `DomainSnapshot` from the
+> `Cirreum.Introspection` package, registered with `AddIntrospection()`.
 
 ### Testing
 Tests live in the dedicated `tests/Cirreum.Runtime.Wasm.Tests.slnx` solution (xUnit +

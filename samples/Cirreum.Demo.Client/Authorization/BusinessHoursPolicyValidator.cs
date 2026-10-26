@@ -5,7 +5,7 @@ using FluentValidation.Results;
 /// <summary>
 /// Example: Time-based access control
 /// </summary>
-public class BusinessHoursPolicyValidator : AttributeValidatorBase<BusinessHoursOnlyAttribute> {
+public class BusinessHoursPolicyValidator : AttributePolicyAuthorizerBase<BusinessHoursOnlyAttribute> {
 
 	public override string PolicyName => "BusinessHoursPolicy";
 
@@ -13,12 +13,12 @@ public class BusinessHoursPolicyValidator : AttributeValidatorBase<BusinessHours
 
 	public override DomainRuntimeType[] SupportedRuntimeTypes => [DomainRuntimeType.BlazorWasm];
 
-	public override Task<ValidationResult> ValidateAsync<TResource>(
-		AuthorizationContext<TResource> context,
+	public override Task<ValidationResult> EvaluateAsync<TAuthorizableObject>(
+		AuthorizationContext<TAuthorizableObject> context,
 		CancellationToken cancellationToken = default) {
 
 		// No attribute, we skip
-		var attribute = this.GetAttribute(context.Resource);
+		var attribute = this.GetAttribute(context.AuthorizableObject);
 		if (attribute == null) {
 			return Task.FromResult(new ValidationResult());
 		}

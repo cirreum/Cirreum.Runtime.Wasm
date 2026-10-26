@@ -6,9 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 
 [BusinessHoursOnly]
-public record GetPeopleCommand(int Delay = -1) : IAuthorizableRequest<PersonData[]>;
+public record GetPeopleCommand(int Delay = -1) : IAuthorizableOperation<PersonData[]>;
 
-public class GetPeopleAuthorizor : AuthorizationValidatorBase<GetPeopleCommand> {
+public class GetPeopleAuthorizor : AuthorizerBase<GetPeopleCommand> {
 
 	public GetPeopleAuthorizor() {
 		this.HasRole(ApplicationRoles.AppUserRole);
@@ -16,7 +16,7 @@ public class GetPeopleAuthorizor : AuthorizationValidatorBase<GetPeopleCommand> 
 
 }
 
-public class GetPeopleCommandHandler(IHttpClientFactory httpClientFactory) : IRequestHandler<GetPeopleCommand, PersonData[]> {
+public class GetPeopleCommandHandler(IHttpClientFactory httpClientFactory) : IOperationHandler<GetPeopleCommand, PersonData[]> {
 
 	public async Task<Result<PersonData[]>> HandleAsync(GetPeopleCommand request, CancellationToken token) {
 		var client = httpClientFactory.CreateClient("FakeData");

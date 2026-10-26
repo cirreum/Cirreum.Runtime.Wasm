@@ -4,6 +4,6 @@ using Cirreum.Conductor;
 using Cirreum.Demo.Client.Authorization;
 
 [BusinessHoursOnly]
-public class PayrollProcessingCommand : IAuthorizableRequest {
+public class PayrollProcessingCommand : IAuthorizableOperation {
 	public int PayPeriodId { get; set; }
 }

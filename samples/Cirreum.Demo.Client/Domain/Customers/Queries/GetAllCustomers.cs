@@ -1,8 +1,8 @@
 ﻿namespace Cirreum.Demo.Client.Domain.Customers.Queries;
 
-public record class GetAllCustomers() : IAuthorizableRequest<IEnumerable<Customer>>;
+public record class GetAllCustomers() : IAuthorizableOperation<IEnumerable<Customer>>;
 
-public class GetAllCustomersAuthorizor : AuthorizationValidatorBase<GetAllCustomers> {
+public class GetAllCustomersAuthorizor : AuthorizerBase<GetAllCustomers> {
 	public GetAllCustomersAuthorizor() {
 		this.HasAnyRole(
 			ApplicationRoles.AppAdminRole,

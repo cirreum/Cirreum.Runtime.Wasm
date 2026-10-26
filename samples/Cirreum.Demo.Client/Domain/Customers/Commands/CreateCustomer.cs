@@ -5,9 +5,9 @@ using FluentValidation;
 public record CreateCustomer(
 	string FirstName,
 	string LastName
-) : IAuthorizableRequest<string>;
+) : IAuthorizableOperation<string>;
 
-public class CreateCustomerAuthorizor : AuthorizationValidatorBase<CreateCustomer> {
+public class CreateCustomerAuthorizor : AuthorizerBase<CreateCustomer> {
 	public CreateCustomerAuthorizor() {
 		this.HasAnyRole(
 			ApplicationRoles.AppAdminRole,

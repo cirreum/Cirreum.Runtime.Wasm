@@ -5,19 +5,19 @@ using FluentValidation.Results;
 /// <summary>
 /// Example: Requires specific security clearance for resources marked with SecurityClearanceRequired attribute
 /// </summary>
-public class SecurityClearancePolicyValidator : AttributeValidatorBase<SecurityClearanceRequiredAttribute> {
+public class SecurityClearancePolicyValidator : AttributePolicyAuthorizerBase<SecurityClearanceRequiredAttribute> {
 
 	public override string PolicyName => "SecurityClearancePolicy";
 	public override int Order => 100; // Run early
 	public override DomainRuntimeType[] SupportedRuntimeTypes =>
-		[DomainRuntimeType.BlazorWasm | DomainRuntimeType.Function];
+		[DomainRuntimeType.BlazorWasm, DomainRuntimeType.Function];
 
-	public override Task<ValidationResult> ValidateAsync<TResource>(
-		AuthorizationContext<TResource> context,
+	public override Task<ValidationResult> EvaluateAsync<TAuthorizableObject>(
+		AuthorizationContext<TAuthorizableObject> context,
 		CancellationToken cancellationToken = default) {
 
 		// No attribute, we skip
-		var attribute = this.GetAttribute(context.Resource);
+		var attribute = this.GetAttribute(context.AuthorizableObject);
 		if (attribute == null) {
 			return Task.FromResult(new ValidationResult());
 		}

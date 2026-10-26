@@ -1,17 +1,16 @@
 @using System.Text
 @using Cirreum.Authorization
-@using Cirreum.Authorization.Analysis
-@using Cirreum.Authorization.Documentation
-@using Cirreum.Authorization.Modeling.Export
+@using Cirreum.Introspection.Documentation
+@using Cirreum.Introspection.Modeling.Export
 @inject IAuthorizationRoleRegistry RoleRegistry
 @inject IMermaidService MermaidService
 @inject IWasmFileSystem FileSystem
 @inject IServiceProvider ServiceProvider
-@inject IAuthorizationDocumenter StaticDocumenter
+@inject IDomainDocumenter StaticDocumenter
 
 @*
 	Shared Authorization Analysis Component
-	Displays authorization analysis results from an AuthorizationSnapshot.
+	Displays authorization analysis results from an DomainSnapshot.
 	Can display snapshots captured locally or fetched from a remote API.
 *@
 
@@ -132,7 +131,7 @@
 					</Tab>
 
 					<Tab Name="Domain">
-						<DomainModelView ResourceCatalog="@Snapshot.Catalog" />
+						<DomainModelView Catalog="@Snapshot.Catalog" />
 					</Tab>
 
 					<Tab Name="Roles">
@@ -288,7 +287,7 @@
 	/// Optional: Provide an externally-loaded snapshot (e.g., fetched from an API).
 	/// If null, the component will capture a local snapshot.
 	/// </summary>
-	[Parameter] public AuthorizationSnapshot? ExternalSnapshot { get; set; }
+	[Parameter] public DomainSnapshot? ExternalSnapshot { get; set; }
 
 	/// <summary>
 	/// Indicates whether the current snapshot was provided externally.
@@ -296,7 +295,7 @@
 	protected bool IsExternalSnapshot => ExternalSnapshot != null;
 
 	// The current snapshot being displayed
-	protected AuthorizationSnapshot? Snapshot;
+	protected DomainSnapshot? Snapshot;
 
 	// Analysis options
 	protected int MaxHierarchyDepth = 10;
@@ -363,7 +362,7 @@
 					ExcludedCategories = []
 				};
 
-				Snapshot = AuthorizationSnapshot.Capture(
+				Snapshot = DomainSnapshot.Capture(
 					RoleRegistry,
 					ServiceProvider,
 					options);

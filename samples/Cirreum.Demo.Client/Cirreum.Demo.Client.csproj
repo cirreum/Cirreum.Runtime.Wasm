@@ -13,9 +13,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="AspNetCore.SassCompiler" Version="1.103.0" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.11" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.11" PrivateAssets="all" />
+		<PackageReference Include="AspNetCore.SassCompiler" Version="1.106.0" />
+		<PackageReference Include="Cirreum.Introspection" Version="1.0.28" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.14" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.14" PrivateAssets="all" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -33,6 +34,7 @@
 
 		<Using Include="Cirreum" />
 		<Using Include="Cirreum.Authorization" />
+		<Using Include="Cirreum.Authorization.Operations" />
 		<Using Include="Cirreum.Components" />
 		<Using Include="Cirreum.Components.Authentication" />
 		<Using Include="Cirreum.Components.Interop" />
@@ -41,6 +43,7 @@
 		<Using Include="Cirreum.Components.Theme" />
 		<Using Include="Cirreum.Components.Web" />
 		<Using Include="Cirreum.Conductor" />
+		<Using Include="Cirreum.Introspection" />
 		<Using Include="Cirreum.Presence" />
 		<Using Include="Cirreum.RemoteServices" />
 		<Using Include="Cirreum.Runtime" />

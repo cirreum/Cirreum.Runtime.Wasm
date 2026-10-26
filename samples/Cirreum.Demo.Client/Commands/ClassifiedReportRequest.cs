@@ -8,4 +8,4 @@ public record ClassifiedReport();
 [SecurityClearanceRequired(SecurityClearanceLevel.Confidential)]
 public record ClassifiedReportRequest(
 	string ReportType
-) : IAuthorizableRequest<ClassifiedReport>;
+) : IAuthorizableOperation<ClassifiedReport>;
