@@ -74,6 +74,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   host the framework loader fetches fonts from, and explains why it is permitted there rather
   than in every app's policy.
 
+### Updated
+
+- **`Cirreum.Components.WebAssembly`** — `1.0.51` → `2.0.0`. The interop contract this runtime
+  implements: `IThemeModeChangedRef.ModeChanged(bool)`, nullable bounding rects,
+  `ForceUpdatePopperJS` removed, and the module-side fixes to the mouse-button listener, scroll
+  position, breakpoint monitor and scrollbar detection. Also carries the keyboard-activated
+  `Menu` placement, the DataGrid column-chooser toggle, and links inside DataGrid rows
+  navigating again.
+
 ## [4.0.4] - 2026-10-26
 
 ### Fixed
