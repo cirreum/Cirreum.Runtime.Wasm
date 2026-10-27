@@ -472,16 +472,12 @@ sealed class JSAppModule : IJSAppModule, IBrowserCultureInterop, IDisposable {
 	#region PopperJS
 
 	private const string POPPER_SHOW_METHOD = "showPopper";
-	private const string POPPER_FORCEUPDATE_METHOD = "updatePopper";
 	private const string POPPER_DESTROY_METHOD = "destroyPopper";
 	private const string POPPER_APPLYSTYLES_MODIFIER = "applyStyles";
 	private const string POPPER_MISSING_HOST_ELEMENT = "Missing required host element reference.";
 	private const string POPPER_MISSING_POPPER_ELEMENT = "Missing required droppable element reference.";
 	internal static readonly char[] separator = [' '];
 
-	public void ForceUpdatePopperJS(string id) {
-		this.Module.InvokeVoid(POPPER_FORCEUPDATE_METHOD, id);
-	}
 	public void ClosePopperJS(string id) {
 		this.Module.InvokeVoid(POPPER_DESTROY_METHOD, id);
 	}

@@ -44,8 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a preference that value was `null`, so an OS theme switch while the app was open was ignored
   until the user picked a mode. The decision now rests on `IThemeState.Mode`, and the applied
   mode is recorded in state as `RefreshAppliedMode` already did.
-- `ForceUpdatePopperJS` takes the string id `ShowPopperJS` returns (was `int`, which could never
-  match). The three `SetElementHeight`/`SetElementMaxHeight`/`SetElementMaxHeightFromScrollHeight`
+- `ForceUpdatePopperJS` is gone with its interface member (it took an `int` where popper ids are
+  strings, so it never matched; nothing called it). The three `SetElementHeight`/`SetElementMaxHeight`/`SetElementMaxHeightFromScrollHeight`
   overloads call `InvokeVoid` rather than reading an `int` from a function that returns nothing.
   The bounding-rect accessors return `DomRect?`, matching what the JavaScript always returned.
 
