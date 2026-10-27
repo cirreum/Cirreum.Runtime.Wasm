@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "demo",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--no-build",
+        "--project",
+        "samples\\Cirreum.Demo.Client\\Cirreum.Demo.Client.csproj",
+        "--launch-profile",
+        "https"
+      ],
+      "port": 7029,
+      "url": "https://localhost:7029"
+    }
+  ]
+}
