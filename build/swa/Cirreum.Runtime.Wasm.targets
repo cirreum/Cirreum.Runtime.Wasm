@@ -84,6 +84,12 @@
 		<Error Condition="!Exists('$(SwaConfigTemplate)')" Text="[Cirreum] SwaConfigTemplate not found: $(SwaConfigTemplate)" />
 		<Error Condition="!Exists('$(_SwaPublishedIndexHtml)')" Text="[Cirreum] Published index.html not found: $(_SwaPublishedIndexHtml). The Publish target must run before CSP generation." />
 
+		<!-- Every CSP diagnostic carries a stable code: CSP01xx from these targets, CSP00xx
+		     from the generator script (surfaced through Exec's canonical-format parsing).
+		     An app suppresses an accepted one with <NoWarn>, or makes one fatal for a
+		     deployment build with <WarningsAsErrors>; the framework itself never fails a
+		     build over policy content, only over output it cannot generate correctly. -->
+
 		<!-- Overlay files exist but no environment was resolved, so none of them can be
 		     selected. This is the silent case: a plain 'dotnet publish' sets neither
 		     EnvironmentName nor CspEnvironmentName, so an app that has added
@@ -97,6 +103,7 @@
 		</ItemGroup>
 
 		<Warning Condition="'$(CirreumGenerateCsp)' == 'true' And '$(_CspEnv)' == '' And '@(_CspUnselectedEnvPolicy)' != ''"
+				 Code="CSP0101"
 				 Text="[Cirreum] Found environment CSP overlay file(s) that were not applied: @(_CspUnselectedEnvPolicy->'%(Filename)%(Extension)', ', '). No deployment environment was resolved -- 'dotnet publish' does not set one by itself. Pass -p:EnvironmentName=&lt;Env&gt; (or -p:CspEnvironmentName=&lt;Env&gt;), or set &lt;EnvironmentName&gt; in the project, so the matching csp.&lt;Env&gt;.policy is merged." />
 
 		<!-- An environment was resolved, so an overlay was expected at the conventional path.
@@ -105,6 +112,7 @@
 		     which passes on Windows and fails on case-sensitive CI, or a file that was never
 		     added. Warn rather than skip silently. -->
 		<Warning Condition="'$(CirreumGenerateCsp)' == 'true' And '$(CspEnvPolicy)' != '' And !Exists('$(CspEnvPolicy)')"
+				 Code="CSP0102"
 				 Text="[Cirreum] CSP environment overlay not found: $(CspEnvPolicy) (environment '$(_CspEnv)'). The generated Content-Security-Policy will contain base + app sources only. File names are matched case-sensitively on Linux build agents." />
 
 		<Message Importance="High" Text="[Cirreum] Generating staticwebapp.config.json (env: '$(_CspEnv)')" />

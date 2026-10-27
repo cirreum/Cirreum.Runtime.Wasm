@@ -61,10 +61,15 @@ public sealed class DefaultThemeMonitor(
 	private string GetStoredScheme() =>
 		(js.Invoke<string?>("localStorage.getItem", StorageKeys.SchemeKey) ?? "").ToLowerInvariant();
 
+	// The system follows the user's mode preference held in theme state, not a value read
+	// from storage on the JavaScript side: a fresh browser has nothing stored, and the
+	// monitor already treats that as Auto on startup.
 	private void MonitorSystemModeChanges() {
-		var themeMonitor = new ModeMonitorRef((isDarkMode, storedMode) => {
-			if (storedMode == ThemeModeNames.Auto) {
-				js.SetElementAttribute("html", "data-bs-theme", isDarkMode ? ThemeModeNames.Dark : ThemeModeNames.Light);
+		var themeMonitor = new ModeMonitorRef(isDarkMode => {
+			if (themeState.Mode == ThemeModeNames.Auto) {
+				var applied = isDarkMode ? ThemeModeNames.Dark : ThemeModeNames.Light;
+				js.SetElementAttribute("html", "data-bs-theme", applied);
+				themeState.SetAppliedMode(applied);
 			}
 			return Task.CompletedTask;
 		});
@@ -74,16 +79,16 @@ public sealed class DefaultThemeMonitor(
 	}
 	private record ModeMonitorRef : IThemeModeChangedRef {
 		[DynamicDependency(nameof(ModeChanged))]
-		public ModeMonitorRef(Func<bool, string, Task>? onThemeChanged) {
+		public ModeMonitorRef(Func<bool, Task>? onThemeChanged) {
 			this.OnThemeModeChanged = onThemeChanged;
 		}
 
-		public Func<bool, string, Task>? OnThemeModeChanged { get; }
+		public Func<bool, Task>? OnThemeModeChanged { get; }
 
 		[JSInvokable("OnModeChanged")]
-		public async Task ModeChanged(bool isDarkMode, string storedMode) {
+		public async Task ModeChanged(bool isDarkMode) {
 			if (this.OnThemeModeChanged is not null) {
-				await this.OnThemeModeChanged.Invoke(isDarkMode, storedMode);
+				await this.OnThemeModeChanged.Invoke(isDarkMode);
 			}
 		}
 	}

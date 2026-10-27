@@ -5,17 +5,24 @@
 # unioned - an app policy adds sources to a directive, it does not replace them.
 # Set CirreumGenerateCsp=false in the project to emit no policy at all.
 #
-# The baseline permits same-origin resources only. Anything cross-origin an app
-# needs - its API, a CDN, a font host, an analytics endpoint - belongs in the
-# app's own csp.policy.
+# The baseline permits same-origin resources, plus the one external host the
+# framework's own loader fetches from (fonts.cdnfonts.com, see style-src and
+# font-src below). Anything else cross-origin an app needs - its API, a CDN, an
+# analytics endpoint - belongs in the app's own csp.policy.
+#
+# Additions in an app or environment policy that materially widen the posture
+# (unsafe keywords on script-src, wildcards, object-src, base-uri, default-src,
+# third-party script origins) raise a CSP00xx build warning. The build does not
+# fail; the warning names the file and directive so the decision is visible.
 
 base-uri 'self';
 default-src 'self';
 frame-ancestors 'self';
 
-# Blocks <object>, <embed> and <applet>, which Blazor never needs. Note that an app
-# policy adding sources here produces "'none' <source>"; per spec a source list
-# containing 'none' alongside other values ignores the 'none'.
+# Blocks <object>, <embed> and <applet>, which Blazor never needs. An app policy
+# adding sources here replaces the 'none': the generator removes it from the merged
+# directive (a list containing 'none' alongside other values ignores it anyway) and
+# warns that the directive was widened.
 object-src 'none';
 
 # 'data:' covers inline images and icons emitted by the Blazor templates and by most
@@ -40,6 +47,8 @@ script-src 'self' 'wasm-unsafe-eval';
 # short of eliminating every inline style in the app and its component libraries.
 # Scoped component CSS does NOT require it: .razor.css compiles into the external
 # {Assembly}.styles.css bundle, which 'self' already covers.
+# fonts.cdnfonts.com is where the framework loader (cirreum-wasm-loader.js) fetches a
+# configured font from, so it is permitted here rather than in every app's policy.
 style-src 'self' 'unsafe-inline' https://fonts.cdnfonts.com;
 
 font-src 'self' https://fonts.cdnfonts.com;

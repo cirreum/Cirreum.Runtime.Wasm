@@ -137,12 +137,12 @@ On `dotnet publish` of a Blazor WebAssembly project, the package generates
 **A Content-Security-Policy is applied by default.** The framework baseline covers what a
 Blazor WebAssembly app needs to boot and run from its own origin — `'wasm-unsafe-eval'` for
 the Mono runtime, `'unsafe-inline'` on `style-src` for inline style attributes, `data:`
-images, `base-uri`/`object-src`/`frame-ancestors` locked down, and
-`upgrade-insecure-requests`.
+images, `base-uri`/`object-src`/`frame-ancestors` locked down, `upgrade-insecure-requests`,
+and the one external host the framework loader itself fetches fonts from.
 
-The baseline permits **same-origin resources only**, which means an app that calls an API on
-another origin, loads fonts or images from a CDN, or talks to any third-party endpoint must
-declare those itself. Add a policy file to the project's `Properties` folder:
+Beyond that the baseline permits **same-origin resources only**, which means an app that
+calls an API on another origin, loads fonts or images from a CDN, or talks to any third-party
+endpoint must declare those itself. Add a policy file to the project's `Properties` folder:
 
 ```
 Properties/csp.policy              app policy - your API, CDNs, third-party origins
@@ -157,7 +157,54 @@ img-src https://cdn.myapp.com;
 Files use the same syntax as a CSP header — `directive source source;` per line, with `#` or
 `//` comment lines. Directives merge baseline → app policy → environment overlay, and source
 lists are **unioned**: an app policy adds sources to a directive rather than replacing them,
-so the baseline's entries cannot be removed by an app policy.
+so the baseline's entries cannot be removed by an app policy. Two directives are treated
+specially: a `'none'` is dropped from any directive that gains other sources (the browser
+ignores it in that position, so emitting it would only mislead), and `report-to`, which takes
+a single value, is replaced by the highest-precedence policy rather than unioned. Directive
+names and sources are emitted in a fixed order, so the generated header only changes when a
+policy does.
+
+The baseline is a starting point, not a boundary: an app can widen any directive. Additions
+that materially change the security posture produce a **build warning**, never a failure,
+attributed to the policy file and directive that made them:
+
+| Code | Raised when an app or environment policy adds |
+| --- | --- |
+| `CSP0001` | `'unsafe-inline'`, `'unsafe-eval'` or `'unsafe-hashes'` to `script-src`, `script-src-elem`, `script-src-attr`, `worker-src` or `default-src` |
+| `CSP0002` | a broad wildcard (`*`, `https://*`) to any directive |
+| `CSP0003` | a scheme-only source: `https:`/`http:`/`ws:`/`wss:` anywhere, or `data:`/`blob:` on a script, object, base-uri, frame-ancestors or form-action directive |
+| `CSP0004` | any source to `object-src` |
+| `CSP0005` | any origin to `base-uri` |
+| `CSP0006` | any source other than `'self'` to `default-src` |
+| `CSP0007` | a third-party origin to `script-src`, `script-src-elem` or `worker-src` |
+| `CSP0008` | a `'nonce-…'` source — a nonce in a static policy is the same on every response |
+| `CSP0009` | sources to a directive a lower layer set to `'none'` (the `'none'` was removed) |
+| `CSP0010` | a directive name the specification does not define — browsers ignore it |
+| `CSP0011` | sources to a valueless directive such as `upgrade-insecure-requests` |
+| `CSP0012` | a second `report-to` value — the higher-precedence one replaced the lower |
+| `CSP0013` | a quoted keyword the specification does not define — browsers ignore it |
+| `CSP0101` | *(targets)* environment overlay files exist but no environment was resolved |
+| `CSP0102` | *(targets)* an environment resolved but its overlay file is missing |
+
+Routine additions — an API origin or `*.subdomain` wildcard on `connect-src`, a CDN on
+`img-src`, `font-src` or `style-src`, an identity provider on `frame-src`, a named origin on
+`frame-ancestors`, `data:` on `img-src` — produce nothing. The framework baseline's own
+choices are never reported.
+
+The codes are stable. An app that has accepted a warning suppresses it; one that wants a
+deployment build to fail on it promotes it. Both use the standard properties:
+
+```xml
+<PropertyGroup>
+  <NoWarn>$(NoWarn);CSP0007</NoWarn>
+  <WarningsAsErrors>$(WarningsAsErrors);CSP0001;CSP0002;CSP0101</WarningsAsErrors>
+</PropertyGroup>
+```
+
+Generation **fails** only when the output would be wrong rather than merely permissive: a
+keyword written without quotes (`script-src unsafe-inline`, which the browser reads as a host
+named `unsafe-inline`, `CSP0901`), a generated config that is not valid JSON (`CSP0902`), or
+the `__CSP__` placeholder surviving into the output (`CSP0903`).
 
 To emit no Content-Security-Policy header at all — the rest of the config, including routes
 and other security headers, is unaffected:

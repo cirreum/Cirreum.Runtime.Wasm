@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Risk-based CSP diagnostics.** An app or environment policy that materially widens the
+  security posture now produces an MSBuild warning with a stable `CSP00xx` code, attributed
+  to the policy file and directive that made the addition: unsafe keywords on script
+  directives, broad wildcards, scheme-only sources, any widening of `object-src`, `base-uri`
+  or `default-src`, third-party script origins, and static nonces. Routine additions — API
+  origins, CDNs, identity-provider frames, `*.subdomain` wildcards, `data:` images — produce
+  nothing, and the framework baseline's own choices are never reported. The build does not
+  fail over policy content; an app suppresses an accepted warning with `NoWarn` or makes one
+  fatal with `WarningsAsErrors`. The two existing overlay-selection warnings in the targets
+  carry codes too (`CSP0101`, `CSP0102`), so the same mechanism covers a team that requires an
+  environment overlay in CI. Codes and their triggers are listed in the README.
+- **Policy syntax validation.** A keyword written without quotes (`script-src unsafe-inline`)
+  fails generation (`CSP0901`): the browser reads it as a host named `unsafe-inline`, so the
+  policy looks hardened and grants nothing. Unknown directive names (`CSP0010`), sources on a
+  valueless directive (`CSP0011`) and unknown quoted keywords (`CSP0013`) warn, since browsers
+  silently ignore all three.
+- **The generated `staticwebapp.config.json` is parsed before it is written** (`CSP0902` on
+  failure). Static Web Apps rejects a config it cannot parse at deployment time, long after the
+  build that produced it has passed.
+- **Generator test suite.** `tests\Cirreum.Runtime.Wasm.Tests\Swa` drives the shipped script
+  under every PowerShell on the machine (`pwsh` and Windows PowerShell 5.1 where present) and
+  covers merging, normalization, every diagnostic code, inline-script hashing, the opt-out
+  path and both output guards. The generator previously had no tests; the four fixes shipped
+  in 3.0.0 and 4.0.4 each went out without one.
+
+### Fixed
+
+- **`GetFooterHeight` reads a `double`.** The JavaScript returns `offsetHeight` plus two parsed
+  margins, which is fractional for any rem-based margin, and the C# side deserialized it as an
+  `int`, which throws on a fraction. `Menu` calls it on every open.
+- **System theme changes are followed on a fresh browser.** The monitor's callback compared a
+  value the JavaScript read from `localStorage` to `"auto"`; on a browser that had never stored
+  a preference that value was `null`, so an OS theme switch while the app was open was ignored
+  until the user picked a mode. The decision now rests on `IThemeState.Mode`, and the applied
+  mode is recorded in state as `RefreshAppliedMode` already did.
+- `ForceUpdatePopperJS` takes the string id `ShowPopperJS` returns (was `int`, which could never
+  match). The three `SetElementHeight`/`SetElementMaxHeight`/`SetElementMaxHeightFromScrollHeight`
+  overloads call `InvokeVoid` rather than reading an `int` from a function that returns nothing.
+  The bounding-rect accessors return `DomRect?`, matching what the JavaScript always returned.
+
+### Changed
+
+- **Every module-scoped interop call goes through a guarded accessor.** A call made before
+  `InitializeAsync` has completed now fails with a message naming the cause rather than a null
+  reference, or in two cases a silent no-op.
+- **Interop contract test.** `JSAppModuleContractTests` reads the exported functions of
+  `cirreum-interop.ts` from the sibling `Cirreum.Components.WebAssembly` checkout and checks
+  that every identifier `JSAppModule` invokes is exported with a compatible argument count, and
+  that every export is invoked. It is a no-op where the sibling checkout is absent.
+- **`'none'` is removed from a merged directive that gains other sources** (`CSP0009`), instead
+  of being emitted alongside them. The browser ignored it in that position, so enforcement is
+  unchanged; the generated header no longer reads `object-src 'none' https://…`.
+- **`report-to` is replaced, not unioned** (`CSP0012` when a lower-precedence value is
+  overridden). It takes a single reporting group; two values is an invalid directive.
+- **The generated header is deterministic.** Sources within each directive are now sorted,
+  ordinally, alongside the directive names that already were. A deployment diff shows only
+  real policy changes, and two build agents with different cultures emit the same bytes.
+- **Diagnostics from the generator surface as MSBuild warnings and errors.** The script writes
+  them in MSBuild's canonical format, which `Exec` parses, so they appear in the error list and
+  in CI annotations rather than as plain log lines. A failure now exits with a coded error
+  line instead of a PowerShell stack trace.
+- The baseline's comments no longer claim it is same-origin only; it names the one external
+  host the framework loader fetches fonts from, and explains why it is permitted there rather
+  than in every app's policy.
+
 ## [4.0.4] - 2026-10-26
 
 ### Fixed
