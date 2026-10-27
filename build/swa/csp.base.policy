@@ -22,6 +22,13 @@ object-src 'none';
 # component libraries. Remote image hosts belong in the app's csp.policy.
 img-src 'self' data:;
 
+# Declared explicitly although default-src 'self' would cover it. A fetch directive
+# that is absent falls back to default-src; one that is present replaces it entirely.
+# Every app adds its API origin to connect-src, and without 'self' here that addition
+# would stand alone and block the runtime's own same-origin fetches of _framework/*
+# (blazor.boot.json, dotnet.*.wasm, the assembly bundles), so nothing would start.
+connect-src 'self';
+
 # 'wasm-unsafe-eval' is required by the Blazor Mono runtime to instantiate the
 # WebAssembly module. It is narrower than 'unsafe-eval': it permits WebAssembly
 # compilation only, not eval() of JavaScript.

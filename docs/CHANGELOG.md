@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The framework CSP baseline now declares `connect-src 'self'` explicitly.** The baseline
+  relied on `default-src 'self'` to cover the runtime's fetches of `_framework/*`. That fallback
+  only applies while `connect-src` is absent: the first app or environment policy that declares
+  `connect-src` for its API origin replaced the fallback outright, and because the baseline had
+  no `connect-src` entry for the merge to union with, `'self'` was lost and the app could not
+  download `blazor.boot.json` or its assemblies. Apps that worked around this by adding
+  `connect-src 'self'` to their own `csp.policy` can remove that line.
+
 ## [4.0.3] - 2026-10-26
 
 ### Updated
